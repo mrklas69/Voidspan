@@ -64,7 +64,7 @@ Mimoherní nástroj pro prohlížení **více beltů současně**. Klíčový me
 - Kultura pisatelství: v kolonii může vzniknout **tradice** hodnocení / komentáře dopisů.
 - Potenciálně: instituce **Archivář** s hráčskou rolí (čte, kategorizuje, doporučuje).
 
-### Capsule hunting research
+### Capsule hunting research (Phase 2+)
 
 - Výzkumný strom odemyká pokročilé technologie pro kolonii.
 - **Auto-hunter kapslí** — dron / AI, který proaktivně sbírá a třídí kapsle podle nastavení.

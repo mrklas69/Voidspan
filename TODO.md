@@ -18,24 +18,24 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [ ] **Q-Session-Rhythm:** pobídky k návratu — push/email notifikace? Nebo jen přirozená zvědavost? Anti-exploit pokud hráč loguje 10×/den.
 - [ ] **Q-Delegate-Scope (Phase 2+):** nad brains režimy API/AI. Odloženo, viz IDEAS.
 
-## Otevřené otázky designu (po pivotu na prstenec, V6)
+## Otevřené otázky designu (po pivotu na prstenec, alien star)
 
-- [ ] **Q7:** Rozhodnout identitu hráče (avatar / loď / korporace / hybrid).
-- [ ] **Q9:** Atomická akce v real-time — click / cooldown / denní energie / hybrid.
-- [ ] **Q10:** Úroveň programování NPC-správce (presety vs. bloky vs. skript).
-- [ ] **Q11:** Vítězná podmínka / smysl hry (legacy body, žebříček, sezóny, milestones).
+- [~] **Q7:** Identita hráče — **částečně zodpovězeno v S4** (STATUS+RANK+SKILL, Cell Binding, alts povoleny). Zbývá: forma (avatar / loď / korporace / hybrid).
+- [x] **Q9:** vyřešeno v S4 jako „Q9 Tempo" výše. Duplikát odstraněn.
+- [~] **Q10:** Úroveň programování brains — částečně: POC = slidery (3–5 os). Phase 2+ = API/AI. Viz Q-Brains-Schema.
+- [x] **Q11:** Vítězná podmínka — **žádná vítězná podmínka, peak = pamatovatelný příběh**. Viz SPECIFICATION §2.2 a Endings Spectrum (Colony Arc 2.7). Zavřeno v S1–S4.
 - [ ] **Q12:** Jméno hvězdy (cosmology V6).
-- [ ] **Q13:** `CONST_BELT_LENGTH` pro prototyp (doporučeno 500–2000).
+- [ ] **Q13:** `CONST_BELT_LENGTH` pro POC (doporučeno 500–2000).
 - [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá).
 - [ ] **Q15:** Století Earth reference (může zůstat otevřené, viz T1 prequel tenet).
-- [ ] **Q17:** Rozsah prvního prototypu — doporučeno P1 (monopoly mýto sim), bez entropie / orbital shiftu / NPC.
+- [ ] **Q17:** Rozsah prvního POC — doporučeno P1 (monopoly mýto sim), bez entropie / orbital shiftu / NPC.
 
-## Pilot projekty k ověření
+## POC projekty k ověření
 
-- [ ] **P1 — Monopoly mýto sim:** minimální prototyp, ~10 cells, 3 hráči, mýto + spekulativní bublina. Otestovat: generuje napětí? škrtí newbies?
-- [ ] **P2 — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
-- [ ] **P3 — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?
-- [ ] **P4 — Orbital Shift UX:** flow hlasování + dopad na globální parametry. Otestovat: je rozhodnutí srozumitelné? motivuje koordinaci?
+- [ ] **P1 POC — Monopoly mýto sim:** minimální POC, ~10 cells, 3 hráči, mýto + spekulativní bublina. Otestovat: generuje napětí? škrtí newbies?
+- [ ] **P2 POC — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
+- [ ] **P3 POC — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?
+- [ ] **P4 POC — Orbital Shift UX:** flow hlasování + dopad na globální parametry. Otestovat: je rozhodnutí srozumitelné? motivuje koordinaci?
 
 ## Scénář hry (G3) — rozpracování SCENARIO.md v0.1
 
@@ -71,7 +71,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
 ## Infrastruktura (po rozhodnutí Q17)
 
-- [ ] Objednat Forpsi VPS Linux Basic (až bude prototyp lokálně + na Renderu funkční).
+- [ ] Objednat Forpsi VPS Linux Basic (až bude POC lokálně + na Renderu funkční).
 - [ ] Přesměrovat DNS `bete1geuse.com` na VPS IP (A záznam).
 - [ ] Zvážit zrušení Easy hostingu po přechodu na VPS.
 - [ ] Nastavit systemd service + git pull deploy.
@@ -86,7 +86,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - ORM: **Drizzle** nebo **Prisma** (zatím neurčeno)
 - Frontend: **Phaser 3** + TypeScript
 - Reverse proxy / SSL: **Caddy** (auto HTTPS)
-- Deploy (prototyp): **Render free tier** → (produkce) **VPS + systemd**
+- Deploy (POC): **Render free tier** → (produkce) **VPS + systemd**
 - Monorepo: **pnpm workspace**
 
 ## Deprecated (přesunuto do IDEAS parkoviště)
