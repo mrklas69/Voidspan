@@ -2,6 +2,23 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-13 (Sezení 7 — POC_P1 spec ready-to-code)
+
+- [x] **Q-P1-Arch:** Architektura P1 = **pure client, static hosting** (Vite + TS + Phaser 3, GH Pages / Netlify). Žádný server, žádná DB, žádný log.
+- [x] **Q-P1-Telemetry:** Žádný event log v P1. Feedback mimo hru (rozhovor s P1–P4).
+- [x] **Seed kalibrace (CAL-*):** SolarArray 24W, Constructor 12W, Hauler 8W, 3 Constructor + 2 Hauler, TIME_COMPRESSION 240×, Engine 60 WD (revize ze 120), Dock 48 WD + 20 Kredo, Storage 40 jídla.
+- [x] **Q-P1-Input:** Task-oriented (hráč cíle, engine auto-assign dronů) s micro-override. Priority drag&drop.
+- [x] **Q-P1-Character:** Hráč = aktér-drone (W=8), v P1 vždy `working`, prohrává s kolonií.
+- [x] **Q-P1-Tick:** Logický tick 250 ms (4×/s), render na rAF.
+- [x] **Data model (§13):** TypeScript skelet — World, Tile (tagged union), Module, Actor, Task, Phase.
+- [x] **State machine (§14):** `boot → phase_a → phase_b → phase_c → win|loss` se side-effecty a LOSS reason.
+- [x] **Q-P1-UI:** Wireframe 1280×720, horizontální 8×2 segment, Actors left, Task Queue + Inspector right, HUD top, Log bottom. Ikony **Tabler** (free MIT).
+- [x] **Q-P1-Onboarding:** Diegetický onboarding prvních 30 s, klik „Probuzení" → HULL BREACH → 2 contextové bubliny → task. Tón: suché military/tech.
+- [x] **Q-P1-Dialogs:** 2 WIN + 3 LOSS varianty závěrečných dialogů. Struktura: header + narativ + signature + „Nová hra: refresh."
+- [x] **POC_P1.md v0.1 → v0.7** — §12 architektura, §13 data model, §14 state machine, §15 input, §16 UI wireframe, §17 onboarding, §18 závěrečné dialogy.
+- [x] **TODO.md** — Stack rozdělen na P1 scope (pure client) vs. P2+ scope. HelloWorld pilot re-scoped na Vite+Phaser+GH Pages. CAL-* z `[ ]` na `[~]` se seed hodnotami.
+- [x] **MINDMAP v1.3** — 6.1/6.2 aktualizovány na P1 vs. P2+ stack, fokus posunut na Art sezení + `pnpm init`.
+
 ## 2026-04-12 (Sezení 6 — POC_P1, SHIP revize)
 
 - [x] **Q17 rozsah P1 POC** uzavřeno: **single-player puzzle** s WIN/LOSS, jedním pokusem, refresh = nová hra.

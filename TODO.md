@@ -29,6 +29,14 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá). Rozšíření: v R1 Belt Network = pohyb mezi vertikálními vrstvami.
 - [ ] **Q15:** Století Earth reference (může zůstat otevřené, viz T1 prequel tenet).
 - [x] **Q17 (S6):** Rozsah P1 POC — **single-player puzzle**, SHIP = 1 segment, krize Únik vzduchu + Engine→Dock, WIN/LOSS s 1 pokusem. Plný zápis: `POC_P1.md`.
+- [x] **Q-P1-Arch (S7):** Architektura P1 = **pure client, static hosting** (Phaser+TS+Vite, GitHub Pages / Netlify). Žádný server, žádná DB, žádný log. Plný zápis: `POC_P1.md` §12.
+- [x] **Q-P1-Telemetry (S7):** Žádný event log v P1. Feedback mimo hru (rozhovor s P1–P4). Důvody v `POC_P1.md` §12.
+- [x] **Q-P1-Input (S7):** Task-oriented input (hráč zadává cíle, engine přiřazuje drony). Micro override povolen. Viz `POC_P1.md` §15.
+- [x] **Q-P1-Character (S7):** Hráč = aktér-drone s W=8, v P1 vždy `working`, prohrává s kolonií. Narativně probuzený Founding Colonist #1. Viz `POC_P1.md` §3+§13.
+- [x] **Q-P1-Tick (S7):** Logický tick = 250 ms (4×/s), render na rAF. `TIME_COMPRESSION 240×` → 1 game hour = 60 ticků. Viz `POC_P1.md` §14.
+- [x] **Q-P1-UI (S7):** Wireframe: 1280×720 baseline, horizontální 8×2 segment, pravý sloupec Task Queue + Inspector, levý Actors, horní HUD, dolní Log. Ikony Tabler (free MIT). Viz `POC_P1.md` §16.
+- [x] **Q-P1-Onboarding (S7):** Diegetický onboarding, prvních 30 s. Klik „Probuzení" → HULL BREACH → 2 contextové bubliny → task. Tón: suché military/tech reporty. Viz `POC_P1.md` §17.
+- [x] **Q-P1-Dialogs (S7):** Závěrečné dialogy — 2 WIN varianty (A základní, B s bonusem) + 3 LOSS varianty (air-A, air-B, food-B). Struktura header/narativ/signature/footer. Viz `POC_P1.md` §18.
 
 ## Otevřené otázky z S5 (Prostor, čas, energie)
 
@@ -43,15 +51,15 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
 ## Kalibrační otázky P1 (CAL-*)
 
-Vše se ladí playtestem, ne spekulací. Viz `POC_P1.md` §10.
+Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí playtestem.
 
-- [ ] **CAL-A1** Optimum repair time pro Únik vzduchu (WD + max dronů).
-- [ ] **CAL-B1** Potvrdit/doladit Engine demontáž 120 WD (z S5).
-- [ ] **CAL-B2** Dock 2×2 stavba: cost v Kredo + WD.
-- [ ] **CAL-B3** Rychlost depletion zásob (jídlo, vzduch) vs. Storage capacity.
-- [ ] **CAL-T1** `TIME_COMPRESSION` pro target 10–20 min wall.
-- [ ] **CAL-D1** Počáteční pool dronů v P1 (Constructor / Hauler počty).
-- [ ] **CAL-S1** SolarArray 1×1 výkon (re-derivace po shrinku z 2×2).
+- [~] **CAL-A1** Únik vzduchu: seed 10 WD, optimum ~3,3 min wall, timeout ~6,5 min.
+- [~] **CAL-B1** Engine demontáž: seed **60 WD** (revize dolů ze 120 z S5).
+- [~] **CAL-B2** Dock 2×2: seed 48 WD + 20 Kredo.
+- [~] **CAL-B3** Zásoby: seed 40 jídla, 1/osoba/game day, 8 osob → 5 game days = 20 min wall.
+- [~] **CAL-T1** `TIME_COMPRESSION` seed **240×** (1 game hour = 15 s wall).
+- [~] **CAL-D1** Drony: seed **3 Constructor + 2 Hauler**, Constructor 12 W, Hauler 8 W.
+- [~] **CAL-S1** SolarArray 1×1: seed **24 W** (polovina z 2×2 v S5).
 
 ## POC projekty k ověření
 
@@ -86,12 +94,14 @@ Vše se ladí playtestem, ne spekulací. Viz `POC_P1.md` §10.
 - [ ] Vyběhnout prompty přes více modelů, porovnat.
 - [ ] Uložit winner outputs do `art/reference/`.
 
-## HelloWorld pilot (G2)
+## HelloWorld pilot (G2) — re-scope po Q-P1-Arch + Q-P1-Telemetry (S7)
 
-- [ ] Lokální skeleton: pnpm monorepo, Colyseus server, Phaser klient, ping-pong přes WS.
+Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodnutí no-log/no-DB odpadá i backend. Finální re-scope:
+
+- [ ] Lokální skeleton: pnpm monorepo, `apps/client` (Vite + Phaser 3 + TS), žádný server.
 - [ ] Push na GitHub `mrklas69/Voidspan`.
-- [ ] Deploy na Render (free tier, sleep acceptable).
-- [ ] Ověřit: WS spojení, cold start, URL sdílitelná.
+- [ ] Deploy na **GitHub Pages** nebo **Netlify** (static bundle).
+- [ ] Ověřit: dev server běží, static build funguje, URL sdílitelná pro P1–P4.
 
 ## Infrastruktura (po rozhodnutí Q17)
 
@@ -104,14 +114,20 @@ Vše se ladí playtestem, ne spekulací. Viz `POC_P1.md` §10.
 
 ## Stack — rozhodnuto
 
-- Runtime: **Node.js 22 + TypeScript**
-- Multiplayer: **Colyseus**
-- DB (prototyp): **SQLite**, produkce **PostgreSQL 16**
+**P1 scope (pure client, static hosting — viz POC_P1 §12):**
+- Runtime: **TypeScript** (browser)
+- Build: **Vite**
+- Frontend: **Phaser 3**
+- Hosting: **GitHub Pages** nebo **Netlify** (static)
+- Repo: **pnpm workspace** s jediným `apps/client` (drží místo pro `apps/server` v P2)
+- Žádný server, žádná DB, žádný log, žádná autentizace.
+
+**P2+ scope (až přijde multiplayer/persistence):**
+- Multiplayer: **Colyseus** (authoritative, rooms)
+- DB produkce: **PostgreSQL 16**
 - ORM: **Drizzle** nebo **Prisma** (zatím neurčeno)
-- Frontend: **Phaser 3** + TypeScript
 - Reverse proxy / SSL: **Caddy** (auto HTTPS)
-- Deploy (POC): **Render free tier** → (produkce) **VPS + systemd**
-- Monorepo: **pnpm workspace**
+- Deploy: **VPS Basic 160 Kč/m + systemd**
 
 ## Deprecated (přesunuto do IDEAS parkoviště)
 
