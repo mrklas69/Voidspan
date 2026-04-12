@@ -2,6 +2,17 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-13 (Sezení 8 — Skeleton + img2img reference art)
+
+- [x] **pnpm 10.33 nainstalován** přes `npm i -g pnpm` (corepack selhal na admin právech).
+- [x] **Monorepo workspace:** root `package.json` + `pnpm-workspace.yaml` (`apps/*`, `packages/*`).
+- [x] **`apps/client` skeleton:** Vite 5.4 + TypeScript 5.6 strict + Phaser 3.87, `type: module`, `base: "./"`, scale FIT 1280×720.
+- [x] **`BootScene.ts` — 2×8 reference grid:** tile 150×150, GRID 1200×300 (4:1), dock T4+T5 sloučený, labely T1–T8/B1–B8 mimo export area.
+- [x] **PNG export:** klávesa `P` → `snapshotArea` → download `voidspan-grid-2x8.png`. Klávesa `L` = toggle labelů. Fix: `render.preserveDrawingBuffer: true` (bez něj WebGL vrací prázdný buffer).
+- [x] **`.gitignore`** rozšířen (node_modules, dist, .env…).
+- [x] **Build + dev server ověřeny** (`pnpm build` čistý, `pnpm dev` běží na :5173).
+- [x] **Art reference ověřena:** img2img workflow s grid PNG dodržel geometrii ~7/16 tiles, zbytek (zaoblený obrys lodi) → přijato jako **style placeholder**, ne grid-accurate reference. Styl Dune II drží.
+
 ## 2026-04-13 (Sezení 7 — POC_P1 spec ready-to-code)
 
 - [x] **Q-P1-Arch:** Architektura P1 = **pure client, static hosting** (Vite + TS + Phaser 3, GH Pages / Netlify). Žádný server, žádná DB, žádný log.

@@ -1,0 +1,12 @@
+{
+  "name": "voidspan",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Voidspan — text strategy / colony sim (POC_P1)",
+  "scripts": {
+    "dev": "pnpm --filter @voidspan/client dev",
+    "build": "pnpm --filter @voidspan/client build",
+    "preview": "pnpm --filter @voidspan/client preview"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

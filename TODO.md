@@ -98,10 +98,10 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 
 Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodnutí no-log/no-DB odpadá i backend. Finální re-scope:
 
-- [ ] Lokální skeleton: pnpm monorepo, `apps/client` (Vite + Phaser 3 + TS), žádný server.
+- [x] **Lokální skeleton (S8):** pnpm monorepo, `apps/client` (Vite 5 + Phaser 3.87 + TS 5.6 strict), žádný server. Build + dev server běží.
 - [ ] Push na GitHub `mrklas69/Voidspan`.
 - [ ] Deploy na **GitHub Pages** nebo **Netlify** (static bundle).
-- [ ] Ověřit: dev server běží, static build funguje, URL sdílitelná pro P1–P4.
+- [ ] Ověřit: static build funguje, URL sdílitelná pro P1–P4.
 
 ## Infrastruktura (po rozhodnutí Q17)
 
