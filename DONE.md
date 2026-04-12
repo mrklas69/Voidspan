@@ -2,6 +2,19 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-12 (Sezení 6 — POC_P1, SHIP revize)
+
+- [x] **Q17 rozsah P1 POC** uzavřeno: **single-player puzzle** s WIN/LOSS, jedním pokusem, refresh = nová hra.
+- [x] **Scénář P1** = (A) Únik vzduchu (krize, time-pressure) + (B) Engine→Dock (normal task) + (C) volitelný bonus.
+- [x] **SHIP revize** na 1 segment (S5 2-segment config byl over-provisioned — modulová math se vešla do 16 tiles s 1×1 moduly).
+- [x] **Bez brains v P1** — přímé příkazy (brains = P2+).
+- [x] **`CONST_PUZZLE_SLACK_FACTOR = 2`** — univerzální heuristika (timeout/budget = 2× optimum).
+- [x] **POC_P1.md v0.1** založen — 11 sekcí, goal+format+scope+scénář+in/out+WIN/LOSS+kalibrace+asset list+success criteria.
+- [x] **GLOSSARY v0.4** — SHIP section přepsána, SHIP-Bow/Stern retired, konstanta přidána.
+- [x] **SCENARIO v0.4** — §4.0 SHIP Wake-up aktualizován na 1 segment.
+- [x] **TODO** — Q17 uzavřeno, CAL-* kalibrační sekce přidána, Art sezení P1 naplánováno.
+- [x] **MINDMAP v1.2** — fokus posunut na Art sezení + kalibraci + 3.2 Postava.
+
 ## 2026-04-12 (Sezení 5 — Prostor a čas, datový model, Energy Model)
 
 - [x] **Hierarchie entit** WORLD → BELT → SEGMENT → MODULE → TILE ustavena; „Cell" retirováno.

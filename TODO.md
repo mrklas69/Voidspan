@@ -28,7 +28,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [x] **Q13 (S5):** `CONST_BELT_LENGTH = 256`.
 - [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá). Rozšíření: v R1 Belt Network = pohyb mezi vertikálními vrstvami.
 - [ ] **Q15:** Století Earth reference (může zůstat otevřené, viz T1 prequel tenet).
-- [ ] **Q17:** Rozsah prvního POC — doporučeno P1 (monopoly mýto sim), bez entropie / orbital shiftu / NPC.
+- [x] **Q17 (S6):** Rozsah P1 POC — **single-player puzzle**, SHIP = 1 segment, krize Únik vzduchu + Engine→Dock, WIN/LOSS s 1 pokusem. Plný zápis: `POC_P1.md`.
 
 ## Otevřené otázky z S5 (Prostor, čas, energie)
 
@@ -41,9 +41,22 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [ ] **Q-Greenhouse-Size:** rozměr Greenhouse modulu (kolik tiles = kolik jídla / den pro kolik lidí).
 - [ ] **Q-Observatory-Trigger:** konkrétní práh výzkumu pro spuštění Observatory Event.
 
+## Kalibrační otázky P1 (CAL-*)
+
+Vše se ladí playtestem, ne spekulací. Viz `POC_P1.md` §10.
+
+- [ ] **CAL-A1** Optimum repair time pro Únik vzduchu (WD + max dronů).
+- [ ] **CAL-B1** Potvrdit/doladit Engine demontáž 120 WD (z S5).
+- [ ] **CAL-B2** Dock 2×2 stavba: cost v Kredo + WD.
+- [ ] **CAL-B3** Rychlost depletion zásob (jídlo, vzduch) vs. Storage capacity.
+- [ ] **CAL-T1** `TIME_COMPRESSION` pro target 10–20 min wall.
+- [ ] **CAL-D1** Počáteční pool dronů v P1 (Constructor / Hauler počty).
+- [ ] **CAL-S1** SolarArray 1×1 výkon (re-derivace po shrinku z 2×2).
+
 ## POC projekty k ověření
 
-- [ ] **P1 POC — Monopoly mýto sim:** minimální POC, ~10 cells, 3 hráči, mýto + spekulativní bublina. Otestovat: generuje napětí? škrtí newbies?
+- [~] **P1 POC — Single-player puzzle** (S6): SHIP Wake-up, krize + Engine→Dock, WIN/LOSS. Zadání: `POC_P1.md`. Implementace čeká na Art sezení + kalibraci.
+- [ ] **Art sezení P1** — definovat asset pipeline dle `POC_P1.md` §9 (tile sprites, aktéři, VFX, UI, optional audio).
 - [ ] **P2 POC — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
 - [ ] **P3 POC — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?
 - [ ] **P4 POC — Orbital Shift UX:** flow hlasování + dopad na globální parametry. Otestovat: je rozhodnutí srozumitelné? motivuje koordinaci?

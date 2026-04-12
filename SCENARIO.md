@@ -4,7 +4,7 @@ Narativní scénář hry. Hybridní model: **autorská páteř + scripted eventy
 
 > Viz též `GLOSSARY.md` pro definice pojmů (WORLD/BELT/SEGMENT/MODULE/TILE, SHIP, Energy Model, Capability Matrix, Drone Fleet, Teegarden System, Echo, Kredo, Capsule, Citizen Tier, Tenets T1–T4).
 
-Verze: **0.3** (S5: hierarchie entit, Teegarden System, Founding Colonist Invitation, SHIP wake-up scénář, Observatory Event).
+Verze: **0.4** (S6: SHIP revidován na 1 segment, POC_P1 puzzle reference).
 
 > **Pozn. k terminologii (S5):** pojem „Cell" byl retirován. V textu níže (sekce 2.LEGACY, 4.1, 13 a další) stará zmínka „cell" = **segment** (dílek beltu). Migrace textu postupně.
 
@@ -247,12 +247,13 @@ Delay mezi odesláním pozvánky a rozhodnutím = **hodiny až 1–2 dny**. Krat
 
 Pro zakládající posádku platí **odlišný onboarding** od kapslové varianty. Probuzení probíhá přímo na mateřské lodi zaparkované na orbitě Teegardenu.
 
-**Startovní stav:**
-- 8 kolonistů v kryo v Habitat-A (SHIP-Bow). Probouzí se postupně podle přijetí pozvánek.
-- Dostupná energie: 1× SolarArray 2×2 = 48 W (viz GLOSSARY Energy Model).
-- Zásoby ve Storage: cca X dní jídla (TBD kalibrace). **Greenhouse chybí** — musí se postavit.
-- Flotila: 8 Constructors + 4 Haulers + 4 Marshals. Energie omezuje **cca 4 simultánně aktivní drony**.
+**Startovní stav (revize S6 — SHIP = 1 segment, viz GLOSSARY §SHIP):**
+- 8 kolonistů v kryo v Habitatu. Probouzí se postupně podle přijetí pozvánek.
+- Dostupná energie: 1× SolarArray 1×1 = TBD W (re-kalibrace po shrinku z 2×2).
+- Zásoby ve Storage: cca X dní jídla / vzduchu (TBD kalibrace). **Greenhouse parkuje u SHIPu** — připojí se po dostavbě Docku.
+- Flotila dronů: Constructors + Haulers + Marshals. Energie omezuje počet simultánně aktivních aktorů.
 - Instituce: integrovaně v `CommandPost` (včetně Observatory).
+- **POC_P1 scope:** viz `POC_P1.md` — single-player puzzle s krizí Úniku vzduchu + Engine→Dock.
 
 **Úvodní zpráva prvnímu probuzenému:**
 

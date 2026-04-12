@@ -2,7 +2,7 @@
 
 Jediný zdroj pravdy pro klíčové pojmy projektu. Když se pojem mění, mění se zde. Ostatní dokumenty (IDEAS, TODO, SCENARIO, sessions, kód) se na tento glosář odvolávají.
 
-Verze: **v0.3** (Sezení 5 — hierarchie WORLD/BELT/SEGMENT/MODULE/TILE, Energy Model, Capability matrix, SHIP, drony, Teegarden System).
+Verze: **v0.4** (Sezení 6 — SHIP revidován na 1 segment, POC_P1 puzzle scope, `CONST_PUZZLE_SLACK_FACTOR`).
 
 ---
 
@@ -87,30 +87,26 @@ Další moduly (Hospital, Cryobank, Morgue, Lab, Parlament, Bank, Court, Sheriff
 
 ## SHIP — startovní konfigurace kolonie
 
-Mateřská loď generačního typu, **zaparkovaná na orbitě Teegardenu**. Zabírá **dva sousední segmenty** (Belt1.Seg000 a Seg001) = `SHIP-Bow` + `SHIP-Stern`. Celkem 32 tiles. Startovní posádka `CONST_FOUNDING_CREW = 8` v kryospánku, probouzí se postupně podle příchozích pozvánek (viz `Founding Colonist Invitation`).
+Mateřská loď generačního typu, **zaparkovaná na orbitě Teegardenu**. Zabírá **jeden segment** (Belt1.Seg000). Celkem `CONST_SEGMENT_VOLUME = 16` tiles. Startovní posádka `CONST_FOUNDING_CREW = 8` v kryospánku, probouzí se postupně podle příchozích pozvánek (viz `Founding Colonist Invitation`).
 
-**SHIP-Bow (Seg000), 16/16 tiles:**
+> Revize S6: Původní návrh S5 počítal se SHIP přes 2 segmenty, ale modulová math se vešla do jednoho (14/16 tiles) s menšími moduly (1×1 místo 2×2). KISS + izomorfismus vítězí — **P1 i plný SHIP sdílí stejnou 1-segment konfiguraci**.
 
-| Modul | Rozměr | Tiles |
-|---|---|---|
-| SolarArray | 2×2 | 4 |
-| Storage | 2×2 | 4 |
-| Habitat-A (+cryo lůžka pro posádku) | 2×2 | 4 |
-| — volno — | 2×2 | 4 |
+**SHIP (Seg000), 14/16 tiles využito, 2 tiles volno:**
 
-**SHIP-Stern (Seg001), 16/16 tiles:**
+| Modul | Rozměr | Tiles | Stavy |
+|---|---|---|---|
+| Habitat (+cryo pro posádku) | 1×1 | 1 | built / occupied |
+| SolarArray | 1×1 | 1 | day-lit / night |
+| Storage | 1×1 | 1 | — |
+| MedCore (kryo + nemocnice + márnice + research) | 1×1 | 1 | — |
+| Assembler | 1×1 | 1 | — |
+| CommandPost (+integrovaná Observatory) | 1×1 | 1 | — |
+| Engine → Dock | 2×2 | 4 | intact / dismantling / removed → empty / building / docked |
+| `[empty]` (budoucí výstavba) | — | 4 | — |
 
-| Modul | Rozměr | Tiles |
-|---|---|---|
-| SolarArray | 2×2 | 4 |
-| Engine→Dock | 2×2 | 4 |
-| Habitat-B | 2×2 | 4 |
-| Assembler | 1×1 | 1 |
-| MedCore (kryo+nemocnice+márnice+research) | 1×1 | 1 |
-| CommandPost (+integrovaná Observatory) | 1×1 | 1 |
-| — volno — | 1×1 | 1 |
-
-**Recycler** na začátku integrován do MedCore (morgue→nutrient) a Storage (odpad→raw). **Greenhouse** na startu NENÍ — první stavební cíl kolonie.
+**Recycler** na začátku integrován do MedCore (morgue→nutrient) a Storage (odpad→raw).
+**Greenhouse** na startu NENÍ — v narativu „parkuje u SHIPu", připojí se po dostavbě Docku.
+**Flotila modulů** (Greenhouse, 2. Habitat, 2. SolarArray) = silueta vedle SHIPu, čeká na Dock.
 
 ---
 
@@ -282,13 +278,15 @@ Jeden běh Colony Arc (Founding → Ending). Po *Reset* zakončení může vznik
 | `CONST_RECYCLE_YIELD_ECHO` | Echo výnos z recyklace kapsle | TBD |
 | `CONST_RECYCLE_YIELD_KREDO` | Kredo výnos z recyklace kapsle | TBD |
 | `CONST_DECAY_DEV_TO_DECAYING` | Trvání fáze DEVELOPED bez údržby | TBD (3–7 dní?) |
-| `SHIP_SOLARARRAY_POWER` | W jedné SolarArray 2×2 | **48** (provisional) |
+| `SHIP_SOLARARRAY_POWER` | W jedné SolarArray 1×1 | TBD (S5 hodnota 48 W platila pro 2×2, re-derive pro 1×1) |
+| `CONST_PUZZLE_SLACK_FACTOR` | Timeout / budget = `factor × optimum` v puzzle módu | **2** |
 
 ---
 
 ## Deprecated / Parkováno
 
 - **`Cell` jako entita** (S5) — nahrazeno hierarchií SEGMENT/MODULE/TILE. Dříve používaný pojem „Cell" = **segment**. Parkováno; v kódu nepoužívat.
+- **SHIP přes 2 segmenty** (S5) — revidováno v S6 na 1 segment. SHIP-Bow / SHIP-Stern naming retired.
 - **Binární strom jako topologie** — nahrazeno prstencem. Parkováno v IDEAS.md.
 - **Fork event / forks** — nahrazeno Belt Closure Event a Orbital Shift. Parkováno v IDEAS.md.
 - **Rift** (třetí zdroj) — zrušeno po pivotu.
