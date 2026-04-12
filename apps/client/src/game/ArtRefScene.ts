@@ -1,6 +1,7 @@
-// BootScene — v S8 přepsáno na 2×8 reference grid pro Art sezení (img2img structure ref).
+// ArtRefScene — 2×8 reference grid pro Art sezení (img2img structure ref).
 // Cíl: exportovat čistou mřížku 1200×300 (4:1) jako PNG, kterou uživatel použije
 // v arena.ai jako strukturní referenci — modely ji nedokážou popsat textem, musí ji vidět.
+// Aktivuje se přes URL `?scene=artref`. Defaultní scéna je GameScene.
 
 import Phaser from "phaser";
 
@@ -16,12 +17,12 @@ const GRID_H = TILE * ROWS; // 300
 const ORIGIN_X = (1280 - GRID_W) / 2; // 40
 const ORIGIN_Y = (720 - GRID_H) / 2; // 210
 
-export class BootScene extends Phaser.Scene {
+export class ArtRefScene extends Phaser.Scene {
   // Kontejner s labely — toggle klávesou L, ať je lze schovat před exportem/screenshotem
   private labels?: Phaser.GameObjects.Container;
 
   constructor() {
-    super({ key: "boot" });
+    super({ key: "artref" });
   }
 
   create(): void {

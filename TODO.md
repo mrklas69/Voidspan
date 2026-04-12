@@ -63,7 +63,8 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 
 ## POC projekty k ověření
 
-- [~] **P1 POC — Single-player puzzle** (S6): SHIP Wake-up, krize + Engine→Dock, WIN/LOSS. Zadání: `POC_P1.md`. Implementace čeká na Art sezení + kalibraci.
+- [~] **P1 POC — Single-player puzzle** (S6): SHIP Wake-up, krize + Engine→Dock, WIN/LOSS. Zadání: `POC_P1.md`. Data model + FSM v kódu (S9). Čeká: UI kostra §16, task engine §15, kalibrace.
+- [ ] **Fix POC_P1 §13 indexace** — spec říká `y*2+x`, správně `row*8+col` (S9 kompenzuje komentářem, spec zůstala chybná).
 - [ ] **Art sezení P1** — definovat asset pipeline dle `POC_P1.md` §9 (tile sprites, aktéři, VFX, UI, optional audio).
 - [ ] **P2 POC — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
 - [ ] **P3 POC — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?

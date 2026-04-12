@@ -2,6 +2,14 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-13 (Sezení 9 — Data model + FSM do kódu)
+
+- [x] **`apps/client/src/game/types.ts`** — kompletní typy §13: `World`, `Tile` (tagged union), `Module`, `Actor`, `Task`, `Phase`, `LossReason`. Indexace segmentu row-major `row*8+col`.
+- [x] **`apps/client/src/game/world.ts`** — world engine bez Phaser importu: seed konstanty (TICK_MS 250, AIR_TIMEOUT_TICKS 1560, FOOD_DRAIN 8/960), `createInitialWorld`, 4 FSM přechody (`startGame`, `repairDone`, `dockComplete`, `endDay`), `stepWorld` s air/food drainem a loss guardy.
+- [x] **`apps/client/src/game/GameScene.ts`** — tick akumulátor v `update(time, delta)`, debug HUD (phase, tick, wall-sec, air/food/kredo), debug klávesy SPACE/R/E/W.
+- [x] **`BootScene` → `ArtRefScene`** přejmenováno; přepínač scén přes `?scene=artref` v URL, default `GameScene`.
+- [x] **Smoke test user průchodem FSM** — SPACE → R → E → W → WIN. Tick 449 = 112.25 s wall, air 79.3 %, food 38.95, kredo 20. Čísla sedí.
+
 ## 2026-04-13 (Sezení 8 — Skeleton + img2img reference art)
 
 - [x] **pnpm 10.33 nainstalován** přes `npm i -g pnpm` (corepack selhal na admin právech).

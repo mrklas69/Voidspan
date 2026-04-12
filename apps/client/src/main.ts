@@ -1,13 +1,24 @@
 // Vstupní bod klientské aplikace.
 // Bootstrap Phaseru + registrace scén. POC_P1 §12 (pure client), §16 (1280×720 baseline).
+//
+// Scéna se volí přes URL query: `?scene=artref` → ArtRefScene (grid export pro art pipeline).
+// Default (bez query) → GameScene (hlavní hra).
 
 import Phaser from "phaser";
-import { BootScene } from "./game/BootScene";
+import { GameScene } from "./game/GameScene";
+import { ArtRefScene } from "./game/ArtRefScene";
 
-// Konfigurace Phaser hry.
-// `type: AUTO` — Phaser zvolí WebGL, při nedostupnosti spadne na Canvas.
-// `parent: "game"` — cílový DOM uzel z index.html.
-// `scale.mode: FIT` — zachovat poměr 1280×720 a škálovat do okna.
+// URLSearchParams — standard browser API pro parsování `?key=value`.
+// window.location.search = "?scene=artref" (včetně `?`).
+const params = new URLSearchParams(window.location.search);
+const sceneParam = params.get("scene");
+
+// Vybereme startovací scénu. Obě musí být registrované v `scene` array,
+// jinak `this.scene.start(key)` nenašel by cíl — ale startuje se první v seznamu.
+// Proto dáváme zvolenou scénu jako první.
+const startScene = sceneParam === "artref" ? ArtRefScene : GameScene;
+const otherScene = sceneParam === "artref" ? GameScene : ArtRefScene;
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: "game",
@@ -18,13 +29,12 @@ const config: Phaser.Types.Core.GameConfig = {
     width: 1280,
     height: 720,
   },
-  scene: [BootScene],
-  // WebGL context musí zachovat drawing buffer mezi framy, jinak `snapshotArea`
-  // vrací prázdný (bílý) obrázek — buffer je po swapu cleared. Nutné pro export PNG.
+  scene: [startScene, otherScene],
+  // WebGL musí zachovat drawing buffer — jinak `snapshotArea` v ArtRefScene
+  // vrací prázdno. Pro GameScene neškodí.
   render: {
     preserveDrawingBuffer: true,
   },
 };
 
-// Pozn.: Phaser.Game konstruktor hned startuje hlavní smyčku, proto netřeba žádné .start().
 new Phaser.Game(config);

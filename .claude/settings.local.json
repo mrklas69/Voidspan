@@ -9,7 +9,10 @@
       "Bash(npm install:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm dev:*)"
+      "Bash(pnpm dev:*)",
+      "Bash(kill %bx2zbwz60)",
+      "Bash(exit 0)",
+      "Bash(pnpm exec:*)"
     ]
   }
 }
