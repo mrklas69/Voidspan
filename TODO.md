@@ -8,7 +8,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [ ] **R2 Penal colony + amnesty:** nová sekce v `SCENARIO.md`, napojit na Endings spectrum a Act III krize.
 - [ ] **R3 Alts policy:** dopsat do `SCENARIO.md` sekce 11 (onboarding) jako feature, ne restrikci.
 - [ ] **Terminologie:** nahradit „prototyp/pilot" → **POC** (proof of concept) v TODO a dalších dokumentech konzistentně.
-- [ ] **Q-World-1:** fyzický vztah mezi belty po R1 (jedna hvězda / soustava / galaxie, vzdálenosti, cestování, komunikace).
+- [x] **Q-World-1 (S5):** fyzický vztah mezi belty po R1 = **vertikální stacking kolem jedné hvězdy** (Teegarden). Adresa `Teegarden.BeltN`. Detail IDEAS „Belt Network".
 - [ ] **Q-Player-Origin:** proč hráč uniká ze Země — provinění/trest vs. elita/mise vs. jiné. Mlhavost zachovat jako feature, ale rozpracovat varianty.
 - [ ] **Q-Comm-Privacy:** rozsah neprotokolované komunikace mezi hráči (kanál, limity zprávy, anti-abuse, moderace). Viz Faction Hierarchy v IDEAS.
 - [x] **Q-Player-Schema (S4):** POC = STATUS + RANK + SKILL. PERK Phase 2+. STATUS = aktuální role (kontextuální), RANK = pozice v hierarchii (občanství + role), SKILL = praxí rostoucí dovednost.
@@ -24,11 +24,22 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [x] **Q9:** vyřešeno v S4 jako „Q9 Tempo" výše. Duplikát odstraněn.
 - [~] **Q10:** Úroveň programování brains — částečně: POC = slidery (3–5 os). Phase 2+ = API/AI. Viz Q-Brains-Schema.
 - [x] **Q11:** Vítězná podmínka — **žádná vítězná podmínka, peak = pamatovatelný příběh**. Viz SPECIFICATION §2.2 a Endings Spectrum (Colony Arc 2.7). Zavřeno v S1–S4.
-- [ ] **Q12:** Jméno hvězdy (cosmology V6).
-- [ ] **Q13:** `CONST_BELT_LENGTH` pro POC (doporučeno 500–2000).
-- [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá).
+- [x] **Q12 (S5):** Jméno hvězdy = **Teegarden's Star** (SO J025300.5+165258). Soustava = Teegarden System.
+- [x] **Q13 (S5):** `CONST_BELT_LENGTH = 256`.
+- [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá). Rozšíření: v R1 Belt Network = pohyb mezi vertikálními vrstvami.
 - [ ] **Q15:** Století Earth reference (může zůstat otevřené, viz T1 prequel tenet).
 - [ ] **Q17:** Rozsah prvního POC — doporučeno P1 (monopoly mýto sim), bez entropie / orbital shiftu / NPC.
+
+## Otevřené otázky z S5 (Prostor, čas, energie)
+
+- [ ] **Q-Energy-Calibration:** konkrétní WD náklady akcí (stavba Greenhouse, SolarArray, Habitat), W dronů ostatních rolí. Ladit v P1 playtestu.
+- [ ] **Q-Homeless-Modifiers:** o kolik oddálí HP drain kvalitní strava / relax / léčení. Baseline = 1 HP / herní hodina.
+- [ ] **Q-Decay-Rate:** trvání DEVELOPED → DECAYING → LOST bez údržby. Návrh 3–7 dní hry.
+- [ ] **Q-Day-Length:** potvrzení 16 h herního dne vs. 8 h (ladit s rytmem session).
+- [ ] **Q-Time-Compression:** finální poměr wall/herní čas (provisional 16×, tj. 1 h wall ≈ 1 herní den).
+- [ ] **Q-Capsule-Timeout:** timeout pro auto-recyklaci (hodiny / 1–2 dny). Závisí na aktivitě kolonie.
+- [ ] **Q-Greenhouse-Size:** rozměr Greenhouse modulu (kolik tiles = kolik jídla / den pro kolik lidí).
+- [ ] **Q-Observatory-Trigger:** konkrétní práh výzkumu pro spuštění Observatory Event.
 
 ## POC projekty k ověření
 

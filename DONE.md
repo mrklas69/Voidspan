@@ -2,6 +2,27 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-12 (Sezení 5 — Prostor a čas, datový model, Energy Model)
+
+- [x] **Hierarchie entit** WORLD → BELT → SEGMENT → MODULE → TILE ustavena; „Cell" retirováno.
+- [x] **CONST_BELT_LENGTH = 256**, **CONST_SEGMENT_VOLUME = 16** (grid 2×8).
+- [x] **SHIP startovní konfigurace** = 2 segmenty (Bow + Stern), 32 tiles, 8 zakládajících kolonistů v kryo.
+- [x] **Energy Model** (W / WD) ustaven — jednotná mechanika pro hmotnou práci.
+- [x] **Capability Matrix** (Build/Haul/Guard/Heal/Fight) + specializace (1 role na slot).
+- [x] **Drone Fleet** = 8 Constructors + 4 Haulers + 4 Marshals (multi-funkční, analogie Module Specialization).
+- [x] **Module Specialization Principle** (integrované slabé → dedikované mocné).
+- [x] **HOMELESS status** + HP drain 1 HP / herní hodina.
+- [x] **Lawlessness formula** (KISS linear, `belt.lawlessness = max(0, 1 - marshals/CONST_MARSHAL_BASELINE)`).
+- [x] **Time model** — základní jednotka 1 s, herní den 16 h, TIME_COMPRESSION ~16×.
+- [x] **Schedule activities P1** = Work | Eat | Sleep | Relax | Move.
+- [x] **Q12 jméno hvězdy = Teegarden's Star** (SO J025300.5+165258), soustava = Teegarden System.
+- [x] **Q-World-1 vertikální síť beltů** kolem Teegardenu, adresa `Teegarden.BeltN`.
+- [x] **Observatory Event** (scripted) jako narativní trigger R1 Belt Network.
+- [x] **Founding Colonist Invitation** (nový typ pozvánky, garantované oživení pro prvních 8).
+- [x] **SHIP Wake-up scénář** v SCENARIO §4.0.
+- [x] **GLOSSARY.md v0.3** — kompletně přepsán k hierarchii a Energy Modelu.
+- [x] **MINDMAP 3.1 [◐] → [●]**, 4.3 Network Arc [○] → [◐].
+
 ## 2026-04-12 (Sezení 4 — Mapa, refactor, SPECIFICATION)
 
 - [x] **Založen MINDMAP.md** — kořenová mapa projektu, stavy uzlů, čte se na `@BEGIN`, aktualizuje na `@END`.

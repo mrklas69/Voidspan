@@ -233,6 +233,46 @@ Nová herní mechanika. Místo pro hráče odsouzené za politický/násilný zl
 ### R3 — Alts policy: povoleno a integrováno
 Více účtů/e-mailů **přípustných**. Ne zakazovat ani vymáhat restrikce — **integrovat jako feature**: každý život = nová kapsle, legacy přes citizen tiers a Legacy Letter Archive. Hráč si může „založit další život" jako designový prvek.
 
+## Belt Network — vertikální stacking (S5, doplněk R1)
+
+Kolem Teegardenovy hvězdy **víc beltů na různých orbitech**. „Nad námi" / „pod námi" = vertikální vrstvy okolo jedné hvězdy. Adresování `Teegarden.BeltN`. 
+
+Důsledky pro design:
+- **Orbital Shift = pohyb beltu mezi vrstvami** (ne jen změna poloměru). Kolektivní akt s fyzickým dopadem na sousední belty.
+- **Observatory Event** (viz SCENARIO §5.A) = narativní start Belt Network vrstvy.
+- **Mezi-kolonijní doprava:** kapsle, průzkumné lodi, obchodní karavany přes orbity. Pravděpodobně drahé (Echo-intenzivní), aby se vrstvy daly odlišit kulturně i politicky.
+- **Interference:** jeden belt může zastínit solar produkci jiného — emergentní zdroj konfliktu.
+
+## Mýto a poplatky — varianty (S5, do POC jen základ)
+
+**P1 core mechanika (v TODO):** základní mýto za průchod segmentem (monopoly dynamika).
+
+**Varianty pro Phase 2+:**
+- **Ubytování** — platba za nocleh v cizím Habitatu (alternativa HOMELESS drain).
+- **Daň z nemovitosti** — pravidelný odvod majiteli segmentu vlastníkovi vyšší autority (kolonie, belt).
+- **Vstupné do kolonie** — poplatek cizímu kolonistovi za vstup do hub-segmentu.
+- **Celní poplatky** — mezi-beltový obchod v R1.
+- **Parkovné kapsle** na orbitě (alternativa timeout recyklace).
+- **Pojištění claimu** proti entropii / útoku.
+
+Variant se nebudeme držet všech — testovat v POC a rozhodnout podle toho, které generují zajímavé rozhodování a které jen šum.
+
+## Marshal → Specializace (S5)
+
+Univerzální Marshal drony jsou **počáteční kompromis** (analogie Module Specialization). Jak kolonie dospěje, výzkum odemyká dedikovanou flotilu:
+
+- **Police** — zatýkání, hlídka.
+- **Medics** — záchranka, první pomoc v terénu.
+- **Firefighters** — požáry, havárie infrastruktury.
+- **Judiciary AI** — asistence soudu v Low-Complexity případech (lidský soudce drží autoritu).
+- **Admin AI** — administrativa kolonie (katastr, daně, evidence).
+
+**Emergentní napětí:** kolektivním rozhodnutím nebo nehodou může počet Marshals klesat, než kolonie stihne vyrobit dedikované nahrazení. Krátká období s nízkou `lawlessness` pokrytím = crisis event pool.
+
+**T2 napětí:** Marshals jsou drony vykonávající násilí (Fight CP 8). Pokud T2 drží „drones ≠ players" jako ofenziva-only-human, pak **Marshals musí pracovat na lidské autorizaci** (šerif-hráč dává rozkaz, dron vykonává). Phase 2+ rozhodnutí.
+
+---
+
 ## Otevřené nápady k rozpracování
 
 - Greenhorn reinkarnace.

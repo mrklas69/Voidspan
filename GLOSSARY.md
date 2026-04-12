@@ -2,13 +2,19 @@
 
 Jediný zdroj pravdy pro klíčové pojmy projektu. Když se pojem mění, mění se zde. Ostatní dokumenty (IDEAS, TODO, SCENARIO, sessions, kód) se na tento glosář odvolávají.
 
+Verze: **v0.3** (Sezení 5 — hierarchie WORLD/BELT/SEGMENT/MODULE/TILE, Energy Model, Capability matrix, SHIP, drony, Teegarden System).
+
+---
+
 ## Cosmology & Lore
 
-### Setting
-Vzdálená hvězdná soustava, cizí hvězda (konkrétní jméno TBD). Lidská kolonie začíná stavbou orbitálního prstence (**Belt**) kolem této hvězdy.
+### Setting — Teegarden System
+
+Vzdálená hvězdná soustava kolem reálné hvězdy **Teegardenova hvězda** (Teegarden's Star, SO J025300.5+165258). Lidská kolonie staví **Belt** (orbitální prstenec) okolo této hvězdy. Soustava může hostit **více beltů na různých orbitách** (vertikální stacking) — viz `Belt Network` níže.
 
 ### Premise
-Přicházejí kolonisté z mateřské civilizace (Země / odjinud — prequel otevřený). Toto je **nový svět s novými pravidly** — žádné dědictví minulosti, instituce se budují od nuly. Noví hráči = další vlny kolonistů (onboarding narativně ukotven, viz *Capsule* a Player Arc 1.0 v SCENARIO).
+
+Přicházejí kolonisté z mateřské civilizace (Země / odjinud — prequel otevřený). **Nový svět s novými pravidly** — žádné dědictví minulosti, instituce se budují od nuly. Noví hráči = další vlny kolonistů (onboarding narativně ukotven, viz `Capsule`, `Founding Colonist Invitation` a Player Arc v SCENARIO).
 
 ### Století (Earth reference)
 TBD. Volně upřesnitelné později bez konfliktu s existujícím kánonem.
@@ -21,119 +27,270 @@ TBD. Volně upřesnitelné později bez konfliktu s existujícím kánonem.
 
 ---
 
-## Entities
+## Spatial Hierarchy — entity světa
 
-### Belt
-Kolonijní prstenec na oběžné dráze kolem hvězdy. Vertikální pás **cells**, postupně se uzavírající do kruhu. Obvod = `CONST_BELT_LENGTH` cells. Před uzavřením = lineární pás se dvěma konci. Po uzavření = kruh bez konců.
+Rozhodnuto v S5. Pět úrovní, od globální po atomickou:
 
-### Cell
-Základní stavební jednotka beltu. Obdélníková, uniformní rozměry. Může nést 1 až N staveb (**upgrades**). Stavy: EMPTY → DEVELOPED → UPGRADED → DECAYING → LOST.
-
-**Cell je zároveň kontejner hráčova stavu** — viz *Cell Binding Protocol*.
-
-### Cell Binding Protocol
-Hráč (= 1 účet) je **lokálně vázán na konkrétní cell**. Cell není jen zdrojový tile, ale **místo, kde hráč fyzicky je**. Naming convention: `CELL_TYPE.Name` (např. `DOCK_CELL.The_Threshold`, `PRISON_CELL.Barack2`, `HABITAT_CELL.Luxury_House`).
-
-Tok hráče po přijetí:
 ```
-WAITING_ROOM / CAPSULE
-    ↓
-DOCK_CELL.The_Threshold   (arrival processing)
-    ↓
-PRISON_CELL.Barack*   ∨   HABITAT_CELL.*
+WORLD → BELT → SEGMENT → MODULE → TILE
 ```
 
-### Hub / Port
-Počáteční segment beltu. Obsahuje instituce (**Katastr**, **Soud**, **Banka**, **Šerif**). Kolektivně vlastněno, nedestruktibilní. Ekonomicky dominantní — jediný bod s přístupem k institucím.
+### WORLD
+Jeden server Voidspanu = jeden WORLD. Obsahuje jednu hvězdnou soustavu (**Teegarden System**). Hostí jeden nebo více beltů.
+
+### BELT
+Kolonijní prstenec na konkrétní oběžné dráze kolem hvězdy. Obvod = `CONST_BELT_LENGTH` segmentů (= **256**). Před uzavřením = lineární pás se dvěma konci, po uzavření = kruh bez konců. Sousední segmenty indexováno `(i-1) mod N` a `(i+1) mod N`.
+
+**Belt Network (R1):** více beltů na různých orbitech jedné hvězdy. Adresování `Teegarden.BeltN.SegXXX…`. Naše startovní kolonie = **Belt1** (default). Objevení dalších beltů = `Observatory Event` (narativní spouštěč).
+
+### SEGMENT
+Jeden z `CONST_BELT_LENGTH` dílků beltu. Obsahuje grid **2×8 = 16 tiles** (`CONST_SEGMENT_VOLUME`). Má horního a dolního souseda podél prstence. Stavy: `EMPTY → DEVELOPED → DECAYING → LOST`.
+
+Segment je zároveň kontejner hráčova stavu — viz `Cell Binding Protocol` (název protokolu zachován; označuje fyzickou lokalizaci hráče do segmentu).
+
+### MODULE
+Funkční stavební celek v segmentu. Zabírá **1..N tiles** v Tetris/Pentomino layoutu. Největší přípustný modul = celý `CONST_SEGMENT_VOLUME`. Typy modulů viz sekce *Module Types* níže.
+
+**Module Specialization Principle:** integrované multi-purpose moduly (malé, 1×1) mají **minimální výkon a kapacitu**. Dedikované jednoúčelové stavby (velké, až celý segment, s personálem) jsou řádově výkonnější (příklad: 1 lůžko v MedCore vs. 1024 lůžek v plné Nemocnici). Upgrade curve = motivace specializovat se, jakmile kolonie dospěje.
+
+### TILE
+Atomická jednotka prostoru (1 políčko gridu segmentu). Jeden modul může zabírat víc tilů; jeden tile však vždy patří nejvýše jednomu modulu. Pro stavbu většího modulu je nutné **vybourat** potřebné tiles.
+
+### Adresa
+`Teegarden.BeltN.SegXXX.MYY.TZ`  
+Např. `Teegarden.Belt1.Seg042.M03.T5` = Teegarden System, belt 1, segment 42, modul 3, tile 5.
+
+### Hub
+**Flag** na segmentu (`segment.is_hub = true`), ne vlastní entita. Hub-segmenty jsou nedestruktibilní a hostí instituce (**Katastr**, **Soud**, **Banka**, **Šerif**, **Parlament** — postupně se odštěpují z `CommandPost`). Kolektivně vlastněné.
+
+---
+
+## Module Types (startovní a odvozené)
+
+Startovní sada na palubě `SHIP` (viz SHIP konfigurace). Další moduly vznikají výzkumem a stavbou.
+
+| Modul | Rozměr (typ.) | Role |
+|---|---|---|
+| **SolarArray** | 2×2 | Produkce energie W (napájí drony a moduly) |
+| **Storage** | 2×2 a větší | Sklad Kredo/Echo, zásoby jídla |
+| **Habitat** | 1×1 (start) | Bydlení (cryo-lůžka, ložnice, kuchyň, sport, kultura). `CONST_HABITAT_CAPACITY = 8`. Větší habitat = lineárně škálovaná kapacita × efekt Module Specialization. |
+| **MedCore** | 1×1 (start) | Integrovaná kryo + nemocnice + márnice + research. Slabé. Postupně se odštěpuje do dedikovaných Hospital / Cryobank / Morgue / Lab. |
+| **Assembler** | 1×1 | Výroba modulů a dílů. Bez něj kolonie nestaví. |
+| **Recycler** | 1×1 (start integrován do MedCore/Storage) | Zpracování odpadu → raw materiál / nutrient. |
+| **CommandPost** | 1×1 | Politika, katastr, šerif, **Observatory** (integrovaně) — postupně se odštěpuje do dedikovaných institucí. |
+| **Engine → Dock** | 2×2 | Původně motory generační lodi, **rozebere se** jako první stavební úkol a přestaví na přístav pro kapsle. |
+| **Greenhouse** | TBD | **Ve SHIPu CHYBÍ** — první stavební cíl kolonie. Bez něj dojde jídlo. |
+
+Další moduly (Hospital, Cryobank, Morgue, Lab, Parlament, Bank, Court, Sheriff Office, Observatory-dedicated, Armory, …) = odemykány výzkumem a stavbou.
+
+---
+
+## SHIP — startovní konfigurace kolonie
+
+Mateřská loď generačního typu, **zaparkovaná na orbitě Teegardenu**. Zabírá **dva sousední segmenty** (Belt1.Seg000 a Seg001) = `SHIP-Bow` + `SHIP-Stern`. Celkem 32 tiles. Startovní posádka `CONST_FOUNDING_CREW = 8` v kryospánku, probouzí se postupně podle příchozích pozvánek (viz `Founding Colonist Invitation`).
+
+**SHIP-Bow (Seg000), 16/16 tiles:**
+
+| Modul | Rozměr | Tiles |
+|---|---|---|
+| SolarArray | 2×2 | 4 |
+| Storage | 2×2 | 4 |
+| Habitat-A (+cryo lůžka pro posádku) | 2×2 | 4 |
+| — volno — | 2×2 | 4 |
+
+**SHIP-Stern (Seg001), 16/16 tiles:**
+
+| Modul | Rozměr | Tiles |
+|---|---|---|
+| SolarArray | 2×2 | 4 |
+| Engine→Dock | 2×2 | 4 |
+| Habitat-B | 2×2 | 4 |
+| Assembler | 1×1 | 1 |
+| MedCore (kryo+nemocnice+márnice+research) | 1×1 | 1 |
+| CommandPost (+integrovaná Observatory) | 1×1 | 1 |
+| — volno — | 1×1 | 1 |
+
+**Recycler** na začátku integrován do MedCore (morgue→nutrient) a Storage (odpad→raw). **Greenhouse** na startu NENÍ — první stavební cíl kolonie.
+
+---
+
+## Energy Model (W / WD)
+
+Jednotná mechanika pro **hmotnou práci** (stavba, demontáž, přesun materiálu, produkce). Ne pro hlídku / léčbu / boj — ty mají vlastní metriky v `Capability Matrix` níže (Varianta A, úzký scope).
+
+- **`W` (watt):** okamžitý výkon jednoho aktora v roli `Build` nebo `Haul`.
+- **`WD` (watt-day):** jednotka práce. Každá akce má `cost_WD`.
+- **`duration_days = cost_WD / Σ(W_aktorů)`**
+- **Příklad (A18):** demontáž Engine stojí **120 WD**. Při 4 Constructor (4×10) + 1 hráč (8) = 48W → **2,5 dne** hry. Výstup: +4 Echo, +80 Kredo, Dock slot odemčen.
+
+**Napájení:** `SolarArray 2×2 = 48 W` (provisional, pokrývá přesně 4 Constructory + 1 hráče). Energetický limit omezuje počet simultánně aktivních aktorů — úvodní „max 4 drony" plyne z 1 SolarArray.
+
+**Aktér v kryo = 0 W**, aktér spící v habitatu (schedule slot `Sleep`) = 0 W produkce, aktér hladový / HOMELESS ztrácí HP (viz níže).
+
+---
+
+## Capability Matrix (role a výkony)
+
+Actor se v schedule slotu věnuje **jedné roli současně** (`Specializace`, KISS). W/WD platí pro Build/Haul. Ostatní role používají `CP` (Capability Points) — např. Guard 10 CP = jeden dron pokryje 10 CP-tiles území, Heal 4 CP = rychlost léčení na lůžku.
+
+Nástřel čísel (kalibrace v P1 playtestu):
+
+| Actor | Build W | Haul W | Guard CP | Heal CP | Fight CP |
+|---|---|---|---|---|---|
+| Player (human) | 8 | 8 | 4 | 2 | 4 |
+| Constructor drone | 10 | 4 | 0 | 0 | 0 |
+| Hauler drone | 0 | 10 | 0 | 0 | 0 |
+| Marshal drone | 0 | 6 | 10 | 4 | 8 |
+
+Matice je **feeder do globálních VARS** (belt.lawlessness, belt.construction_rate, belt.healing_capacity…), které vstupují do triggerů / eventů / nákladů / příjmů.
+
+---
+
+## Drone Fleet
+
+Startovní pool SHIPu = **16 dronů**: 8 Constructors + 4 Haulers + 4 Marshals.
+
+### Constructors
+Stavba, demontáž, produkce. 10W Build, 4W Haul.
+
+### Haulers
+Přeprava materiálu, 10W Haul.
+
+### Marshals
+**Multi-funkční** policie + IZS + admin (analogie Module Specialization). Startovní univerzální drony se slabými výkony napříč Guard/Heal/Fight/Haul. Při dospělosti kolonie se nahrazují **dedikovanou specializovanou flotilou** (Police, Medics, Firefighters, Judiciary AI, Admin AI).
+
+### Lawlessness formula (KISS)
+
+```
+belt.lawlessness = max(0, 1 - marshals_active / CONST_MARSHAL_BASELINE)
+# 0.0 = plné pokrytí, 1.0 = anarchie
+# Ovlivňuje: šance úspěchu trestných činů, výši pokut, délku trestu.
+```
+
+`CONST_MARSHAL_BASELINE = 4` (startovní pool). Počet Marshals může klesat kolektivním rozhodnutím nebo nehodou — **jediná veličina s globálním dopadem na belt RULES**.
+
+---
+
+## Time
+
+### Jednotky
+- **Základní jednotka:** `1 sekunda` (wall clock).
+- **Odvozené:** minuta = 60 s, hodina = 3600 s.
+- **Herní den:** `CONST_DAY_HOURS = 16` (16 herních hodin; izomorfie s RimWorld 16 schedule slotů).
+
+### Time Compression
+`CONST_TIME_COMPRESSION ≈ 16×` (nezávazně): 1 wall-clock hodina ≈ 1 herní den. 1 herní hodina ≈ 3,75 wall-clock minuty. Finální poměr se doladí v P1.
+
+### Schedule activities (RimWorld-style, P1 set)
+Brains scheduler má 16 hodinových slotů denně. Aktivity pro P1 POC:
+
+`Work | Eat | Sleep | Relax | Move`
+
+Rozšíření (Study, Pray, Socialize, Guard pro hráče, …) → IDEAS / Phase 2+. **Guard v P1 vykonávají Marshals**, ne hráči.
+
+---
+
+## Player Status & Health
+
+### Housing State
+- `HOUSED` — má lůžko v Habitatu. Zakládající posádka SHIPu je HOUSED garantovaně.
+- `HOMELESS` — bez lůžka. **HP drain ~1 HP / herní hodina** (provisional). Oddalitelné kvalitní stravou, relaxem, léčením. Bez zásahu umírá do ~4 dní hry.
+
+### Sit-out (A3 + A16)
+Odchod hráče = brains pokračuje podle nastaveného presetu. Offline hráč bez brains configu → pasivně nedělá nic, může zemřít hlady. Není to imunita (ne-poker). Hráč offline > 30 dní → převedení na NPC; jeho cryo-slot může být uvolněn pro novou pozvánku.
 
 ---
 
 ## Resources
 
 ### Echo
-Solární palivo (fotovoltaika). Produkce = funkce orbitu a pozice cell vůči hvězdě. Pohon života, pohybu, běžných akcí.
+Solární palivo (fotovoltaika). Produkce = funkce orbitu a pozice segmentu vůči hvězdě. Pohon života, pohybu, běžných akcí.
 
 ### Kredo
-Stavební zdroj (hmota, materiál). Získává se těžbou, recyklací, dovozem. Funkce: stavba, upgrady, oprava. **Recyklace kapslí** (viz *Capsule*) je vedlejší zdroj Kredo + Echo v malém množství.
+Stavební zdroj (hmota, materiál). Získává se těžbou, recyklací, dovozem. Funkce: stavba, upgrady, oprava. **Recyklace kapslí** (viz *Capsule*) je vedlejší zdroj Kredo + Echo.
 
 ---
 
 ## Onboarding & Citizenship
 
 ### Invitation (Pozvánka)
-Marketing/narativní vstup: welcome stránka, email, reklama. Obsahuje motivační výzvu a **fiktivní bankovní účet** (narativní rekvizita, žádná reálná transakce — viz SCENARIO monetizační sekce).
+Marketing/narativní vstup: welcome stránka, email, reklama. Obsahuje motivační výzvu a **fiktivní bankovní účet** (narativní rekvizita, žádná reálná transakce).
+
+**Dva typy pozvánky** (od S5):
+- **Founding Colonist Invitation** (*„Staň se zakládajícím kolonistou!"*) — pro prvních `CONST_FOUNDING_CREW = 8` hráčů beltu. **Oživení v rovnocenném postavení zaručené.** Žádná nejistota recyklace.
+- **Capsule Invitation** (*„Hail Mary"*) — pro pozdější vlny. Kapsle na orbitu, nejistota (revival / limbo / recycling).
 
 ### Motivation Letter
-Text `[TEXT_AREA]`, kterým hráč zdůvodňuje svou žádost o budoucí oživení. Součást world-lore, čitelný kolonií při rozhodování. Přežívá recyklaci v **Legacy Letter Archive**.
+Text `[TEXT_AREA]`, kterým hráč zdůvodňuje svou žádost o budoucí oživení. Součást world-lore, přežívá recyklaci v **Legacy Letter Archive**.
 
-### Capsule (Kapsle / „rakev")
-Kryospánková schránka s hráčem, deponovaná na orbitě cílové kolonie po odeslání pozvánky. Objevuje se v event-logu kolonie. Čeká na rozhodnutí vlády: revival / limbo / recycling.
+### Capsule
+Kryospánková schránka s hráčem, deponovaná na orbitě cílové kolonie. Čeká na rozhodnutí vlády: revival / limbo / recycling. Pouze u `Capsule Invitation`, ne u `Founding Colonist`.
 
 ### Hail Mary
-Neformální protokol nouzové žádosti hráče o přijetí. Metafora: vrhneš kapsli směrem ke kolonii a doufáš.
+Neformální protokol kapslové žádosti hráče.
 
-### Revival
-Rozhodnutí kolonie kapsli přijmout a hráče oživit. Zahajuje Player Arc 1.1 (Awakening).
-
-### Recycling
-Rozhodnutí (aktivní nebo automatické po timeoutu) kapsli zlikvidovat pro surovinový výnos (malé množství Echo/Kredo). Kapsle a její motivační dopis zůstávají v Legacy Letter Archive jako historický záznam.
+### Revival / Recycling
+Viz SCENARIO sekce 4 a 12.
 
 ### Legacy Letter Archive
-Trvalý archiv všech motivačních dopisů (úspěšných i zrecyklovaných). Slouží jako vzdělávací vzorek pro budoucí žadatele („které dopisy uspěly, které ne").
+Trvalý archiv všech motivačních dopisů (úspěšných i zrecyklovaných) jako vzdělávací vzorek.
 
 ### Citizen Tier
-Právní strata nového kolonisty. Tři úrovně:
-- **Indenture** — kryo-dlužník s minimálními právy, patron systém.
-- **Probationary** — probační občan s většinou práv kromě parlamentu.
-- **Full Citizen** — plnoprávný občan.
-
-Cesta vzhůru mezi tiers je **ústavně garantovaná** (Tenet T3 kandidát).
+Právní strata kolonisty (po Act 0). Tři úrovně: **Indenture**, **Probationary**, **Full Citizen**. Cesta vzhůru ústavně garantovaná. Zakládající posádka startuje jako Full Citizens (Founding Colonist Invitation).
 
 ---
 
 ## Events
 
 ### Belt Closure Event
-Dokončení prstence (spojení posledního cell s hubem). Historická událost řádu ~10M v event logu. Ceremonie, legacy záznam, jednorázové v rámci iterace beltu.
+Dokončení prstence (spojení posledního segmentu s hubem). Historická událost řádu ~10M v event logu. Ceremonie, jednorázové v rámci iterace beltu.
 
 ### Orbital Shift
-Kolektivně rozhodnuté povýšení / snížení orbitu beltu vkládáním / odebíráním segmentů. Globální dopad: intenzita Echo, výnos fotovoltaiky, teplota prostředí, délka roku, riziko radiace.
+Kolektivně rozhodnuté povýšení / snížení orbitu beltu. Globální dopad: Echo, teplota, délka roku, radiace. V Belt Network (R1) = pohyb beltu mezi vertikálními vrstvami.
 
 ### Capsule Arrival Event
-Každá nová kapsle na orbitě = event v event-logu. Vláda kolonie ji musí posoudit (aktivně) nebo přijde timeout (auto-recyklace).
+Každá nová kapsle na orbitě = event. Vláda kolonie ji musí posoudit (aktivně) nebo přijde timeout (auto-recyklace).
+
+### Observatory Event
+**První detekce jiného beltu** v soustavě. Narativní spouštěč přechodu z izolace (Belt1 solo) na R1 Belt Network. *„Naše observatoř zaznamenala novou mateřskou loď na orbitě… Nejsme sami."* Probíhá přes `CommandPost.Observatory` (integrovaná), později dedikovaný Observatory modul.
 
 ---
 
 ## Meta-layer
 
 ### World Browser
-Mimoherní nástroj pro prohlížení **více beltů současně** (různé aktivní kolonie i historicky zaniklé). Zaniklé kolonie jsou přístupné jen jako archiv EventLogů — jejich historie žije dál, i když svět sám skončil (viz *Endings Spectrum* v SCENARIO sekce 6). Použití:
-
-- Hráč v pre-game ghost experience (čekání na rozhodnutí).
-- Historici / antropologové kolonií (meta-game).
-- Srovnávání strategií mezi belty.
+Mimoherní nástroj pro prohlížení více beltů současně (aktivní i historické). Zaniklé belty dostupné jako archiv EventLogů.
 
 ### Iteration (Iterace beltu)
-Jeden běh Colony Arc (2.1 Founding → 2.7 Ending). Po *Reset* zakončení může vzniknout nová iterace se stejnou kolonií ve druhé generaci.
+Jeden běh Colony Arc (Founding → Ending). Po *Reset* zakončení může vzniknout nová iterace.
 
 ---
 
-## Design Constants (TBD)
+## Design Constants
 
 | Konstanta | Význam | Hodnota |
 |---|---|---|
-| `CONST_BELT_LENGTH` | Obvod prstence v cells | TBD (pro POC 500–2000) |
-| `CONST_CELL_BASE_CAPACITY` | Počet staveb v cell bez upgradu | TBD |
-| `CONST_CAPSULE_TIMEOUT` | Timeout pro rozhodnutí o kapsli | TBD (hodiny / 1–2 dny) |
+| `CONST_BELT_LENGTH` | Obvod prstence v segmentech | **256** |
+| `CONST_SEGMENT_VOLUME` | Tiles v segmentu (grid 2×8) | **16** |
+| `CONST_HABITAT_CAPACITY` | Lidí v 1×1 Habitatu | **8** |
+| `CONST_FOUNDING_CREW` | Zakládající posádka v kryo | **8** |
+| `CONST_DAY_HOURS` | Herních hodin v herním dni | **16** |
+| `CONST_TIME_COMPRESSION` | Poměr wall-clock / herní čas | **~16×** (nezávazně) |
+| `CONST_MARSHAL_BASELINE` | Baseline Marshals pro lawlessness=0 | **4** |
+| `CONST_HOMELESS_HP_DRAIN` | HP ztráta bezdomovce / herní hod | **1** (provisional) |
+| `CONST_CAPSULE_TIMEOUT` | Timeout rozhodnutí o kapsli | TBD (hodiny / 1–2 dny) |
 | `CONST_RECYCLE_YIELD_ECHO` | Echo výnos z recyklace kapsle | TBD |
 | `CONST_RECYCLE_YIELD_KREDO` | Kredo výnos z recyklace kapsle | TBD |
+| `CONST_DECAY_DEV_TO_DECAYING` | Trvání fáze DEVELOPED bez údržby | TBD (3–7 dní?) |
+| `SHIP_SOLARARRAY_POWER` | W jedné SolarArray 2×2 | **48** (provisional) |
 
 ---
 
 ## Deprecated / Parkováno
 
+- **`Cell` jako entita** (S5) — nahrazeno hierarchií SEGMENT/MODULE/TILE. Dříve používaný pojem „Cell" = **segment**. Parkováno; v kódu nepoužívat.
 - **Binární strom jako topologie** — nahrazeno prstencem. Parkováno v IDEAS.md.
 - **Fork event / forks** — nahrazeno Belt Closure Event a Orbital Shift. Parkováno v IDEAS.md.
 - **Rift** (třetí zdroj) — zrušeno po pivotu.
 - **`CONST_FORK_LIMIT`** — zrušeno s forky.
-- **Paid entry / real-money monetizace** — zrušeno v sezení 3. Viz SCENARIO sekce 11.
+- **Paid entry / real-money monetizace** — zrušeno v sezení 3.
