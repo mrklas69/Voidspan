@@ -16,6 +16,8 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 - [x] **Q9 Tempo:** time-gated akce, brains drží prioritu, žádná denní energie.
 - [x] **Revize R1/R2/R3** zapsány v IDEAS.md.
 - [x] **SPECIFICATION.md v0.1 DRAFT** založena — zadávací dokumentace s červeně označenými mezerami.
+- [x] **@AUDIT:DOCS první** — `audit/audit_260412.md`, 11 findings, ★4.0/5.
+- [x] **Audit low-effort fixy (F2/F3/F5/F7/F11):** Q9 duplikát, Act→Arc reference v GLOSSARY, Q-status flagy, T3 kandidát, prototyp→POC sweep.
 
 ## 2026-04-12 (Sezení 2 — Hosting & Stack)
 
