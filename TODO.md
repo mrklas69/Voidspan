@@ -2,6 +2,22 @@
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
+## Revize S4 — k zapracování do dokumentů
+
+- [ ] **R1 Multi-colony:** přepsat `GLOSSARY.md` (Belt → síť beltů), `SCENARIO.md` §4.4 (frakce mezikolonijní), aktualizovat World Browser v IDEAS (active competition view).
+- [ ] **R2 Penal colony + amnesty:** nová sekce v `SCENARIO.md`, napojit na Endings spectrum a Act III krize.
+- [ ] **R3 Alts policy:** dopsat do `SCENARIO.md` sekce 11 (onboarding) jako feature, ne restrikci.
+- [ ] **Terminologie:** nahradit „prototyp/pilot" → **POC** (proof of concept) v TODO a dalších dokumentech konzistentně.
+- [ ] **Q-World-1:** fyzický vztah mezi belty po R1 (jedna hvězda / soustava / galaxie, vzdálenosti, cestování, komunikace).
+- [ ] **Q-Player-Origin:** proč hráč uniká ze Země — provinění/trest vs. elita/mise vs. jiné. Mlhavost zachovat jako feature, ale rozpracovat varianty.
+- [ ] **Q-Comm-Privacy:** rozsah neprotokolované komunikace mezi hráči (kanál, limity zprávy, anti-abuse, moderace). Viz Faction Hierarchy v IDEAS.
+- [x] **Q-Player-Schema (S4):** POC = STATUS + RANK + SKILL. PERK Phase 2+. STATUS = aktuální role (kontextuální), RANK = pozice v hierarchii (občanství + role), SKILL = praxí rostoucí dovednost.
+- [x] **Q9 Tempo (S4):** time-gated akce, duration minuty–hodiny, brains drží prioritu mezi loginy. Žádná denní energie v POC. Default rytmus hráče: ~1× denně, 10–20 min session.
+- [ ] **Q-Brains-Schema:** UX brains — kolik sliderů, jaká granularita, jaké kategorie, jak vizualizovat v UI. 3–5 os pro POC.
+- [ ] **Q-Institutional-Mail:** formát komunikace hráč↔instituce (správní rada, banka, parlament, šerif). Šablony? Free text? Response timeline? Viditelnost?
+- [ ] **Q-Session-Rhythm:** pobídky k návratu — push/email notifikace? Nebo jen přirozená zvědavost? Anti-exploit pokud hráč loguje 10×/den.
+- [ ] **Q-Delegate-Scope (Phase 2+):** nad brains režimy API/AI. Odloženo, viz IDEAS.
+
 ## Otevřené otázky designu (po pivotu na prstenec, V6)
 
 - [ ] **Q7:** Rozhodnout identitu hráče (avatar / loď / korporace / hybrid).
@@ -23,8 +39,9 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
 ## Scénář hry (G3) — rozpracování SCENARIO.md v0.1
 
-- [ ] **Act I–V backbone** — konkretizovat thresholdy a trvání.
-- [ ] **Scripted events bank** — naplnit prvními 10 událostmi (struktura v SCENARIO.md sekce 4).
+- [ ] **Rozložit SCENARIO.md podle čtyř arcs (A/B/C/D):** Player / Colony / Network / Session. Dosavadní Act -1 až post-closure patří do Player Arc (1–2) + Colony Arc (3–8). Network Arc a Session Arc jsou nové sekce.
+- [ ] **Scripted events bank — tón první:** napsat 5–10 eventů jako krátké povídky (2–4 věty), bez schématu. Cíl: ověřit narativní hlas Voidspanu.
+- [ ] **Scripted events bank — schéma:** zatlouct formální strukturu eventu (trigger, weight, description, hooks, outcomes, act-binding, volatilita). Destilovat z eventů napsaných v „tón první".
 - [ ] **Factions & Power Dynamics** — rozepsat sekci 6.
 - [ ] **Immigration Mechanics** — rozepsat sekci 7 (vlny, kvóty, politika).
 - [ ] **Procedural Layer** — rozhodnout LLM ano/ne, designovat engine-rules (sekce 8).

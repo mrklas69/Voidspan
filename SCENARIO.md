@@ -27,7 +27,95 @@ Herní mechaniky mají **odměňovat strategie tit-for-tat s odpuštěním** (Ax
 
 ---
 
-## 2. Backbone — páteř scénáře
+## 2. Čtyři oblouky (arcs) — nová struktura v0.3
+
+Scénář se rozkládá do **čtyř nezávislých časových oblouků** (viz MINDMAP bod 4). Dosavadní „Act -1 až post-closure" (sekce 2.LEGACY níže) je **Player Arc + Colony Arc smíchaný dohromady**; postupně se rozpustí do nové struktury.
+
+| Arc | Scope | Délka | Kde je v dokumentu |
+|---|---|---|---|
+| **A Network Arc** | síť beltů v serveru | měsíce–roky | TBD (po R1, viz Q-World-1) |
+| **B Colony Arc** | jeden belt od založení po ending | dny–měsíce | sekce 2.LEGACY (přerozdělit) |
+| **C Player Arc** | hráč od pozvánky po exit | hodiny–týdny | **sekce 2C níže (draft)** |
+| **D Session Arc** | jeden login → logout | minuty–hodiny | TBD (POC-kritické) |
+
+---
+
+## 2C. Player Arc (loop C) — draft v0.3
+
+Oblouk jednoho hráčského účtu. Mnoho paralelních hráčů v jedné kolonii, každý ve své fázi oblouku.
+
+### 1.0 Invitation — pozvánka
+Detail v sekci 3 (Act -1). Welcome / email / reklama + motivační dopis + kapsle na orbitu.
+
+### 1.1 Awakening — přijetí + briefing
+Detail v sekci 4 (Act 0). Kolonie rozhodne o kapsli → revival → první volba.
+
+### 1.2 Active Life — správcovská smyčka
+Jádro hráčského zážitku. **Hráč nastavuje směr, akce běží brains.** Rytmus ~1× denně, viz Session Arc (2D).
+
+**Izomorfismus:** `STATUS × CELL_TYPE → action palette` — paleta **nastavuje brains**, ne klik hráče.
+
+**Schéma postavy (POC):** STATUS + RANK + SKILL. PERK Phase 2+.
+
+Příklady palety (seedy pro brains config):
+- `Dělník @ CELL_UNDERCONSTRUCTION.Tile6`
+  → Pracuj | Komunikuj | Jdi | Najez se | Spi | Poptávej | Nabízej | Zaútoč
+- `Výzkumník @ CELL_ADMINISTRATION.Greenhouse`
+  → Zkoumej (Geologie III…) | Jdi na úřad → [doklady, volit, kandidovat]
+
+**Pohyb mezi cells** (`Jdi`) stojí brains čas, otevírá nové palety, dává šanci na potkání.
+
+**Tempo:** time-gated. Akce má duration (minuty–hodiny). Brains drží prioritu, dokud hráč nezmění směr. **Žádná denní energie** v POC — time-gating je cap.
+
+### 1.3 Exit — tři režimy ukončení
+Hráč má v ruce, jak svůj oblouk zakončí.
+
+| Režim | Popis | Dopad |
+|---|---|---|
+| **Dispose** | Rozprodat / rozdat jmění a postavení, opustit hru | Jmění převedeno, postava smazána nebo převedena na NPC |
+| **Migrate** | Kapsle do jiné kolonie (vstup do loop A) | Opakuje Invitation + Awakening v cílové kolonii |
+| **Delegate (API/AI)** | Pokročilé proxy nad brains: **API bot** (Screeps-style), **AI LLM** | Phase 2+ (viz IDEAS). POC jede jen brains. |
+
+**Poznámka — brains vs. delegate:** Brains jsou **core POC feature**, ne delegace. Delegate režim znamená úplné předání účtu externímu bot/AI, což je Phase 2+. V POC běží jen brains s T2 scope (a) — materiál & provoz, politika/konflikt čekají na hráče.
+
+---
+
+## 2D. Session Arc (loop D) — draft v0.3
+
+Jeden login → logout. Default rytmus: **~1× denně, 10–20 minut**. Hráč je **správce, ne pracovník** — akce běží brains, hráč nastavuje směr a komunikuje.
+
+### D.1 Login — načtení stavu
+- **Character snapshot:** STATUS, RANK, SKILLS, aktuální CELL, inventář (Echo/Kredo).
+- **Colony dashboard:** populace, ekonomika, highlight z event logu.
+- **Brains report:** co brains dělal během offline, co běží, co čeká na rozhodnutí hráče.
+- **Notifikace:** nové maily, odpovědi institucí, hlasování, pozvánky.
+
+### D.2 Interact — jádro session
+Hráč v libovolném pořadí:
+
+- **Komunikace:** skupinový chat (neprotokolovaný), institucionální mail (správní rada, banka, parlament, šerif), čtení boardů.
+- **Obchod:** shop browse, nákup/prodej, nabídka/poptávka.
+- **Brains config:** posunout slidery (práce ↔ studium, obrana ↔ expanze), vybrat studijní obor (*geologie III*), změnit priority.
+- **Political actions:** petice, kandidatura, hlasování, žádost o povýšení, zakládající návrhy (banka, nová instituce).
+- **Diplomacy:** osobní jednání se sousedy, vyjednávání s frakcemi.
+
+**Ilustrativní session (user seed):**
+> Přihlásím se. Pozdravím ve skupinovém chatu. Najím se. Zajdu do obchodu. Upravím brains — méně práce, víc studia (geologie III). Napíšu správní radě žádost o povýšení. Přečtu jejich odpověď na můj návrh na založení banky. Odhlásím se.
+
+### D.3 Logout — brains přebírá
+- Brains běží s nastaveným směřováním až do dalšího loginu.
+- Kritické události → push / email hráči (nepovinné).
+- **Žádná akční fronta hráče** — vše dělá brains. Hráč zadává **strategii**, ne jednotlivé kliknutí.
+
+---
+
+## 2.LEGACY — dosavadní Act -1 až Post-Closure
+
+**Status:** přerozdělit do Colony Arc (2.1 založení až 2.7 ending) a Player Arc (1.0, 1.1). Zatím ponecháno beze změny pro kontinuitu.
+
+---
+
+## 2. Backbone — páteř scénáře (legacy)
 
 Pre-game Act -1 + pět hlavních Actů + post-closure fáze.
 

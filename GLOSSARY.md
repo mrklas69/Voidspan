@@ -17,19 +17,7 @@ TBD. Volně upřesnitelné později bez konfliktu s existujícím kánonem.
 
 ## Narrative Tenets
 
-Principy, které se neporušují. Design i příběh se jim podřizují.
-
-### T1 — Prequel stays open
-Historie před začátkem hry se může kdykoli doplnit, ale musí být **kompatibilní** s existujícím kánonem. Žádný retcon — jen rozšíření.
-
-### T2 — Drones ≠ Players
-Automatizace (NPC-správce, drony) smí provádět **údržbu a defenzivu**, nikdy ne ofenzivu, expanzi, ani politická / morální / ekonomická rozhodnutí. Hráč je nezastupitelný v: politice, kreativitě, riziku, diplomacii, archeologii.
-
-### T3 — Foundations before curtains
-KISS. Izomorfismus. Rozhoduj základy před detaily. Aplikovatelné i na práva (cesta z nižšího tieru je vždy dostupná).
-
-### T4 — Forgiveness rewarded
-Herní mechaniky dlouhodobě odměňují strategie **tit-for-tat s odpuštěním** (Axelrod, Prisoner's Dilemma). Cíl: hra má výchovný efekt, vítězí ti, kdo spolupracují a odpouští, ne ti, kdo jen exploitují.
+**Přesunuto do `IDEAS.md` jako kandidáti** (S4). Tenety T1–T4 nejsou ustálený kánon, ale nástřely k ověření praxí.
 
 ---
 
@@ -40,6 +28,20 @@ Kolonijní prstenec na oběžné dráze kolem hvězdy. Vertikální pás **cells
 
 ### Cell
 Základní stavební jednotka beltu. Obdélníková, uniformní rozměry. Může nést 1 až N staveb (**upgrades**). Stavy: EMPTY → DEVELOPED → UPGRADED → DECAYING → LOST.
+
+**Cell je zároveň kontejner hráčova stavu** — viz *Cell Binding Protocol*.
+
+### Cell Binding Protocol
+Hráč (= 1 účet) je **lokálně vázán na konkrétní cell**. Cell není jen zdrojový tile, ale **místo, kde hráč fyzicky je**. Naming convention: `CELL_TYPE.Name` (např. `DOCK_CELL.The_Threshold`, `PRISON_CELL.Barack2`, `HABITAT_CELL.Luxury_House`).
+
+Tok hráče po přijetí:
+```
+WAITING_ROOM / CAPSULE
+    ↓
+DOCK_CELL.The_Threshold   (arrival processing)
+    ↓
+PRISON_CELL.Barack*   ∨   HABITAT_CELL.*
+```
 
 ### Hub / Port
 Počáteční segment beltu. Obsahuje instituce (**Katastr**, **Soud**, **Banka**, **Šerif**). Kolektivně vlastněno, nedestruktibilní. Ekonomicky dominantní — jediný bod s přístupem k institucím.
