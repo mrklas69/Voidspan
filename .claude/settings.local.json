@@ -3,31 +3,32 @@
     "allow": [
       "WebFetch(domain:support.forpsi.com)",
       "WebFetch(domain:www.forpsi.com)",
-      "Bash(pnpm --version)",
-      "Bash(corepack enable:*)",
-      "Bash(corepack prepare:*)",
-      "Bash(npm install:*)",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm build:*)",
-      "Bash(pnpm dev:*)",
-      "Bash(kill %bx2zbwz60)",
-      "Bash(exit 0)",
-      "Bash(pnpm exec:*)",
-      "Bash(rm C:/Users/mrkla/Source/Voidspan/apps/client/src/game/types.ts)",
-      "Bash(pnpm --filter client exec tsc --noEmit)",
-      "Bash(pnpm --filter @voidspan/client add -D vitest)",
-      "Bash(pnpm --filter @voidspan/client remove vitest)",
-      "Bash(pnpm --filter @voidspan/client add -D \"vitest@^2\")",
-      "Bash(pnpm test:*)",
-      "Bash(mkdir -p apps/client/public/assets/modules apps/client/public/assets/actors apps/client/public/assets/tiles apps/client/public/assets/ui art/raw/modules art/raw/actors art/raw/tiles art/exports/modules art/exports/actors art/exports/tiles art/reference)",
-      "Bash(touch apps/client/public/assets/modules/.gitkeep apps/client/public/assets/actors/.gitkeep apps/client/public/assets/tiles/.gitkeep apps/client/public/assets/ui/.gitkeep art/raw/modules/.gitkeep art/raw/actors/.gitkeep art/raw/tiles/.gitkeep art/exports/modules/.gitkeep art/exports/actors/.gitkeep art/exports/tiles/.gitkeep art/reference/.gitkeep)",
+
+      "Bash(pnpm:*)",
+      "Bash(npm:*)",
+      "Bash(corepack:*)",
       "Bash(powershell:*)",
-      "Bash(pnpm --filter @voidspan/client exec tsc --noEmit)",
-      "Bash('$img.Width')",
-      "Bash('$img.Height')",
-      "Bash('$img.PixelFormat')",
-      "Bash(mv art/tiles/no_modules.png art/tiles/floor.png)",
-      "Bash(mv art/tiles/empty.png art/tiles/_template.png)"
+
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git remote:*)",
+
+      "Bash(kill:*)",
+      "Bash(exit:*)"
     ]
   }
 }

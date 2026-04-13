@@ -17,8 +17,9 @@ Projektové instrukce. Rozšiřují globální `~/.claude/CLAUDE.md`.
    - Pokud soubor už existuje, připoj novou sekci (jeden soubor = všechna sezení daného dne)
 2. Přesuň hotové úkoly z `TODO.md` do `DONE.md` (pokud existují)
 3. Aktualizuj `MINDMAP.md` — stavy uzlů `[○/◐/●]`, přidej/přejmenuj uzly, posuň fokus
-4. `git add -A` + `git commit` se smysluplnou zprávou (navrhni a použij bez schválení, spolupodpis Claude)
-5. `git push`
+4. **Konsoliduj `.claude/settings.local.json`** — prošlé granulární allow entries (např. `Bash(pnpm install:*)`, `Bash(pnpm test:*)`, ...) nahraď širšími wildcardy (`Bash(pnpm:*)`). Cíl: míň approve proceduralních příkazů v dalším sezení. Viz aktuální stav souboru jako referenci — konsolidace NENÍ kreativní, jen sjednocující.
+5. `git add -A` + `git commit` se smysluplnou zprávou (navrhni a použij bez schválení, spolupodpis Claude)
+6. `git push`
 
 ## Sessions log
 - Cesta: `.claude/sessions/YYYY-MM-DD.md`
