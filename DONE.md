@@ -2,6 +2,49 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-14 (Sezení 16 — HP-unified axiom + HUD live + Mateřská loď)
+
+### Model & world
+
+- [x] **HP-unified damage axiom:** `Tile.empty`+`Tile.damaged` mají `hp`+`hp_max`, `Module` rozšířen o `hp_max`. `TILE_HP_MAX = 10`, `WD_PER_HP = 1`. Task engine spojitě synchronizuje `tile.hp` s `wd_done` při progressu.
+- [x] **Mateřská loď v `createInitialWorld`** dle POC §3: Habitat (idx 0), SolarArray (1), MedCore (2), Assembler (3), CommandPost (4), Storage (5), Engine 2×2 (6,7,14,15). `placeModule` helper s nested loop přes def.w×def.h.
+- [x] **MODULE_DEFS rozšířen** o 5 mateřských modulů (Habitat, Storage, MedCore, Assembler, CommandPost) s placeholder hodnotami + TODO calibrate.
+- [x] **Engine 2×1 → 2×2** fix (POC §3 autorita).
+- [x] **DAMAGED_TILE_IDX 5 → 12** (idx 5 teď obsazuje Storage).
+- [x] **Energy seed 12 Wh** v `world.resources.energy` + `ENERGY_MAX = 48`.
+- [x] **`computeWork(world)` helper** — Work derivovaný z actors (Σ power_w working / všech). DRY axiom.
+
+### HUD & UX
+
+- [x] **HUD napojen na model** — 5 resource barů čte live z `world.resources` + `computeWork`. Tooltipy live refreshují.
+- [x] **Dev-only `window.__world` exposure** přes `import.meta.env.DEV` + `tsconfig types: ["vite/client"]`.
+- [x] **Start ihned** po loadu — `startGame(world)` v `create()`, SPACE odstraněn.
+- [x] **10 asteroidů** vypuštěno na startu, klávesa [L] odstraněna.
+- [x] **Klávesy R/E/X, šipky ↑↓, F5 hint** odstraněny. Zůstaly WASD, H, ESC, klik.
+- [x] **WASD selection movement** — `SegmentPanel.moveSelection(dx, dy)`, clamp 0..7 × 0..1.
+- [x] **Fokus tile [0,0] při startu** — `selectedTileIdx = 0` default v SegmentPanel.
+
+### Vizuál
+
+- [x] **Damaged overlay** — červený fill Rectangle (`0xcc3333`), alpha 0..0.6 úměrně `1 - hp/hp_max`, depth 10. Pro `module_ref` čte HP z připojeného modulu. `floor_damaged.png` smazán (nahrazeno overlayem).
+- [x] **Construction.png fallback** — `drawTileSprite` při chybějící textuře kreslí `tile_construction` (černo-žluté hazard pruhy). Univerzální pro tile i module sprites.
+- [x] **Tooltip live-refresh timer** (100 ms) + pointermove provider re-volání. Text reflektuje spojitě měnící se data.
+- [x] **Drift vektor pozadí** 7 px magnitude, perioda 240 000 ms wall = 1 game day. `BackgroundSystem.tickDrift(delta)` per-frame, `applyTransform()` skládá drift + cameraY.
+- [x] **SolarArray asset** připojen (`art/modules/solar_panel.png` → `public/assets/modules/solar_array.png`). `AVAILABLE_MODULE_ASSETS = ["SolarArray"]` whitelist v preloadu.
+
+### INSPECTOR
+
+- [x] **Dynamický header** — label "INSPECTOR" zrušen, nahrazen Text node aktualizovaný per render: empty→`Hull plating`, damaged→`Hull breach`, module→`{label} {w}×{h}`.
+- [x] **@THINK diskuse** — 5 diagnóz + 3 směry (Universal Detail View, Command Center, Flex layout). Doporučené Q1+Q2. Parkováno v MINDMAP fokusu.
+
+### Dokumentace & memory
+
+- [x] **`IDEAS.md`** — nová sekce „HP-unified damage axiom (S16)".
+- [x] **`TODO.md`** — 5 HP-unified úkolů + Multi-tile sprite rendering.
+- [x] **`art/modules/PROMPTS.md`** — AI prompt pro nano-banana-2 s V1/V2/V3 constraints (chunky res, strict 2D top-down, 8-bit paleta), 4×3 grid + Engine/Dock 2×2 samostatný sheet.
+- [x] **`memory/feedback_asset_delete_check.md`** — Grep references + aktivní námitka před smazáním core assetu.
+- [x] **`MINDMAP.md` v1.9 → v2.0** — fokus přepsán.
+
 ## 2026-04-13 (Sezení 13–15 — Audit + refactor)
 
 ### S13 Audit 260413 + fixes (CODE F1/F2/F5/F12, DOCS F2/F3/F4/F5/F10)

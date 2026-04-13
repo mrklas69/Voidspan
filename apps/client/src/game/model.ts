@@ -13,18 +13,31 @@ export type LossReason = "air" | "food" | "session_closed";
 // === Tile (políčko 1×1 v segmentu) ===
 
 // Tagged union. TypeScript umí narrowing přes `tile.kind` → bezpečný switch.
+// HP-unified damage axiom (S16): každá instance Tile nese hp + hp_max.
+//   - empty: hp = hp_max (nepoškozený floor)
+//   - damaged: hp < hp_max (konkrétní damaged = hp 0..hp_max-1)
+//   - module_ref: projekce modulu; hp žije na Module instanci, ne tady.
 export type Tile =
-  | { kind: "empty" }
-  | { kind: "damaged"; wd_to_repair: number }
+  | { kind: "empty"; hp: number; hp_max: number }
+  | { kind: "damaged"; hp: number; hp_max: number }
   | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number } };
 
 // === Modul: definice (katalog) + instance (stav ve světě) ===
 
 // ModuleKind = diskrétní výčet typů modulů v P1. Používá se jako FK do MODULE_DEFS.
-// P1 redukováno na 3 moduly aktivní ve scénáři §7: SolarArray (energie), Engine (demolish),
-// Dock (WIN condition). Habitat/Storage/MedCore/Assembler/CommandPost = P2+ (mají vlastní
-// mechaniky), přidáme je až budou hrát roli.
-export type ModuleKind = "SolarArray" | "Engine" | "Dock";
+// Mateřská loď (POC_P1 §3, vrácené v S16): 7 modulů na startu — Habitat, SolarArray,
+// MedCore, Assembler, CommandPost, Storage, Engine 2×2. Dock vzniká až buildem.
+// Vlastní mechaniky (jídlo z Habitat, výroba z Assembler, …) jsou P2+ — v P1 jen
+// vizuální/inspector naplnění mateřského segmentu.
+export type ModuleKind =
+  | "SolarArray"
+  | "Engine"
+  | "Dock"
+  | "Habitat"
+  | "Storage"
+  | "MedCore"
+  | "Assembler"
+  | "CommandPost";
 
 // Statická definice modulu — jedna na typ, sdílí všechny instance.
 // DRY: size/asset/power_w se neduplikuje do každé instance.
@@ -43,12 +56,16 @@ export type ModuleDef = {
 };
 
 // Instance modulu ve světě — mění se za běhu.
+// HP-unified axiom (S16): instance nese hp i hp_max. hp_max se při create
+// zkopíruje z MODULE_DEFS[kind].max_hp — katalog je zdroj pravdy pro default,
+// instance pak může žít vlastním životem (damage, repair).
 export type Module = {
   id: string; // unikátní runtime id (např. "mod_001")
   kind: ModuleKind; // FK do MODULE_DEFS
   rootIdx: number; // pozice root tile v segmentu (row*8+col)
   status: "online" | "building" | "demolishing" | "offline";
-  hp: number; // 0..MODULE_DEFS[kind].max_hp
+  hp: number; // 0..hp_max
+  hp_max: number; // kopie z MODULE_DEFS[kind].max_hp při create
   progress_wd: number; // progres budování/demolice (0..wd_to_build nebo 0..wd_to_demolish)
   docked_count?: number; // jen Dock: kolik modulů flotily připojeno (WIN ≥ 1)
 };
@@ -92,7 +109,7 @@ export type Task = {
     moduleId?: string; // demolish, haul source/target
     buildSpec?: ModuleKind; // build — který modul stavět
   };
-  wd_total: number; // odvozeno z targetu (damaged.wd_to_repair, module_def.wd_to_build, ...)
+  wd_total: number; // odvozeno z targetu (repair: hp_max-hp; build: wd_to_build; ...)
   wd_done: number;
   assigned: string[]; // ids aktérů pracujících na tasku
   priority: number; // vyšší = dřív
@@ -107,12 +124,15 @@ export type World = {
   phase: Phase;
   // Resource Model v0.1 (axiom v GLOSSARY §Resources):
   //   5 os = Energy (E) | Work (W) | Slab (S) | Flux (F) | Coin (◎)
-  // P1 scope používá jen podmnožinu:
+  // P1 scope:
+  //   - Energy        — baterie pásu (seed 12, S16)
+  //   - Work          — NEDRŽÍ se v modelu, derivuje se z actors přes computeWork()
+  //                     (DRY: jediný zdroj = actors.state + ACTOR_DEFS.power_w)
   //   - Slab.food     — solid materials, subtyp food (seed 40)
   //   - Flux.air      — fluids+gases, subtyp air (0..100 %)
   //   - Coin          — měna (seed 20, bylo "Kredo" v0.0)
-  // Energy a Work nejsou v P1 modelovány (P2+ rozšíření).
   resources: {
+    energy: number;
     slab: { food: number };
     flux: { air: number };
     coin: number;
@@ -149,7 +169,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     kind: "Engine",
     label: "Engine",
     w: 2,
-    h: 1,
+    h: 2, // POC_P1 §3: Engine 2×2 (S16 fix — bylo 2×1 omylem)
     asset: "engine.png",
     power_w: 0, // nefunkční, bude demolován v P1
     wd_to_build: 80, // TODO calibrate (v P1 se nestaví, jen demolition)
@@ -170,6 +190,74 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     cost_coin: 20, // §10
     max_hp: 100,
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
+  },
+  // === Mateřské moduly (S16) — POC_P1 §3 ===
+  // Vlastní mechaniky P2+. P1 zobrazuje je v segmentu, INSPECTOR čte HP+popis,
+  // všechny placeholder hodnoty mají TODO calibrate.
+  Habitat: {
+    kind: "Habitat",
+    label: "Habitat",
+    w: 1,
+    h: 1,
+    asset: "habitat.png",
+    power_w: -2, // TODO calibrate (drobná spotřeba ECLSS)
+    wd_to_build: 15,
+    wd_to_demolish: 8,
+    cost_coin: 10,
+    max_hp: 40,
+    description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
+  },
+  Storage: {
+    kind: "Storage",
+    label: "Storage",
+    w: 1,
+    h: 1,
+    asset: "storage.png",
+    power_w: -1, // TODO calibrate
+    wd_to_build: 12,
+    wd_to_demolish: 6,
+    cost_coin: 8,
+    max_hp: 30,
+    description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
+  },
+  MedCore: {
+    kind: "MedCore",
+    label: "MedCore",
+    w: 1,
+    h: 1,
+    asset: "medcore.png",
+    power_w: -3, // TODO calibrate
+    wd_to_build: 18,
+    wd_to_demolish: 9,
+    cost_coin: 12,
+    max_hp: 35,
+    description: "Lékařské centrum. Léčí HP aktérům (P2+).",
+  },
+  Assembler: {
+    kind: "Assembler",
+    label: "Assembler",
+    w: 1,
+    h: 1,
+    asset: "assembler.png",
+    power_w: -4, // TODO calibrate
+    wd_to_build: 22,
+    wd_to_demolish: 10,
+    cost_coin: 15,
+    max_hp: 40,
+    description: "Výrobna modulů z Coin (◎). Bottleneck stavby v P2+.",
+  },
+  CommandPost: {
+    kind: "CommandPost",
+    label: "CommandPost",
+    w: 1,
+    h: 1,
+    asset: "command_post.png",
+    power_w: -2, // TODO calibrate
+    wd_to_build: 20,
+    wd_to_demolish: 10,
+    cost_coin: 14,
+    max_hp: 50,
+    description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
   },
 };
 

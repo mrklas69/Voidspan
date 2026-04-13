@@ -7,7 +7,7 @@ import type { World, Module, Task } from "../model";
 import { MODULE_DEFS } from "../model";
 import { renderBar } from "../format";
 import { TooltipManager } from "../tooltip";
-import { FONT_FAMILY, FONT_SIZE_LABEL } from "../palette";
+import { FONT_FAMILY, FONT_SIZE_LABEL, FONT_SIZE_PANEL_HEADER, UI_BORDER_DIM } from "../palette";
 import {
   TASKQUEUE_X,
   TASKQUEUE_W,
@@ -22,6 +22,7 @@ import { createPanelHeader } from "./panel_header";
 
 export class SideRightPanel {
   private taskQueueText: Phaser.GameObjects.Text;
+  private inspectorHeader: Phaser.GameObjects.Text;
   private inspectorText: Phaser.GameObjects.Text;
 
   constructor(
@@ -51,15 +52,21 @@ export class SideRightPanel {
     });
 
     // --- INSPECTOR (dolní polovina) ---
+    // Inline header (S16) — místo statického labelu "INSPECTOR" zobrazuje název
+    // vybrané entity (modul / povrch). Obsah pod podtržením = detaily.
     const divY = MID_Y + MID_H / 2;
-    const inspectorContentY = createPanelHeader(
-      scene,
-      TASKQUEUE_X + 10,
-      divY + 8,
-      "INSPECTOR",
-      TASKQUEUE_W - 20,
-    );
-    this.inspectorText = scene.add.text(TASKQUEUE_X + 10, inspectorContentY + 4, "", {
+    const headerX = TASKQUEUE_X + 10;
+    const headerY = divY + 8;
+    this.inspectorHeader = scene.add.text(headerX, headerY, "", {
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_PANEL_HEADER,
+      color: COL_TEXT_ACCENT,
+    });
+    const underlineY = headerY + 26;
+    scene.add
+      .rectangle(headerX, underlineY, TASKQUEUE_W - 20, 1, UI_BORDER_DIM)
+      .setOrigin(0, 0);
+    this.inspectorText = scene.add.text(TASKQUEUE_X + 10, underlineY + 10, "", {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_LABEL,
       color: COL_TEXT,
@@ -106,7 +113,8 @@ export class SideRightPanel {
   private renderInspector(): void {
     const idx = this.getSelectedTileIdx();
     if (idx === null) {
-      this.inspectorText.setText("— nic není vybráno —");
+      this.inspectorHeader.setText("—");
+      this.inspectorText.setText("nic není vybráno");
       this.inspectorText.setColor(COL_TEXT_DIM);
       return;
     }
@@ -120,13 +128,25 @@ export class SideRightPanel {
     const pos = `tile ${idx} (r${row} c${col})`;
 
     if (tile.kind === "empty") {
-      this.inspectorText.setText(`${pos}\n\nEmpty\nŽádný modul ani poškození.`);
+      this.inspectorHeader.setText("Hull plating");
+      this.inspectorText.setText(
+        `${pos}\n\n` +
+          `HP: ${tile.hp.toFixed(1)} / ${tile.hp_max}\n` +
+          `Povrch beze škody, žádný modul.`,
+      );
       this.inspectorText.setColor(COL_TEXT_DIM);
       return;
     }
 
     if (tile.kind === "damaged") {
-      this.inspectorText.setText(`${pos}\n\nDamaged hull\nWD to repair: ${tile.wd_to_repair}`);
+      const missing = tile.hp_max - tile.hp;
+      this.inspectorHeader.setText("Hull breach");
+      this.inspectorText.setText(
+        `${pos}\n\n` +
+          `HP: ${tile.hp.toFixed(1)} / ${tile.hp_max}\n` +
+          `WD to repair: ${missing.toFixed(1)}\n` +
+          `Klik = enqueue repair task.`,
+      );
       this.inspectorText.setColor(COL_TEXT_ACCENT);
       return;
     }
@@ -134,16 +154,17 @@ export class SideRightPanel {
     // module_ref
     const mod = w.modules[tile.moduleId] as Module | undefined;
     if (!mod) {
+      this.inspectorHeader.setText("?");
       this.inspectorText.setText(`${pos}\n\n[chyba: modul ${tile.moduleId} neexistuje]`);
       return;
     }
     const def = MODULE_DEFS[mod.kind];
+    this.inspectorHeader.setText(`${def.label}  ${def.w}×${def.h}`);
     const lines = [
       pos,
       "",
-      `${def.label}  ${def.w}×${def.h}`,
       `status: ${mod.status}`,
-      `HP: ${mod.hp} / ${def.max_hp}`,
+      `HP: ${mod.hp} / ${mod.hp_max}`,
       `power: ${def.power_w > 0 ? "+" : ""}${def.power_w} W`,
       `build: ${def.wd_to_build} WD · ◎ ${def.cost_coin}`,
       "",

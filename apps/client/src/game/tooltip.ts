@@ -20,6 +20,7 @@ import {
 } from "./palette";
 
 const DELAY_MS = 400;
+const REFRESH_MS = 100; // interval pro re-volání provideru → živý text při držení myši
 const MAX_WIDTH = 280;
 const PAD_X = 8;
 const PAD_Y = 4;
@@ -32,6 +33,9 @@ export class TooltipManager {
   private border: Phaser.GameObjects.Rectangle;
   private text: Phaser.GameObjects.Text;
   private timer?: Phaser.Time.TimerEvent;
+  private refreshTimer?: Phaser.Time.TimerEvent;
+  private activeProvider?: () => string | null;
+  private lastPointer = { x: 0, y: 0 };
   private visible = false;
 
   constructor(scene: Phaser.Scene) {
@@ -78,23 +82,32 @@ export class TooltipManager {
       anyTarget.setInteractive({ useHandCursor: true });
     }
 
-    let lastText: string | null = null;
+    let hovering = false;
 
     target.on("pointerover", (pointer: Phaser.Input.Pointer) => {
+      hovering = true;
+      this.activeProvider = provider;
+      this.lastPointer = { x: pointer.x, y: pointer.y };
       const text = provider();
       if (!text) return;
-      lastText = text;
       this.schedule(pointer.x, pointer.y, text);
     });
 
+    // HP-unified axiom (S16): tooltip musí reflektovat živá data (např. hp/hp_max
+    // se mění spojitě během opravy). Na každý pointermove znovu zavoláme provider
+    // a když je tooltip viditelný, přepíšeme text + přepozicujeme bg.
     target.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      if (this.visible && lastText) {
-        this.position(pointer.x, pointer.y);
+      if (!hovering) return;
+      this.lastPointer = { x: pointer.x, y: pointer.y };
+      if (this.visible) {
+        const fresh = provider();
+        if (fresh) this.show(pointer.x, pointer.y, fresh);
+        else this.hide();
       }
     });
 
     target.on("pointerout", () => {
-      lastText = null;
+      hovering = false;
       this.hide();
     });
   }
@@ -132,6 +145,10 @@ export class TooltipManager {
     this.text.setVisible(true);
     this.visible = true;
 
+    // Refresh timer — periodicky přepisuje text z activeProvider, aby tooltip
+    // reflektoval živá data (hp spojitě roste, task progress, resources…).
+    this.startRefreshTimer();
+
     // Quiet the unused warning — kept for future multi-line tone.
     void UI_TEXT_DIM;
   }
@@ -157,11 +174,39 @@ export class TooltipManager {
 
   private hide(): void {
     this.cancelTimer();
+    this.stopRefreshTimer();
+    this.activeProvider = undefined;
     if (!this.visible) return;
     this.border.setVisible(false);
     this.bg.setVisible(false);
     this.text.setVisible(false);
     this.visible = false;
+  }
+
+  private startRefreshTimer(): void {
+    this.stopRefreshTimer();
+    // Phaser loop: true → volá se dokola každých REFRESH_MS.
+    this.refreshTimer = this.scene.time.addEvent({
+      delay: REFRESH_MS,
+      loop: true,
+      callback: () => {
+        if (!this.visible || !this.activeProvider) return;
+        const fresh = this.activeProvider();
+        if (fresh === null) {
+          this.hide();
+          return;
+        }
+        // Re-render na stejné pozici — show() změří nový text a upraví bg/border.
+        this.show(this.lastPointer.x, this.lastPointer.y, fresh);
+      },
+    });
+  }
+
+  private stopRefreshTimer(): void {
+    if (this.refreshTimer) {
+      this.refreshTimer.remove();
+      this.refreshTimer = undefined;
+    }
   }
 
   private cancelTimer(): void {
@@ -173,6 +218,7 @@ export class TooltipManager {
 
   private destroy(): void {
     this.cancelTimer();
+    this.stopRefreshTimer();
     this.border.destroy();
     this.bg.destroy();
     this.text.destroy();

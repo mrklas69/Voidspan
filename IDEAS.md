@@ -273,6 +273,44 @@ Univerzální Marshal drony jsou **počáteční kompromis** (analogie Module Sp
 
 ---
 
+## HP-unified damage axiom (S16)
+
+Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jedné osy: **HP**.
+
+### Datový model
+- Každá instance **Module** musí mít `hp` a `hp_max` (dnes má jen `hp` + `max_hp` v `MODULE_DEFS` — sjednotit tak, že `hp_max` se kopíruje z katalogu do instance při create).
+- Každá instance **Tile** musí mít `hp` a `hp_max`. Empty tile = `hp = hp_max` (nepoškozený floor). Damaged = `hp < hp_max`. Rozestavěné = `hp` roste z 0.
+- Model-first: axiom „instance nese stav, katalog nese definici (max, cost, …)".
+
+### Mechaniky jako HP transformace
+- **Konstrukce:** `hp` roste spojitě z 0 → `hp_max` podle `wd_done / wd_total`.
+- **Oprava:** `hp` roste z aktuální → `hp_max`.
+- **Dekonstrukce:** `hp` klesá → 0 (pak instance → empty / recyklace).
+- **Asteroid hit:** `hp -= damage` skokově (vzorec níže).
+- **Entropie (P2+):** `hp` klesá pomalu bez údržby (DEVELOPED → DECAYING → LOST).
+
+### Univerzální vizuál — „damaged overlay"
+- Každá instance s `hp < hp_max` dostane **červený fill overlay**, alpha 0.6.
+- Intenzita úměrná `1 - hp/hp_max` (TBD — lineárně, nebo jen on/off?).
+- Izomorfismus: stejný vizuál = stejná info („něco tu není v pořádku, dá se to opravit"). Damaged / rozestavěné / poškozené asteroidem — hráč vidí úkol bez dalších UI prvků.
+- Analogie žlutého selection rámečku, ale **fill** (ne stroke), červený, vždy-on když podmínka platí.
+
+### Asteroid damage vzorec — TBD
+- Skoková změna `hp` při impaktu.
+- Varianty:
+  - Fixní damage per asteroid kind (malý / velký).
+  - Damage ∝ kinetická energie (mass × velocity²).
+  - Splash damage na sousední tiles podle průměru.
+- Rozhodnout při kalibraci P2+ asteroid eventů.
+
+### Otevřené otázky
+- **Damaged → empty transition:** kdy se tile po repair vrátí do „plného" stavu? Když `hp=hp_max`, nebo když je task hotov? (Model-first: `hp=hp_max` = jediná podmínka, task je jen mechanismus, jak tam HP doplnit.)
+- **Konstrukční ghost:** rozestavěný modul jako průhledný sprite + červený fill (hp nízké). Finish → fill zmizí spojitě.
+- **Dekonstrukce vs. asteroid hit:** oba snižují HP, UI rozliší podle přítomnosti `demolish` tasku na instanci.
+- **Akcelerace:** paralelní zdroje změny HP (oprava + asteroid současně) — net `Δhp = Σ sources`.
+
+---
+
 ## Otevřené nápady k rozpracování
 
 - Greenhorn reinkarnace.

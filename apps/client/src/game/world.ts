@@ -2,8 +2,8 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně (budoucí unit testy).
 
-import type { World, Tile, Phase, LossReason, Actor, Task, ActorKind } from "./model";
-import { ACTOR_DEFS, TASK_DEFS } from "./model";
+import type { World, Tile, Phase, LossReason, Actor, Task, ActorKind, Module, ModuleKind } from "./model";
+import { ACTOR_DEFS, TASK_DEFS, MODULE_DEFS } from "./model";
 
 // === Konstanty (§10 seed hodnoty) ===
 
@@ -41,18 +41,84 @@ export function formatGameTime(tick: number): string {
 }
 
 // Predefinovaný index damaged tile při phase_a (§14 side-effect).
-// Zvolíme T6 (row 0, col 5) — mimo centrum, aby šlo vidět vizuálně.
-export const DAMAGED_TILE_IDX = 5;
-export const DAMAGED_WD = 10; // CAL-A1a
+// S16: posunut z 5 → 12, protože idx 5 nyní obsazuje Storage modul mateřské lodi.
+// Idx 12 = row 1 col 4, prostřední prázdný tile pod horní řadou modulů.
+export const DAMAGED_TILE_IDX = 12;
+
+// HP-unified damage axiom (S16).
+// TILE_HP_MAX = 10 znamená "plně zdravý floor". Empty tile má hp=hp_max, damaged
+// začíná hp=0 a oprava HP postupně doplňuje. 1 WD = 1 HP (P1 konverzní konstanta)
+// — dává CAL-A1a == 10 WD na opravu fully damaged tile.
+export const TILE_HP_MAX = 10;
+export const WD_PER_HP = 1;
+
+// Back-compat alias (CAL-A1a): DAMAGED_WD = plná oprava from hp=0 = hp_max × WD_PER_HP.
+export const DAMAGED_WD = TILE_HP_MAX * WD_PER_HP;
+
+// Energy (S16) — baterie pásu, jednotka Wh (watt-hour). Seed 12, UI cap 48.
+// Produkce (SolarArray +24 W) a spotřeba (modul load, actor work) budou P2+.
+// V P1 je Energy statická — hráč ji jen vidí, nesnižuje se, není spotřebovávána.
+export const ENERGY_SEED = 12;
+export const ENERGY_MAX = 48;
 
 // === Factory ===
 
-// Iniciální svět ve stavu `boot`. Žádné moduly, prázdný segment — detaily rozložení
-// řeší phase_a onward. Pro S9 smoke test stačí tohle + damaged tile po Startu.
+// Iniciální svět ve stavu `boot`. Kolonie startuje SEGMENTEM MATEŘSKÉ LODI (S16,
+// dle POC_P1 §3). Layout 8×2:
+//
+//   idx:  0    1    2    3    4    5    6    7
+//   row0: Hab  Sol  Med  Ass  CP   Sto  Eng  Eng
+//   idx:  8    9    10   11   12   13   14   15
+//   row1: __   __   __   __   Dmg  __   Eng  Eng
+//
+// Damaged (idx 12) přibyde až v startGame — krize spouštěcí phase_a.
+// Engine 2×2 (root idx 6) bude demolován v phase_b → na jeho místě vznikne Dock.
 export function createInitialWorld(): World {
-  // Array.from s callbackem → 16× `{ kind: "empty" }`. Nezávislé instance
+  // Array.from s callbackem → 16× empty tile na plné HP. Nezávislé instance
   // (kdybychom dali `new Array(16).fill(...)`, sdílí se reference — past v TS).
-  const segment: Tile[] = Array.from({ length: 16 }, () => ({ kind: "empty" }));
+  const segment: Tile[] = Array.from({ length: 16 }, () => ({
+    kind: "empty",
+    hp: TILE_HP_MAX,
+    hp_max: TILE_HP_MAX,
+  }));
+
+  // === Mateřská loď — registr modulů + obsazení tiles ===
+  // HP-unified axiom (S16): instance.hp_max = kopie z MODULE_DEFS[kind].max_hp.
+  // Single-tile moduly + Engine 2×2. Status "offline" = pasivní v P1.
+  const modules: Record<string, Module> = {};
+
+  // Helper: vytvoří modul instance + obsadí tile(y) v segmentu.
+  // Pro multi-tile (w×h) projde všechny offsety a každý tile označí jako module_ref.
+  // rootIdx = top-left tile (= idx s rootOffset {0,0}).
+  const placeModule = (id: string, kind: ModuleKind, rootIdx: number) => {
+    const def = MODULE_DEFS[kind];
+    modules[id] = {
+      id,
+      kind,
+      rootIdx,
+      status: "offline",
+      hp: def.max_hp,
+      hp_max: def.max_hp,
+      progress_wd: 0,
+    };
+    const rootRow = Math.floor(rootIdx / 8);
+    const rootCol = rootIdx % 8;
+    for (let dy = 0; dy < def.h; dy++) {
+      for (let dx = 0; dx < def.w; dx++) {
+        const idx = (rootRow + dy) * 8 + (rootCol + dx);
+        segment[idx] = { kind: "module_ref", moduleId: id, rootOffset: { dx, dy } };
+      }
+    }
+  };
+
+  // Row 0: 6× single-tile modul + Engine 2×2 zabírající idx 6,7,14,15.
+  placeModule("habitat_1", "Habitat", 0);
+  placeModule("solar_1", "SolarArray", 1);
+  placeModule("medcore_1", "MedCore", 2);
+  placeModule("assembler_1", "Assembler", 3);
+  placeModule("commandpost_1", "CommandPost", 4);
+  placeModule("storage_1", "Storage", 5);
+  placeModule("engine_1", "Engine", 6); // 2×2 → obsadí 6,7,14,15
 
   // Actor pool §10: 3× Constructor + 2× Hauler + 1× Player. Všichni idle při bootu.
   // Pojmenování id čitelně (player/c1/c2/c3/h1/h2) — usnadní debug v Inspectoru/logu.
@@ -69,14 +135,15 @@ export function createInitialWorld(): World {
     tick: 0,
     phase: "boot",
     // Resource Model v0.1 — viz model.ts komentář u World.resources.
-    // P1 seed hodnoty (§10): flux.air=100 %, slab.food=40, coin=20.
+    // P1 seed hodnoty (§10 + S16): energy=12 Wh, flux.air=100 %, slab.food=40, coin=20.
     resources: {
+      energy: ENERGY_SEED,
       slab: { food: 40 },
       flux: { air: 100 },
       coin: 20,
     },
     segment,
-    modules: {},
+    modules,
     actors,
     tasks: [],
     next_task_id: 1,
@@ -96,11 +163,14 @@ export function enqueueRepairTask(w: World, tileIdx: number): boolean {
   );
   if (exists) return false;
 
+  // HP-unified: wd_total odvozeno z chybějícího HP (1 WD = 1 HP pro P1).
+  const wd_total = (tile.hp_max - tile.hp) * WD_PER_HP;
+
   w.tasks.push({
     id: `task_${w.next_task_id++}`,
     kind: "repair",
     target: { tileIdx },
-    wd_total: tile.wd_to_repair,
+    wd_total,
     wd_done: 0,
     assigned: [],
     priority: 1,
@@ -125,6 +195,8 @@ function assignIdleActors(w: World): void {
 }
 
 // Drain WD per task podle Σ power_w přiřazených actors. Po dokončení aplikuj efekt.
+// HP-unified: u repair task synchronizujeme tile.hp spojitě s wd_done — overlay
+// pak plynule slábne jak oprava postupuje (ne až ve chvíli dokončení).
 function progressTasks(w: World): void {
   // Procházíme přes index, abychom mohli bezpečně mazat hotové (iterate odzadu).
   for (let i = w.tasks.length - 1; i >= 0; i--) {
@@ -137,7 +209,16 @@ function progressTasks(w: World): void {
       const a = w.actors.find((x) => x.id === aid);
       if (a && a.state === "working") powerSum += ACTOR_DEFS[a.kind].power_w;
     }
-    task.wd_done += powerSum / TICKS_PER_GAME_DAY;
+    const wd_delta = powerSum / TICKS_PER_GAME_DAY;
+    task.wd_done += wd_delta;
+
+    // Spojitá HP synchronizace — 1 WD = 1 HP (WD_PER_HP=1).
+    if (task.kind === "repair" && task.target.tileIdx !== undefined) {
+      const tile = w.segment[task.target.tileIdx];
+      if (tile && tile.kind === "damaged") {
+        tile.hp = Math.min(tile.hp_max, tile.hp + wd_delta / WD_PER_HP);
+      }
+    }
 
     if (task.wd_done >= task.wd_total) {
       completeTask(w, task);
@@ -149,7 +230,10 @@ function progressTasks(w: World): void {
 function completeTask(w: World, task: Task): void {
   // Aplikuj efekt podle kindu. P1: jen repair.
   if (task.kind === "repair" && task.target.tileIdx !== undefined) {
-    w.segment[task.target.tileIdx] = { kind: "empty" };
+    // HP-unified: po opravě damaged → empty s plným HP. hp_max zachován z damaged.
+    const old = w.segment[task.target.tileIdx];
+    const hp_max = old?.kind === "damaged" ? old.hp_max : TILE_HP_MAX;
+    w.segment[task.target.tileIdx] = { kind: "empty", hp: hp_max, hp_max };
   }
   // Uvolni actors zpět do idle.
   for (const aid of task.assigned) {
@@ -166,7 +250,8 @@ function completeTask(w: World, task: Task): void {
 // boot → phase_a: vznikne damaged tile, air start 100 %.
 export function startGame(w: World): void {
   if (w.phase !== "boot") return;
-  w.segment[DAMAGED_TILE_IDX] = { kind: "damaged", wd_to_repair: DAMAGED_WD };
+  // HP-unified: damaged = plně poškozený floor (hp=0), opravou se dostane do hp_max.
+  w.segment[DAMAGED_TILE_IDX] = { kind: "damaged", hp: 0, hp_max: TILE_HP_MAX };
   w.resources.flux.air = 100;
   w.phase = "phase_a";
 }
@@ -175,7 +260,7 @@ export function startGame(w: World): void {
 // Side-effect §14: tile → empty, air přestává klesat (regenerace TBD později).
 export function repairDone(w: World): void {
   if (w.phase !== "phase_a") return;
-  w.segment[DAMAGED_TILE_IDX] = { kind: "empty" };
+  w.segment[DAMAGED_TILE_IDX] = { kind: "empty", hp: TILE_HP_MAX, hp_max: TILE_HP_MAX };
   w.phase = "phase_b";
 }
 
@@ -241,6 +326,23 @@ export function stepWorld(w: World): void {
       return;
     }
   }
+}
+
+// === Derived: Work (W) ===
+
+// Work není zásoba, ale agregát z actors. DRY axiom (S16):
+//   - max = Σ power_w všech aktérů (kolik W by mohl pool dát, kdyby všichni dřeli)
+//   - current = Σ power_w aktérů ve state "working" (kolik W teče právě teď)
+// HUD čte přes computeWork(world) — stejná funkce pro Top Bar i pro tooltip.
+export function computeWork(w: World): { current: number; max: number } {
+  let current = 0;
+  let max = 0;
+  for (const a of w.actors) {
+    const pw = ACTOR_DEFS[a.kind].power_w;
+    max += pw;
+    if (a.state === "working") current += pw;
+  }
+  return { current, max };
 }
 
 // === Helpers pro debug HUD ===

@@ -104,6 +104,17 @@ Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodn
 - [ ] Deploy na **GitHub Pages** nebo **Netlify** (static bundle).
 - [ ] Ověřit: static build funguje, URL sdílitelná pro P1–P4.
 
+## HP-unified damage axiom (S16)
+
+Sjednocení konstrukce / dekonstrukce / opravy / poškození do jedné osy HP. Detail: `IDEAS.md` → „HP-unified damage axiom". **Repair branch implementován v S16, build/demolish/asteroid otevřené.**
+
+- [x] **Model refactor — Tile:** Tile.empty/damaged mají hp+hp_max (S16).
+- [x] **Model refactor — Module instance:** hp_max na instanci, kopie z MODULE_DEFS při create (S16).
+- [x] **Damaged overlay vizuál:** červený fill alpha úměrná 1-hp/hp_max (S16).
+- [ ] **Task engine — build/demolish nad HP:** repair hotov, build/demolish tasky pořád nemají HP sync. Aktivovat při implementaci §15 stavebního UX.
+- [ ] **Asteroid damage vzorec** — rozpracovat (viz IDEAS). Zatím placeholder: hit → `-5 hp`.
+- [ ] **Multi-tile sprite rendering:** Engine 2×2 — monolitická 80×80 texture kreslená jen na root tile (`rootOffset === {0,0}`), ref tiles skip. Detail `art/modules/PROMPTS.md`.
+
 ## Player mode (P2+)
 
 - [ ] **Player mode** — per-actor HP a osobní inventář (◎, food) v datovém modelu. Rozšířit `Actor` o `hp`, `inventory`. Implementovat HP drain (CONST_HOMELESS_HP_DRAIN). Observer vs. Player axiom viz `GLOSSARY.md` §UI Modes.

@@ -15,7 +15,7 @@ import {
   AIR_TIMEOUT_TICKS,
   FOOD_DRAIN_PER_TICK,
   DAMAGED_TILE_IDX,
-  DAMAGED_WD,
+  TILE_HP_MAX,
 } from "./world";
 
 // === Factory ===
@@ -28,12 +28,30 @@ describe("createInitialWorld", () => {
     expect(w.resources.flux.air).toBe(100);
     expect(w.resources.slab.food).toBe(40);
     expect(w.resources.coin).toBe(20);
+    expect(w.resources.energy).toBe(12);
   });
 
-  it("má 16 prázdných tiles v segmentu", () => {
+  it("má 16 tiles, mateřská loď dle POC §3 (7 modulů, 6 empty před damaged)", () => {
     const w = createInitialWorld();
     expect(w.segment).toHaveLength(16);
-    expect(w.segment.every((t) => t.kind === "empty")).toBe(true);
+    // 7 modulů: 6× single-tile (idx 0..5) + Engine 2×2 (idx 6,7,14,15) = 10 module_ref tiles.
+    // Empty: 8, 9, 10, 11, 12, 13 = 6 tiles. Damaged přijde až v startGame na idx 12.
+    const moduleRefs = w.segment.filter((t) => t.kind === "module_ref");
+    expect(moduleRefs.length).toBe(10);
+    const empties = w.segment.filter((t) => t.kind === "empty");
+    expect(empties.length).toBe(6);
+    expect(
+      empties.every(
+        (t) => t.kind === "empty" && t.hp === TILE_HP_MAX && t.hp_max === TILE_HP_MAX,
+      ),
+    ).toBe(true);
+    // 7 modul instancí v registru.
+    expect(Object.keys(w.modules).length).toBe(7);
+    expect(w.modules.commandpost_1?.kind).toBe("CommandPost");
+    expect(w.modules.engine_1?.kind).toBe("Engine");
+    // Engine 2×2 obsazuje idx 6,7 (top) a 14,15 (bottom).
+    expect(w.segment[6]?.kind).toBe("module_ref");
+    expect(w.segment[14]?.kind).toBe("module_ref");
   });
 
   it("každý tile je nezávislá instance (žádná sdílená reference)", () => {
@@ -47,14 +65,16 @@ describe("createInitialWorld", () => {
 // === FSM přechody ===
 
 describe("FSM: startGame (boot → phase_a)", () => {
-  it("přepne boot → phase_a a vytvoří damaged tile", () => {
+  it("přepne boot → phase_a a vytvoří damaged tile na hp=0", () => {
     const w = createInitialWorld();
     startGame(w);
     expect(w.phase).toBe("phase_a");
     const damaged = w.segment[DAMAGED_TILE_IDX];
     expect(damaged.kind).toBe("damaged");
     if (damaged.kind === "damaged") {
-      expect(damaged.wd_to_repair).toBe(DAMAGED_WD);
+      // HP-unified (S16): damaged start hp=0, hp_max=TILE_HP_MAX.
+      expect(damaged.hp).toBe(0);
+      expect(damaged.hp_max).toBe(TILE_HP_MAX);
     }
   });
 

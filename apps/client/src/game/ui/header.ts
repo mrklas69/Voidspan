@@ -6,7 +6,7 @@ import Phaser from "phaser";
 import pkg from "../../../package.json";
 import type { World } from "../model";
 import { formatResource, formatScalar } from "../format";
-import { formatGameTime } from "../world";
+import { formatGameTime, computeWork, ENERGY_MAX } from "../world";
 import { TooltipManager } from "../tooltip";
 import {
   FONT_FAMILY,
@@ -62,43 +62,60 @@ export class HeaderPanel {
     tooltips.attach(this.appText, leftProvider);
     tooltips.attach(this.metaText, leftProvider);
 
-    // Resource bars tooltips — s kvantifikací subtypů (demo data do doby napojení na model).
+    // Resource bars tooltips — live z `getWorld()`.
     const resourceTooltips: Array<() => string> = [
-      () =>
-        "Energy — baterie pásu [E]\n" +
-        "0.15 / 12 E  (1.2 %)\n\n" +
-        "Výroba:  +0.30 E/tick  (2× SolarArray)\n" +
-        "Spotřeba: -0.15 E/tick\n" +
-        "Trend: +0.15 E/tick (nabíjí)",
-      () =>
-        "Work — pracovní kapacita [W]\n" +
-        "18 / 32 W  (56 %)\n\n" +
-        "Player:       8 W  (idle)\n" +
-        "Constructor:  3×12 = 36 W\n" +
-        "Hauler:       2×8 = 16 W\n" +
-        "Working nyní: 18 W (2 aktéři)",
-      () =>
-        "Slab — pevné materiály [S]\n" +
-        "45 / 100 S  (45 %)\n\n" +
-        "  Food:         40\n" +
-        "  Metal:         5\n" +
-        "  Components:    0\n\n" +
-        "Spotřeba: 8 food/game day\n" +
-        "(8 osob × 1 food/den)",
-      () =>
-        "Flux — kapaliny + plyny [F]\n" +
-        "80 / 120 F  (67 %)\n\n" +
-        "  Air:        60\n" +
-        "  Water:      15\n" +
-        "  Coolant:     5\n\n" +
-        "Breach = utíká Flux!",
-      () =>
-        "Coin [◎] — měna\n" +
-        "◎ 20\n\n" +
-        "Reprezentuje všechny platby,\n" +
-        "mzdy, směnu, tržní operace.\n" +
-        "Dock cost: ◎ 20\n\n" +
-        "Income/expense history (P2+).",
+      () => {
+        const e = this.getWorld().resources.energy;
+        return (
+          "Energy — baterie pásu [E]\n" +
+          `${formatScalar(e)} / ${ENERGY_MAX} Wh\n\n` +
+          "Seed 12 Wh (S16 kalibrace).\n" +
+          "V P1 statická — produkce/spotřeba P2+."
+        );
+      },
+      () => {
+        const w = this.getWorld();
+        const work = computeWork(w);
+        const working = w.actors.filter((a) => a.state === "working").length;
+        return (
+          "Work — pracovní kapacita [W]\n" +
+          `${formatScalar(work.current)} / ${formatScalar(work.max)} W\n\n` +
+          `Aktéři working nyní: ${working} / ${w.actors.length}\n\n` +
+          "Derivováno z actors (Σ power_w)."
+        );
+      },
+      () => {
+        const r = this.getWorld().resources;
+        return (
+          "Slab — pevné materiály [S]\n" +
+          `${formatScalar(r.slab.food)} / 100 S\n\n` +
+          `  Food: ${formatScalar(r.slab.food)}\n` +
+          "  (Metal/Components — P2+)\n\n" +
+          "Spotřeba: 8 food/game day\n" +
+          "(8 osob × 1 food/den)"
+        );
+      },
+      () => {
+        const r = this.getWorld().resources;
+        return (
+          "Flux — kapaliny + plyny [F]\n" +
+          `${formatScalar(r.flux.air)} / 100 F\n\n` +
+          `  Air: ${formatScalar(r.flux.air)} %\n` +
+          "  (Water/Coolant — P2+)\n\n" +
+          "Breach = utíká Flux!"
+        );
+      },
+      () => {
+        const r = this.getWorld().resources;
+        return (
+          "Coin [◎] — měna\n" +
+          `◎ ${formatScalar(r.coin)}\n\n` +
+          "Reprezentuje všechny platby,\n" +
+          "mzdy, směnu, tržní operace.\n" +
+          "Dock cost: ◎ 20\n\n" +
+          "Income/expense history (P2+)."
+        );
+      },
     ];
     for (let i = 0; i < this.resourceTexts.length; i++) {
       const t = this.resourceTexts[i];
@@ -118,13 +135,15 @@ export class HeaderPanel {
       `v${pkg.version} Teegarden.Belt1.Seg042 ${time}${w.loss_reason ? ` // LOSS (${w.loss_reason})` : ""}`,
     );
 
-    // Resource bary (demo seedy — TODO: napojit na w.resources.*).
+    // Resource bary — Energy skalár + Work derivovaný + Slab/Flux/Coin z modelu.
+    // Kapacity 100 pro S/F jsou UI strop — model zatím max necaptuje (P2+ rozšíření).
+    const work = computeWork(w);
     const parts: string[] = [
-      formatResource(0.15, 12, "E"),
-      formatResource(18, 32, "W"),
-      formatResource(45, 100, "S"),
-      formatResource(80, 120, "F"),
-      `◎ ${formatScalar(20)}`,
+      formatResource(w.resources.energy, ENERGY_MAX, "E"),
+      formatResource(work.current, work.max, "W"),
+      formatResource(w.resources.slab.food, 100, "S"),
+      formatResource(w.resources.flux.air, 100, "F"),
+      `◎ ${formatScalar(w.resources.coin)}`,
     ];
     for (let i = 0; i < parts.length; i++) {
       const t = this.resourceTexts[i];

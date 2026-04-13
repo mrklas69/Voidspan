@@ -19,6 +19,13 @@ import {
 
 // Výška chunku podél osy Y — kompromis mezi granularitou evictu a voláním generátoru.
 const CHUNK_H = 480;
+
+// Drift axiom (S16): globální vektor délky 3 px, rotuje jednou za 1 game day.
+// 1 game day = 16 game hours × 15 s wall = 240 s wall (TICKS_PER_GAME_DAY × TICK_MS).
+// Vektor způsobuje jemný drift hvězdného pozadí — v tooltip úrovni neviditelný,
+// ale přes minuty hráč vnímá „svět žije". Nezávislý na cameraY scrollu šipkami.
+const DRIFT_MAGNITUDE_PX = 7;
+const DRIFT_PERIOD_MS = 240_000;
 // Buffer = chunks mimo viewport, které držíme (plynulý scroll bez popu).
 const CHUNK_BUFFER = 1;
 // Depth pořadí (uvnitř Containeru relativně): DSO vzadu, hvězdy, clusters vepředu.
@@ -58,6 +65,10 @@ export class BackgroundSystem {
   private bandW: number;
   private viewportH: number;
   private chunks = new Map<number, Phaser.GameObjects.GameObject[]>();
+  private cameraY = 0;
+  private driftElapsedMs = 0;
+  private driftX = 0;
+  private driftY = 0;
 
   constructor(scene: Phaser.Scene, bandW: number, viewportH: number) {
     this.scene = scene;
@@ -72,8 +83,9 @@ export class BackgroundSystem {
 
   update(cameraY: number): void {
     // Visual shift celé vrstvy pozadí (Container relative souřadnice zůstávají,
-    // posouvá se jen transform Containeru).
-    this.container.y = -cameraY;
+    // posouvá se jen transform Containeru). Drift se přičítá přes applyTransform.
+    this.cameraY = cameraY;
+    this.applyTransform();
 
     const fromIdx = Math.floor((cameraY - CHUNK_BUFFER * CHUNK_H) / CHUNK_H);
     const toIdx = Math.ceil((cameraY + this.viewportH + CHUNK_BUFFER * CHUNK_H) / CHUNK_H);
@@ -88,6 +100,22 @@ export class BackgroundSystem {
         this.chunks.delete(idx);
       }
     }
+  }
+
+  // Tik driftu — voláno z GameScene.update(delta) každý frame (rAF).
+  // Drift vektor rotuje s periodou DRIFT_PERIOD_MS. Modulo udržuje přesnost
+  // i po hodinách (jinak elapsedMs naroste, sin/cos ztrácejí precision).
+  tickDrift(deltaMs: number): void {
+    this.driftElapsedMs = (this.driftElapsedMs + deltaMs) % DRIFT_PERIOD_MS;
+    const angle = (this.driftElapsedMs / DRIFT_PERIOD_MS) * Math.PI * 2;
+    this.driftX = Math.cos(angle) * DRIFT_MAGNITUDE_PX;
+    this.driftY = Math.sin(angle) * DRIFT_MAGNITUDE_PX;
+    this.applyTransform();
+  }
+
+  private applyTransform(): void {
+    this.container.x = this.driftX;
+    this.container.y = -this.cameraY + this.driftY;
   }
 
   private destroy(): void {

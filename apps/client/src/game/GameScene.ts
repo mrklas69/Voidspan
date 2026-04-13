@@ -8,13 +8,11 @@ import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
 import { BackgroundSystem } from "./background";
 import { createAsteroidOrbit, launchRandomAsteroid } from "./orbit";
+const INITIAL_ASTEROID_COUNT = 10;
 import {
   createInitialWorld,
   stepWorld,
   startGame,
-  repairDone,
-  dockComplete,
-  endDay,
   TICK_MS,
 } from "./world";
 import type { World } from "./model";
@@ -39,8 +37,6 @@ export class GameScene extends Phaser.Scene {
   private tooltips!: TooltipManager;
   private modal!: ModalManager;
   private background!: BackgroundSystem;
-  private cameraY = 0;
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
 
   private header!: HeaderPanel;
   private actors!: ActorsPanel;
@@ -54,15 +50,18 @@ export class GameScene extends Phaser.Scene {
   // === Preload: načti sprity modulů z MODULE_DEFS ============================
 
   preload(): void {
-    for (const kind of Object.keys(MODULE_DEFS) as Array<keyof typeof MODULE_DEFS>) {
-      const def = MODULE_DEFS[kind];
-      // Zatím máme jen solar_array.png — ostatní load selže tiše a SegmentPanel
-      // si to ohlídá přes textures.exists(). Až přijdou další assety, jen je doplníš.
-      this.load.image(kind, `assets/modules/${def.asset}`);
+    // Module assety: loaduj jen ty, které reálně existují v public/assets/modules/.
+    // Whitelist (S16) drží Phaser bez warningů — jakmile přidáš nový PNG, dopiš kind sem.
+    // Texture key = ModuleKind (matchuje drawTileSprite v SegmentPanel).
+    const AVAILABLE_MODULE_ASSETS: Array<keyof typeof MODULE_DEFS> = ["SolarArray"];
+    for (const kind of AVAILABLE_MODULE_ASSETS) {
+      this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
     }
     // Tile assety (ne-moduly).
     this.load.image("tile_floor", "assets/tiles/floor.png");
-    this.load.image("tile_floor_damaged", "assets/tiles/floor_damaged.png");
+    // Construction texture (S16) — fallback sprite pro chybějící moduly/assety.
+    // Vzor černo-žlutých pruhů = univerzální placeholder „TBD asset". KISS.
+    this.load.image("tile_construction", "assets/tiles/construction.png");
 
     // Orbitální dekor.
     this.load.image("asteroid2", "assets/sprites/asteroid2.png");
@@ -75,16 +74,29 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.world = createInitialWorld();
+    // Start ihned — žádná "press SPACE to start" obrazovka (S16).
+    startGame(this.world);
+
+    // Dev-only: vystav world do window, ať jde debugovat v DevTools (Console: __world).
+    // Vite `import.meta.env.DEV` je true jen při `pnpm dev`, v prod buildu se blok odstraní (tree-shake).
+    if (import.meta.env.DEV) {
+      (window as unknown as { __world: World }).__world = this.world;
+    }
 
     this.tooltips = new TooltipManager(this);
     this.modal = new ModalManager(this);
 
     // Hvězdné pozadí — samostatný Container, scroll po ose Y nezávisle na UI.
     this.background = new BackgroundSystem(this, CANVAS_W, MID_H);
-    this.background.update(this.cameraY);
+    this.background.update(0);
 
     // Asteroid v orbitě — střed horizontálně, dlouhý oběh.
     createAsteroidOrbit(this, CANVAS_W / 2, CANVAS_H);
+
+    // Start game: vypustit N asteroidů (S16). Každý má náhodnou dráhu/rychlost/scale.
+    for (let i = 0; i < INITIAL_ASTEROID_COUNT; i++) {
+      launchRandomAsteroid(this, CANVAS_W / 2);
+    }
 
     // --- Panely ---
     const getWorld = () => this.world;
@@ -111,14 +123,8 @@ export class GameScene extends Phaser.Scene {
       body:
         "Shortcuts\n" +
         "\n" +
-        "[SPACE]  start simulation\n" +
         "[H]      open / close this Help\n" +
-        "[L]      launch asteroid (random orbit)\n" +
-        "[↑ ↓]    scroll background (test camera)\n" +
-        "[R]      debug: repair done\n" +
-        "[E]      debug: dock complete\n" +
-        "[W]      debug: end day\n" +
-        "[F5]     nový svět\n" +
+        "[WASD]   move tile selection (yellow cursor)\n" +
         "[ESC]    zavřít tento dialog\n" +
         "\n" +
         "Klik na damaged tile = enqueue repair task.\n" +
@@ -136,7 +142,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         logY + LOG_H / 2,
-        "[SPACE] start  [H] help  [L] asteroid  [↑↓] scroll bg (test)  [R/E/W] skip phase  [F5] new",
+        "[H] help  [WASD] select tile",
         {
           fontFamily: FONT_FAMILY,
           fontSize: FONT_SIZE_HINT,
@@ -156,28 +162,23 @@ export class GameScene extends Phaser.Scene {
     kb?.on("keydown", (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       switch (key) {
-        case " ":
-          startGame(this.world);
-          break;
-        case "r":
-          repairDone(this.world);
-          break;
-        case "e":
-          dockComplete(this.world);
-          break;
         case "w":
-          endDay(this.world);
+          this.segment.moveSelection(0, -1);
           break;
-        case "l":
-          launchRandomAsteroid(this, CANVAS_W / 2);
+        case "a":
+          this.segment.moveSelection(-1, 0);
+          break;
+        case "s":
+          this.segment.moveSelection(0, 1);
+          break;
+        case "d":
+          this.segment.moveSelection(1, 0);
           break;
         case "h":
           this.openHelpModal();
           break;
       }
     });
-    // Šipky ↑ ↓ — scroll pozadí (test).
-    this.cursors = kb?.createCursorKeys();
   }
 
   // === Tick loop + render ==================================================
@@ -189,17 +190,8 @@ export class GameScene extends Phaser.Scene {
       this.accumulator -= TICK_MS;
     }
 
-    // Background scroll — šipky ↑ ↓.
-    if (this.cursors) {
-      const speed = 400; // px/s
-      let dy = 0;
-      if (this.cursors.up?.isDown) dy -= speed * (delta / 1000);
-      if (this.cursors.down?.isDown) dy += speed * (delta / 1000);
-      if (dy !== 0) {
-        this.cameraY += dy;
-        this.background.update(this.cameraY);
-      }
-    }
+    // Drift pozadí — globální vektor rotuje 1× za game day, magnitude 7 px (S16).
+    this.background.tickDrift(delta);
 
     this.header.render();
     this.segment.render();

@@ -19,7 +19,10 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "useDefineForClassFields": true
+    "useDefineForClassFields": true,
+
+    // Vite client types — `import.meta.env.DEV` apod.
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }
