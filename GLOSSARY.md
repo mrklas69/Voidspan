@@ -2,7 +2,7 @@
 
 Jediný zdroj pravdy pro klíčové pojmy projektu. Když se pojem mění, mění se zde. Ostatní dokumenty (IDEAS, TODO, SCENARIO, sessions, kód) se na tento glosář odvolávají.
 
-Verze: **v0.4** (Sezení 6 — SHIP revidován na 1 segment, POC_P1 puzzle scope, `CONST_PUZZLE_SLACK_FACTOR`).
+Verze: **v0.5** (Sezení 12 — UI Layout axiom: Top Bar / Main Panel / Bottom Bar ukotvené, boční obsah jako Floating Panels Kolonisté / Úkoly / Události / Podrobnosti).
 
 ---
 
@@ -197,7 +197,43 @@ Odchod hráče = brains pokračuje podle nastaveného presetu. Offline hráč be
 
 ---
 
-## Resources
+## Resources — Model v0.1 (axiom, S12)
+
+**5 ekonomických os:**
+
+| Zdroj | Symbol | Typ | Obsah |
+|---|---|---|---|
+| **Energy** | `E` | rate + storage | elektřina v baterii; výroba (SolarArray) − spotřeba (moduly) |
+| **Work** | `W` | throughput | pracovní kapacita = Σ `power_w` všech pracujících aktérů |
+| **Slab** | `S` | solid stock | všechny pevné materiály (kov, komponenty, food, ...) |
+| **Flux** | `F` | fluid + gas stock | kapaliny + plyny (voda, chlazení, **vzduch** včetně) |
+| **Coin** | `◎` | currency | měna, ne materiál; směna, platby, mzdy |
+
+**Food = subtyp Slab** (F3 architektura). HUD agreguje do 1 baru, event engine ví: `slab.food < 10` → trigger „hladomor". Pro P2+ lze přidat další subtypy (metal, components) bez změny HUD.
+
+**Air fold do Flux:** POC_P1 §14 `air_drain` refactorováno na `flux_drain` (breach = unikající Flux, ne Air specificky).
+
+**Kredo retirováno** — původní pojem z S1–S3 (currency + vague material). Nahrazeno jasným `Coin` (currency only) + `Slab` (materiál). `Echo` (capsule recycling) bude nově taky Coin payout.
+
+---
+
+### Axiom: formatScalar — jednotící zobrazení hodnot
+
+Všechna čísla v UI (HUD, panely, tooltipy, log) procházejí **`formatScalar(value)`** helperem (`src/game/format.ts`). Jediný zdroj pravdy.
+
+**Pravidla:**
+1. **2 significant digits.**
+2. **SI prefixy:** `µ` (10⁻⁶), `m` (10⁻³), `` (10⁰), `k` (10³), `M` (10⁶), `G` (10⁹), `T` (10¹²).
+3. Prefix se volí tak, aby hodnota po škálování ležela v `[0.1, 1000)`.
+4. Trailing zeros zachovány v rámci sig digits (`1.0k`, ne `1k`).
+
+**Příklady:** `0` → `"0"` · `0.000045` → `"45µ"` · `0.0023` → `"2.3m"` · `0.15` → `"0.15"` · `12` → `"12"` · `450` → `"450"` · `1500` → `"1.5k"` · `999999` → `"1.0M"` · `45_000_000` → `"45M"`.
+
+**`formatResource(current, max, unit)`** — helper pro „current/max X" formát (např. `"0.15/12 E"`).
+
+---
+
+## Resources (legacy — bude přepsáno)
 
 ### Echo
 Solární palivo (fotovoltaika). Produkce = funkce orbitu a pozice segmentu vůči hvězdě. Pohon života, pohybu, běžných akcí.
@@ -249,6 +285,60 @@ Každá nová kapsle na orbitě = event. Vláda kolonie ji musí posoudit (aktiv
 
 ### Observatory Event
 **První detekce jiného beltu** v soustavě. Narativní spouštěč přechodu z izolace (Belt1 solo) na R1 Belt Network. *„Naše observatoř zaznamenala novou mateřskou loď na orbitě… Nejsme sami."* Probíhá přes `CommandPost.Observatory` (integrovaná), později dedikovaný Observatory modul.
+
+---
+
+## UI Layout — panely
+
+### Axiom: tooltipy všude, kde má význam
+**Každý interaktivní nebo informativní prvek nese tooltip** (hover → drobný panel s textem). Důvod: odlehčit UI od permanentní nápovědy, nechat prostor pro obsah.
+
+- **Delay:** 400 ms hover → show (žádný flicker).
+- **Vzhled:** pozadí `UI_PANEL_BG` (`#080808`) s 1px `UI_BORDER_DIM` rámečkem, text `UI_TEXT_PRIMARY` (amber bright), font VT323 velikosti `FONT_SIZE_HINT` (16 px).
+- **Pozice:** pod kurzorem s 12px offsetem, auto-flip pokud přečnívá.
+- **Max šířka:** 280 px, word-wrap.
+- **Obsah:** řádek 1 = primární popis. Další řádky volitelně detaily / klávesové zkratky / hodnoty.
+
+Implementace: `src/game/tooltip.ts` → `TooltipManager.attach(target, provider)`. Provider je funkce volaná při hover, vrací dynamický text (nebo `null` = nezobrazit).
+
+### Axiom: kompaktní typografie
+Grafické výstupy držíme **kompaktní — jediná mezera mezi prvky**. Žádné vícenásobné mezery, žádné oddělovače typu `|` nebo `·` pokud to sémantika nevyžaduje. Čitelnost drží monospace font (VT323) a řazení, ne whitespace padding.
+
+**Herní čas:** formát `T:D.HH:MM` (bez mezer). `D` = herní den od založení (od 0), `HH:MM` = čas uvnitř herního dne (16 herních hodin, HH = 0–15). Příklad: `T:3.09:42` = 3. den, 9 hodin 42 minut herního času. **Sekundy se nezobrazují** — granularita tiku = 1 game minuta, `SS` by byl vždy `00`.
+
+**Wall čas se nezobrazuje** — hráč vidí jen herní čas. Žádný server time, host time, real-world clock.
+
+---
+
+Rozložení obrazovky drží **tři ukotvené zóny** (top / main / bottom) + **plovoucí panely** otevírané na vyžádání. Cíl: Main Panel zabírá maximum plochy; vše ostatní se objeví jen když to hráč potřebuje.
+
+### Horní panel (Top Bar / HUD)
+Ukotvená horní lišta. Vždy viditelná. Obsah:
+- **Vlevo:** `⊙Voidspan v1.0  <Adresa.pásu>  T <čas>` (branding + identita + lokace + herní čas)
+- **Vpravo:** `[?] Help`
+
+Zdroje (Air / Food / Kredo) jsou zatím ve floating panelu *Zdroje*. Pokud se v ladění ukáže, že stavová viditelnost trpí (hráč mine hladovění), přesunou se sem mezi čas a Help.
+
+### Hlavní panel (Main Panel)
+Ukotvená střední plocha. Primární hrací prostor — segment grid 8×2, orbitální dekor, interakce (klik tile = task, klik modul = inspekce). Full-width mezi Top a Bottom Bar.
+
+### Dolní panel (Bottom Bar / Event Log ticker)
+Ukotvená dolní lišta. Vždy viditelná. Kompaktní ticker posledních 3–5 událostí. Pro plnou filtrovatelnou historii → floating panel *Události*.
+
+### Plovoucí panely (Floating Panels)
+**Neukotvené.** Otevírají se toggle (hotkey nebo button v Top Baru), překrývají Main. Druhé stisknutí téže klávesy = zavřít. `Esc` = zavřít všechny.
+
+| CZ název | EN název | Hotkey | Obsah |
+|---|---|---|---|
+| **Kolonisté** | Colonists | `K` | Seznam aktérů (hráč + drony). Kind, power_w, state, current task. Klik → highlight tasku a actor path. |
+| **Úkoly** | Tasks | `U` | Task queue. Drag&drop priority, progress bar, assigned actors, cancel. (P2+: filtr podle kind / status.) |
+| **Události** | Events | `E` | Plný filtrovatelný Event Log. Historie, search, filtr podle type/severity. Rozšíření Bottom Bar tickeru. |
+| **Podrobnosti** | Details (Inspector) | `P` / `Tab` | Kontextový inspector vybraného objektu (tile / modul / actor / task). Kontext určuje obsah. |
+| **Zdroje** | Resources | `Z` | Air / Food / Kredo s historií (mini-sparkline). Kandidát na přesun do Top Baru, pokud always-visibility bude nutná. |
+
+**Princip:** žádné trvale ukotvené sidebary. Main Panel není krájený na sloupce. Plovoucí panely jsou **dočasné nástroje**, ne fixní HUD.
+
+**Seam pro rozšíření (P2+):** nové panely (Diplomacie, Výzkum, Trh…) přibudou jako další Floating Panels bez změny layout architektury.
 
 ---
 

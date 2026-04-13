@@ -437,43 +437,64 @@ Každý tick:
 **Target device:** primárně **tablet** (baseline 768×1024 portrait / 1024×768 landscape); desktop a iPhone portrait jako kompatibilní bonus.
 **Pixel art baseline:** tile **40×40 px native**, integer scaling 1×/2×/3× (nearest-neighbor, `pixelArt: true` v Phaser config). Na tabletu typicky 1× nebo 2×, na desktopu 2×, na 4K 3×. Non-integer scale rozbije pixel art → držet integer násobky.
 
-### Rozložení
+### Rozložení — tři ukotvené zóny + plovoucí panely
+
+Viz `GLOSSARY.md` → **UI Layout — panely** pro axiom. Žádné trvale ukotvené sidebary. Main Panel zabírá plnou šířku mezi Top a Bottom Barem.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  HUD: [💨]Air 87% | [🍎]Food 38 | [🪙]Kredo 20 | Day 0.8      │
-│       | Wall 03:12 | Fáze: A                                 │
-├──────────┬──────────────────────────────┬────────────────────┤
-│          │                              │                    │
-│ ACTORS   │   LEVÝ ORBIT                 │  TASK QUEUE        │
-│          │   (kapsle, debris,           │  [1] Repair T5 42% │
-│ ▸ Player │    parking flotila)          │  [2] Demol Eng 10% │
-│   work   │                              │  [ ] Build Dock    │
-│          │   ╔══ SHIP SEGMENT 8×2 ══╗   │      wait          │
-│ ▸ C1 idle│   ║  0  1  2  3  4  5  6  7║ │                    │
-│ ▸ C2 work│   ║  8  9 10 11 12 13 14 15║ │  [Cancel][↑][↓]    │
-│ ▸ C3 work│   ╚═════════════════════╝   │                    │
-│ ▸ H1 idle│                              │  INSPECTOR         │
-│ ▸ H2 work│   PRAVÝ ORBIT                │  Modul: Engine 2×2 │
-│          │   (hvězda, solar flares)     │  Status: demolish  │
-│          │                              │  Progress: 10/60   │
-│          │                              │  [Zrušit]          │
-├──────────┴──────────────────────────────┴────────────────────┤
-│  LOG: "Repair started." "C2 assigned to Engine."             │
-└──────────────────────────────────────────────────────────────┘
+│ ⊙Voidspan v1.0  Teegarden.Belt1.Seg042  T 03:12      [?]Help │  ← Top Bar
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│                 LEVÝ ORBIT (kapsle, debris)                  │
+│                                                              │
+│              ╔══════ SHIP SEGMENT 8×2 ══════╗                │  ← Main Panel
+│              ║  0  1  2  3  4  5  6  7     ║                │    (full width)
+│              ║  8  9 10 11 12 13 14 15     ║                │
+│              ╚═════════════════════════════╝                │
+│                                                              │
+│                 PRAVÝ ORBIT (hvězda, flares)                 │
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│ LOG: "Repair started." "C2 assigned to Engine."              │  ← Bottom Bar
+└──────────────────────────────────────────────────────────────┘    (event ticker)
+
+         Plovoucí panely (toggle, překrývají Main):
+         ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+         │ KOLONISTÉ K │   │ ÚKOLY     U │   │ ZDROJE    Z │
+         │ ▸ Player wk │   │ [1] Rep 42% │   │ Air   87%   │
+         │ ▸ C1 idle   │   │ [2] Dem 10% │   │ Food   38   │
+         │ ▸ C2 work   │   │ [Cancel]    │   │ Kredo  20   │
+         └─────────────┘   └─────────────┘   └─────────────┘
+         ┌─────────────┐   ┌─────────────┐
+         │ UDÁLOSTI  E │   │ PODROBN.  P │
+         │ 03:12 Repair│   │ Modul:Eng   │
+         │ 03:05 C2 as.│   │ Progr:10/60 │
+         │ [filter…]   │   │ [Zrušit]    │
+         └─────────────┘   └─────────────┘
 ```
 
-### Zóny
+### Zóny — ukotvené (always visible)
 
-| Zóna | Šířka | Obsah |
+| Zóna | Výška / šířka | Obsah |
 |---|---|---|
-| **ACTORS** (levý sloupec) | ~150 px | 6 řádků: 1 hráč + 3 Constructor + 2 Hauler. Kind, power_w, state, task ref. Klik → highlight v queue |
-| **Levý orbit** | flex | Dekor: kapsle, debris, parking flotila (WIN indikátor) |
-| **SHIP segment** (střed) | 320×80 px native (1×) / 640×160 px @2× | **Horizontální 8×2 grid**, tiles **40×40 px native**. Primární hrací plocha |
-| **Pravý orbit** | flex | Dekor: Teegardenova hvězda, solar flares |
-| **TASK QUEUE + INSPECTOR** (pravý sloupec) | ~250 px | Queue nahoře (seznam tasků, drag&drop priority), Inspector pod (výběr modulu / tile) |
-| **HUD** (horní lišta) | full width | Zdroje (ikona + číslo), čas, fáze |
-| **LOG** (dolní lišta) | full width | Poslední 3–5 řádků event logu (debug; pro playtest zapnuto) |
+| **Top Bar (HUD)** | full width, ~60 px | Vlevo: `⊙Voidspan v1.0  <Adresa>  T <čas>`. Vpravo: `[?] Help`. Zdroje zatím ve floating *Zdroje* (kandidát na přesun sem). |
+| **Main Panel** | full width, flex | Segment 8×2 (native 320×80, @2× 640×160), tiles 40×40 px native. Orbitální dekor nad/pod segmentem. Primární interakce (klik tile / modul) |
+| **Bottom Bar (Event Log ticker)** | full width, ~60 px | Poslední 3–5 událostí, kompaktní. Plná historie → Floating Panel *Události* |
+
+### Zóny — plovoucí (Floating Panels, toggle)
+
+Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
+
+| Panel | Hotkey | P1 obsah |
+|---|---|---|
+| **Kolonisté** | `K` | 6 řádků: 1 hráč + 3 Constructor + 2 Hauler. Kind, power_w, state, task ref. Klik → highlight tasku. |
+| **Úkoly** | `U` | Task queue: repair/build/demolish/haul. Progress bar, assigned actors, cancel. P1 bez drag&drop priority. |
+| **Události** | `E` | Filtrovatelný Event Log. P1: scroll + simple filter by severity. |
+| **Podrobnosti** | `P` / `Tab` | Kontextový inspector: tile (empty/damaged/module) / modul (2×2, status) / actor / task. |
+| **Zdroje** | `Z` | Air / Food / Kredo + hodnoty. P1 plain čísla; P2+ mini-sparkline. |
+
+**Rules:** druhé stisknutí téže klávesy = zavřít. `Esc` = zavřít všechny. Panely lze otevřít souběžně (hráč si skládá workspace); pozice zatím fixní (P1), drag v P2+.
 
 ### Ikonografie
 

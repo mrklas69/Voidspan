@@ -59,15 +59,29 @@ export const COL_TEXT_WHITE    = 0xffffff;
 // Preferuj tyto aliasy v UI kódu. Když se paleta někdy upraví, stačí přebalit
 // tenhle blok a sémantika drží. Direct COL_* jen pro pixel-art/debug.
 
-export const UI_BG             = HEX_BG_NEAR_BLACK;     // panel background
+export const UI_BG             = HEX_BG_NEAR_BLACK;     // panel background (hex)
+export const UI_PANEL_BG       = COL_BG_NEAR_BLACK;     // panel background (number pro Phaser)
 export const UI_BORDER_DIM     = COL_HULL_MID;          // zónové hranice
 export const UI_TEXT_PRIMARY   = HEX_AMBER_BRIGHT;      // hlavní text, hodnoty
-export const UI_TEXT_DIM       = HEX_AMBER_DIM;         // secondary, labels, inactive
+// UI_TEXT_DIM sloučeno s PRIMARY — zatím jednotná amber úroveň, jen ACCENT (bílá)
+// odlišuje důležité (AppName, hlavičky panelů). Pokud se vrátí trojstupňová
+// hierarchie, přepni zpět na HEX_AMBER_DIM.
+export const UI_TEXT_DIM       = HEX_AMBER_BRIGHT;      // sjednoceno s primary
 export const UI_TEXT_ACCENT    = HEX_TEXT_WHITE;        // nadpisy, důraz
 export const UI_TEXT_HEADING   = HEX_TEXT_WHITE;        // synonym, readability
 
 export const UI_SELECT_STROKE  = COL_AMBER_BRIGHT;      // klik výběr
 export const UI_TILE_DAMAGED   = COL_ALERT_RED;         // damaged tile fill (alpha < 1)
+export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // ⊙ ikona AppName — křiklavá oranžová
+
+// Status dot palette — barevné kuličky v seznamech (Kolonisté, úkoly, události).
+// Sémantika: (online/ok/busy/warn/alert/idle). Viz GLOSSARY → UI Layout → status dots.
+export const UI_DOT_ONLINE     = HEX_OK_GREEN;          // online hráč, ready
+export const UI_DOT_NPC        = HEX_INFO_BLUE;         // NPC, systémový actor
+export const UI_DOT_WORKING    = HEX_AMBER_BRIGHT;      // pracuje, in-progress
+export const UI_DOT_WARN       = HEX_WARN_ORANGE;       // warning, busy-over
+export const UI_DOT_ALERT      = HEX_ALERT_RED;         // alert, offline, failed
+export const UI_DOT_IDLE       = HEX_AMBER_DIM;         // idle, neaktivní
 
 export const UI_STATUS_ALERT   = HEX_ALERT_RED;         // LOSS, damaged, fatal
 export const UI_STATUS_WARN    = HEX_WARN_AMBER;        // warning threshold
@@ -88,3 +102,4 @@ export const FONT_SIZE_HUD     = "22px"; // HUD lišta, primární hodnoty
 export const FONT_SIZE_BODY    = "20px"; // běžný text, task list
 export const FONT_SIZE_LABEL   = "18px"; // popisky, caption, dim text
 export const FONT_SIZE_HINT    = "16px"; // nejmenší čitelný — hotkeys, legenda
+export const FONT_SIZE_PANEL_HEADER = "22px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)

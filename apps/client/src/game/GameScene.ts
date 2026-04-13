@@ -3,6 +3,13 @@
 // Model-first: všechny zóny čtou z `this.world`. Tile 40×40 native × 2× = 80×80 na canvasu.
 
 import Phaser from "phaser";
+// Verze z package.json — jediný zdroj pravdy, drží HUD v sync s balíčkem.
+import pkg from "../../package.json";
+import { formatResource, formatScalar } from "./format";
+import { TooltipManager } from "./tooltip";
+import { ModalManager } from "./modal";
+import { BackgroundSystem } from "./background";
+import { createAsteroidOrbit, launchRandomAsteroid } from "./orbit";
 import {
   createInitialWorld,
   stepWorld,
@@ -11,22 +18,30 @@ import {
   dockComplete,
   endDay,
   enqueueRepairTask,
-  phaseLabel,
+  formatGameTime,
   TICK_MS,
 } from "./world";
-import type { World, Module, Actor, Task } from "./model";
+import type { World, Module, Task } from "./model";
 import { MODULE_DEFS, ACTOR_DEFS } from "./model";
 import {
-  UI_BORDER_DIM,
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
-  UI_TILE_DAMAGED,
+  UI_PANEL_BG,
+  UI_BORDER_DIM,
+  UI_BRAND_ICON,
+  UI_DOT_ONLINE,
+  UI_DOT_NPC,
+  UI_DOT_WORKING,
+  UI_DOT_WARN,
+  UI_DOT_ALERT,
+  UI_DOT_IDLE,
   FONT_FAMILY,
   FONT_SIZE_HUD,
   FONT_SIZE_LABEL,
   FONT_SIZE_HINT,
+  FONT_SIZE_PANEL_HEADER,
 } from "./palette";
 
 // === Layout konstanty §16 (1280×720 canvas) ===
@@ -34,7 +49,9 @@ import {
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
 
+// HUD = 1-řádkový Top Bar — identity + čas + resource bars + Help.
 const HUD_H = 60;
+const HUD_ROW_Y = 18;
 const LOG_H = 60;
 const MID_Y = HUD_H; // 60
 const MID_H = CANVAS_H - HUD_H - LOG_H; // 600
@@ -55,9 +72,8 @@ const SEGMENT_Y = MID_Y + (MID_H - SEGMENT_H) / 2; // 340
 
 // === Barvy — přes palette.ts (axiom Voidspan 16) ===
 // Lokální aliasy drží GameScene-specific jména, ale hodnoty jdou z palety.
-const COL_ZONE_BORDER = UI_BORDER_DIM;
-const COL_ZONE_LABEL = UI_TEXT_DIM;
-const COL_TILE_DAMAGED = UI_TILE_DAMAGED;
+// Boční panely — UI_BG semantika (palette[13] bg-near-black · panely).
+const COL_PANEL_BG = UI_PANEL_BG;
 const COL_TILE_SELECTED = UI_SELECT_STROKE;
 const COL_TEXT = UI_TEXT_PRIMARY;
 const COL_TEXT_DIM = UI_TEXT_DIM;
@@ -67,11 +83,16 @@ export class GameScene extends Phaser.Scene {
   private world!: World;
   private accumulator = 0;
 
-  // HUD
-  private hudText?: Phaser.GameObjects.Text;
+  // Header (Top Bar) — 2 řádky. Row 1: ikona + AppName + meta + Help.
+  // Row 2: 5 resource bars (E, W, S, F, ◎).
+  private headerIconText?: Phaser.GameObjects.Text;
+  private headerAppText?: Phaser.GameObjects.Text;
+  private headerMetaText?: Phaser.GameObjects.Text;
+  private headerRightText?: Phaser.GameObjects.Text;
+  private headerResourceTexts: Phaser.GameObjects.Text[] = [];
 
-  // Actors + Task queue dynamic text
-  private actorsText?: Phaser.GameObjects.Text;
+  // Actors — per-řádek dvojice Text objektů: {dot, name}. Dot barevně per status.
+  private actorRows: Array<{ dot: Phaser.GameObjects.Text; name: Phaser.GameObjects.Text }> = [];
   private taskQueueText?: Phaser.GameObjects.Text;
 
   // Segment — pozadí rectangle + sprite (volitelný) per tile.
@@ -84,6 +105,18 @@ export class GameScene extends Phaser.Scene {
 
   // Překryv výběru — jeden rect nad spritem, přesouváme ho na selected tile.
   private selectionOverlay?: Phaser.GameObjects.Rectangle;
+
+  // Tooltip manager — single instance per scene, attach přes hover.
+  private tooltips!: TooltipManager;
+
+  // Modal manager — centrovaný dialog (Help, budoucí menu).
+  private modal!: ModalManager;
+
+  // Background system — chunk-based procedural hvězdy/clusters/DSO.
+  // Pozadí je v samostatném Containeru, posouváme ho po ose Y nezávisle na UI.
+  private background!: BackgroundSystem;
+  private cameraY = 0;
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
 
   constructor() {
     super({ key: "game" });
@@ -104,6 +137,10 @@ export class GameScene extends Phaser.Scene {
     // Tile assety (ne-moduly) — floor pro prázdný tile atd.
     // Klíč "tile_floor" = podlaha bez modulu.
     this.load.image("tile_floor", "assets/tiles/floor.png");
+    this.load.image("tile_floor_damaged", "assets/tiles/floor_damaged.png");
+
+    // Orbitální dekor — asteroid prochází nad segmentem.
+    this.load.image("asteroid2", "assets/sprites/asteroid2.png");
 
     // Potlač chyby při chybějícím souboru — máme jen jeden asset zatím.
     this.load.on("loaderror", () => {
@@ -114,50 +151,242 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.world = createInitialWorld();
 
-    this.createHud();
+    this.tooltips = new TooltipManager(this);
+    this.modal = new ModalManager(this);
+
+    // Hvězdné pozadí — samostatný Container, scroll po ose Y nezávisle na UI.
+    // Viewport = mid zone (výška MID_H). Šipky ↑ ↓ posunují cameraY + update.
+    this.background = new BackgroundSystem(this, CANVAS_W, MID_H);
+    this.background.update(this.cameraY);
+
+    // Asteroid v orbitě — střed horizontálně, dlouhý oběh.
+    createAsteroidOrbit(this, CANVAS_W / 2, CANVAS_H);
+
+    this.createHeader();
     this.createActorsZone();
     this.createSegment();
     this.createTaskQueueZone();
     this.createLog();
     this.bindDebugKeys();
+
+    this.attachTooltips();
   }
 
-  // === HUD (top bar) =======================================================
+  // === Tooltips — hover nápovědy napříč UI =================================
+  // Jeden manager, per-element provider. Text je dynamický (provider volaný
+  // při hover), takže se mění podle stavu světa (např. tile kind).
 
-  private createHud(): void {
-    this.add
-      .rectangle(0, 0, CANVAS_W, HUD_H, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, COL_ZONE_BORDER);
+  private attachTooltips(): void {
+    // --- Top Bar ---
+    const leftTooltipProvider = () =>
+      `Identita / adresa / herní čas\n\nVersion: v${pkg.version}\nBelt day = 16 game hours\nTick = 1 game minute\nLOSS triggers highlight inline`;
+    if (this.headerIconText) this.tooltips.attach(this.headerIconText, leftTooltipProvider);
+    if (this.headerAppText) this.tooltips.attach(this.headerAppText, leftTooltipProvider);
+    if (this.headerMetaText) this.tooltips.attach(this.headerMetaText, leftTooltipProvider);
 
-    this.hudText = this.add.text(16, 18, "", {
+    // --- Resource bars tooltips — s kvantifikací subtypů ---
+    // Demo čísla (dokud world.ts není přepsaný na nový model).
+    const resourceTooltips: Array<() => string> = [
+      () =>
+        "Energy — baterie pásu [E]\n" +
+        "0.15 / 12 E  (1.2 %)\n\n" +
+        "Výroba:  +0.30 E/tick  (2× SolarArray)\n" +
+        "Spotřeba: -0.15 E/tick\n" +
+        "Trend: +0.15 E/tick (nabíjí)",
+      () =>
+        "Work — pracovní kapacita [W]\n" +
+        "18 / 32 W  (56 %)\n\n" +
+        "Player:       8 W  (idle)\n" +
+        "Constructor:  3×12 = 36 W\n" +
+        "Hauler:       2×8 = 16 W\n" +
+        "Working nyní: 18 W (2 aktéři)",
+      () =>
+        "Slab — pevné materiály [S]\n" +
+        "45 / 100 S  (45 %)\n\n" +
+        "  Food:         40\n" +
+        "  Metal:         5\n" +
+        "  Components:    0\n\n" +
+        "Spotřeba: 8 food/game day\n" +
+        "(8 osob × 1 food/den)",
+      () =>
+        "Flux — kapaliny + plyny [F]\n" +
+        "80 / 120 F  (67 %)\n\n" +
+        "  Air:        60\n" +
+        "  Water:      15\n" +
+        "  Coolant:     5\n\n" +
+        "Breach = utíká Flux!",
+      () =>
+        "Coin [◎] — měna\n" +
+        "◎ 20\n\n" +
+        "Reprezentuje všechny platby,\n" +
+        "mzdy, směnu, tržní operace.\n" +
+        "Dock cost: ◎ 20\n\n" +
+        "Income/expense history (P2+).",
+    ];
+    for (let i = 0; i < this.headerResourceTexts.length; i++) {
+      const t = this.headerResourceTexts[i];
+      const provider = resourceTooltips[i];
+      if (t && provider) this.tooltips.attach(t, provider);
+    }
+    if (this.headerRightText) {
+      this.tooltips.attach(
+        this.headerRightText,
+        () =>
+          "Shortcuts\n\n[SPACE]  start sim\n[R]      debug: repair done\n[E]      debug: dock complete\n[W]      debug: end day\n[F5]     nový svět\nClick damaged tile = enqueue repair",
+      );
+    }
+
+    // --- Actors zone (per-row) ---
+    const actorsProvider = () => {
+      const w = this.world;
+      const idle = w.actors.filter((a) => a.state === "idle").length;
+      const working = w.actors.filter((a) => a.state === "working").length;
+      return `Kolonisté\n\nTotal: ${w.actors.length}\nIdle: ${idle}\nWorking: ${working}\n\nAuto-assign na nejbližší task.\nKlik na řádek = detail (P2+).`;
+    };
+    for (const row of this.actorRows) {
+      this.tooltips.attach(row.dot, actorsProvider);
+      this.tooltips.attach(row.name, actorsProvider);
+    }
+
+    // --- Task Queue zone (whole block) ---
+    if (this.taskQueueText) {
+      this.tooltips.attach(this.taskQueueText, () => {
+        const w = this.world;
+        const count = w.tasks.length;
+        return `Úkoly\n\nV queue: ${count}\nProgress = WD done / total\n1 Constructor (12 W) = 12 WD / game day\n\nKlik damaged tile = enqueue repair.`;
+      });
+    }
+
+    // --- Tile rects (16× dynamic per kind) ---
+    for (let i = 0; i < this.tileRects.length; i++) {
+      const rect = this.tileRects[i];
+      if (!rect) continue;
+      this.tooltips.attach(rect, () => this.tileTooltipText(i));
+    }
+  }
+
+  private tileTooltipText(idx: number): string | null {
+    const tile = this.world.segment[idx];
+    if (!tile) return null;
+    const row = Math.floor(idx / 8);
+    const col = idx % 8;
+    const pos = `Tile [${row},${col}] idx ${idx}`;
+    if (tile.kind === "empty") {
+      return `${pos}\n\nEmpty hull\nBuild menu přijde v §15 rozšíření.`;
+    }
+    if (tile.kind === "damaged") {
+      return `${pos}\n\nDamaged hull\nWD to repair: ${tile.wd_to_repair}\nClick = enqueue repair task`;
+    }
+    // module_ref
+    const mod = this.world.modules[tile.moduleId];
+    const modName = mod?.kind ?? "?";
+    return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}`;
+  }
+
+  // === Header (Top Bar) ====================================================
+  // Vytvoří oba texty se stejným stylem. Obsah plní renderHeader() per tick —
+  // tím se eliminuje font-flicker při načítání VT323 (oba texty se re-renderují
+  // ve stejné kadenci, ne jen ten dynamický).
+
+  private createHeader(): void {
+    const baseStyle = {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_HUD,
-      color: COL_TEXT,
+    };
+    // --- Row 1: ikona + AppName + meta + Help ---
+    this.headerIconText = this.add.text(16, HUD_ROW_Y, "", {
+      ...baseStyle,
+      color: UI_BRAND_ICON,
     });
+    this.headerAppText = this.add.text(0, HUD_ROW_Y, "", {
+      ...baseStyle,
+      color: COL_TEXT_ACCENT,
+    });
+    this.headerMetaText = this.add.text(0, HUD_ROW_Y, "", {
+      ...baseStyle,
+      color: COL_TEXT_DIM,
+    });
+    this.headerRightText = this.add
+      .text(CANVAS_W - 16, HUD_ROW_Y, "", { ...baseStyle, color: COL_TEXT })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+    this.headerRightText.on("pointerdown", () => this.openHelpModal());
+
+    // 5× resource Text — inline za meta, pozice se přepočítá v renderHeader
+    // podle aktuálních šířek (metrics se mění se setText).
+    for (let i = 0; i < 5; i++) {
+      const t = this.add.text(0, HUD_ROW_Y, "", {
+        ...baseStyle,
+        color: COL_TEXT,
+      });
+      this.headerResourceTexts.push(t);
+    }
+  }
+
+  private openHelpModal(): void {
+    this.modal.open({
+      title: "Help",
+      body:
+        "Shortcuts\n" +
+        "\n" +
+        "[SPACE]  start simulation\n" +
+        "[L]      launch asteroid (random orbit)\n" +
+        "[↑ ↓]    scroll background (test camera)\n" +
+        "[R]      debug: repair done\n" +
+        "[E]      debug: dock complete\n" +
+        "[W]      debug: end day\n" +
+        "[F5]     nový svět\n" +
+        "[ESC]    zavřít tento dialog\n" +
+        "\n" +
+        "Klik na damaged tile = enqueue repair task.\n" +
+        "Hover kdekoli = tooltip s detailem.",
+    });
+  }
+
+  // === Panel header helper — bigger font + underline =======================
+  // Odlišuje hlavičky bočních panelů (ACTORS / TASK QUEUE / INSPECTOR).
+  // Vrací Y pod podtržením — callers tam umístí první řádek obsahu.
+
+  private createPanelHeader(x: number, y: number, text: string, width: number): number {
+    this.add.text(x, y, text, {
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_PANEL_HEADER,
+      color: COL_TEXT_ACCENT,
+    });
+    // Podtržení — tenká linka pod labelem v dim barvě.
+    const underlineY = y + 26;
+    this.add.rectangle(x, underlineY, width, 1, UI_BORDER_DIM).setOrigin(0, 0);
+    return underlineY + 6; // padding pod podtržením
   }
 
   // === Actors (left column) ================================================
 
   private createActorsZone(): void {
+    // Subtle bg fill — odliší zónu od canvas pozadí bez rámečku.
     this.add
-      .rectangle(ACTORS_X, MID_Y, ACTORS_W, MID_H, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, COL_ZONE_BORDER);
+      .rectangle(ACTORS_X, MID_Y, ACTORS_W, MID_H, COL_PANEL_BG, 0.85)
+      .setOrigin(0, 0);
 
-    this.add.text(ACTORS_X + 10, MID_Y + 8, "ACTORS", {
-      fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
-      color: COL_ZONE_LABEL,
-    });
+    const contentY = this.createPanelHeader(ACTORS_X + 10, MID_Y + 8, "ACTORS", ACTORS_W - 20);
 
-    // Dynamický seznam actors — renderActors() přepisuje per frame.
-    this.actorsText = this.add.text(ACTORS_X + 10, MID_Y + 40, "", {
-      fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
-      color: COL_TEXT,
-      lineSpacing: 6,
-    });
+    // Per-řádek dvojice: kulička ● (barevná) + jméno actora (amber).
+    // Počet řádků odpovídá actors ve světě. Kulička jako text, ne graphics —
+    // vyhýbá se mixu text/grafika, čistý Phaser.Text + color.
+    const rowH = 26; // VT323 18px + padding
+    for (let i = 0; i < this.world.actors.length; i++) {
+      const y = contentY + 4 + i * rowH;
+      const dot = this.add.text(ACTORS_X + 10, y, "●", {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_LABEL,
+        color: UI_DOT_IDLE,
+      });
+      const name = this.add.text(ACTORS_X + 10 + 18, y, "", {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_LABEL,
+        color: COL_TEXT,
+      });
+      this.actorRows.push({ dot, name });
+    }
   }
 
   // === Segment (center, 8×2 tiles) =========================================
@@ -192,18 +421,19 @@ export class GameScene extends Phaser.Scene {
   // === TaskQueue + Inspector (right column) ================================
 
   private createTaskQueueZone(): void {
+    // Subtle bg fill — odliší zónu od canvas pozadí bez rámečku.
     this.add
-      .rectangle(TASKQUEUE_X, MID_Y, TASKQUEUE_W, MID_H, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, COL_ZONE_BORDER);
+      .rectangle(TASKQUEUE_X, MID_Y, TASKQUEUE_W, MID_H, COL_PANEL_BG, 0.85)
+      .setOrigin(0, 0);
 
-    this.add.text(TASKQUEUE_X + 10, MID_Y + 8, "TASK QUEUE", {
-      fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
-      color: COL_ZONE_LABEL,
-    });
+    const contentY = this.createPanelHeader(
+      TASKQUEUE_X + 10,
+      MID_Y + 8,
+      "TASK QUEUE",
+      TASKQUEUE_W - 20,
+    );
     // Dynamický task list — renderTaskQueue() přepisuje per frame.
-    this.taskQueueText = this.add.text(TASKQUEUE_X + 10, MID_Y + 40, "", {
+    this.taskQueueText = this.add.text(TASKQUEUE_X + 10, contentY + 4, "", {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_LABEL,
       color: COL_TEXT,
@@ -212,16 +442,15 @@ export class GameScene extends Phaser.Scene {
     });
 
     const divY = MID_Y + MID_H / 2;
-    this.add.line(TASKQUEUE_X, divY, 0, 0, TASKQUEUE_W, 0, COL_ZONE_BORDER).setOrigin(0, 0);
-
-    this.add.text(TASKQUEUE_X + 10, divY + 8, "INSPECTOR", {
-      fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
-      color: COL_ZONE_LABEL,
-    });
+    const inspectorContentY = this.createPanelHeader(
+      TASKQUEUE_X + 10,
+      divY + 8,
+      "INSPECTOR",
+      TASKQUEUE_W - 20,
+    );
 
     // Dynamický text — refresh v renderInspector(). Word wrap, ať se popis vejde.
-    this.inspectorText = this.add.text(TASKQUEUE_X + 10, divY + 32, "", {
+    this.inspectorText = this.add.text(TASKQUEUE_X + 10, inspectorContentY + 4, "", {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_LABEL,
       color: COL_TEXT,
@@ -234,27 +463,19 @@ export class GameScene extends Phaser.Scene {
 
   private createLog(): void {
     const logY = CANVAS_H - LOG_H;
+    // Event log ticker — centrovaný obsah, bez labelu (per UI Layout axiom).
     this.add
-      .rectangle(0, logY, CANVAS_W, LOG_H, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, COL_ZONE_BORDER);
-
-    this.add.text(16, logY + 8, "LOG", {
-      fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
-      color: COL_ZONE_LABEL,
-    });
-
-    this.add.text(
-      16,
-      logY + 28,
-      "[SPACE] start  klikni damaged tile = repair task  [R/E/W] skip phase  [F5] new",
-      {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
-        color: COL_TEXT_DIM,
-      }
-    );
+      .text(
+        CANVAS_W / 2,
+        logY + LOG_H / 2,
+        "[SPACE] start  [L] asteroid  [↑↓] scroll bg (test)  [R/E/W] skip phase  [F5] new",
+        {
+          fontFamily: FONT_FAMILY,
+          fontSize: FONT_SIZE_HINT,
+          color: COL_TEXT_DIM,
+        },
+      )
+      .setOrigin(0.5, 0.5);
   }
 
   // === Debug klávesy =======================================================
@@ -265,6 +486,10 @@ export class GameScene extends Phaser.Scene {
     kb?.on("keydown-R", () => repairDone(this.world));
     kb?.on("keydown-E", () => dockComplete(this.world));
     kb?.on("keydown-W", () => endDay(this.world));
+    kb?.on("keydown-L", () => launchRandomAsteroid(this, CANVAS_W / 2));
+    // Šipky ↑ ↓ — test pozadí: scroll cameraX, BackgroundSystem dogeneruje chunks.
+    // Později se toto přepojí na pohyb podél pásu.
+    this.cursors = kb?.createCursorKeys();
   }
 
   // === Klik na tile → Inspector ============================================
@@ -288,7 +513,20 @@ export class GameScene extends Phaser.Scene {
       this.accumulator -= TICK_MS;
     }
 
-    this.renderHud();
+    // Background scroll test — šipky ↑ ↓ posunují cameraY pozadí nezávisle na UI.
+    // 400 px/s kadence. Směr: ↑ = cameraY klesá (obsah nahoru odplouvá), ↓ opačně.
+    if (this.cursors) {
+      const speed = 400; // px/s
+      let dy = 0;
+      if (this.cursors.up?.isDown) dy -= speed * (delta / 1000);
+      if (this.cursors.down?.isDown) dy += speed * (delta / 1000);
+      if (dy !== 0) {
+        this.cameraY += dy;
+        this.background.update(this.cameraY);
+      }
+    }
+
+    this.renderHeader();
     this.renderSegment();
     this.renderActors();
     this.renderTaskQueue();
@@ -298,16 +536,27 @@ export class GameScene extends Phaser.Scene {
   // === Render Actors a Task Queue (S11 task engine) ========================
 
   private renderActors(): void {
-    if (!this.actorsText) return;
-    // Kompaktní řádek per actor: ▸ id (kind power) state. Working má za sebou taskId.
-    const lines = this.world.actors.map((a: Actor) => {
+    // Demo mapping barevných kuliček — každý actor ukazuje jinou barvu pro
+    // vizuální ladění (A1: demo všech barev). Produkční sémantika přijde
+    // s reálnými statusy (online/NPC/warn/alert).
+    const demoColors = [
+      UI_DOT_ONLINE,   // player
+      UI_DOT_WORKING,  // c1
+      UI_DOT_NPC,      // c2
+      UI_DOT_WARN,     // c3
+      UI_DOT_ALERT,    // h1
+      UI_DOT_IDLE,     // h2
+    ];
+    for (let i = 0; i < this.world.actors.length; i++) {
+      const a = this.world.actors[i];
+      const row = this.actorRows[i];
+      if (!a || !row) continue;
       const def = ACTOR_DEFS[a.kind];
       const tag = a.state === "working" ? `→ ${a.taskId ?? "?"}` : "idle";
-      // Padding aby state sloupec lícoval. id má max 6 znaků (player), pad pravý.
       const idCell = a.id.padEnd(7);
-      return `${idCell}${def.power_w}W  ${tag}`;
-    });
-    this.actorsText.setText(lines);
+      row.dot.setColor(demoColors[i % demoColors.length] ?? UI_DOT_IDLE);
+      row.name.setText(`${idCell}${def.power_w}W  ${tag}`);
+    }
   }
 
   private renderTaskQueue(): void {
@@ -333,21 +582,46 @@ export class GameScene extends Phaser.Scene {
     this.taskQueueText.setColor(COL_TEXT);
   }
 
-  private renderHud(): void {
-    if (!this.hudText) return;
+  private renderHeader(): void {
+    if (
+      !this.headerIconText ||
+      !this.headerAppText ||
+      !this.headerMetaText ||
+      !this.headerRightText
+    )
+      return;
     const w = this.world;
-    const wallSec = (w.tick * TICK_MS) / 1000;
+    const time = formatGameTime(w.tick);
 
-    const line = [
-      `⊙ VOIDSPAN`,
-      `AIR ${w.resources.air.toFixed(1).padStart(5)}%`,
-      `FOOD ${w.resources.food.toFixed(1).padStart(5)}`,
-      `KREDO ${String(w.resources.kredo).padStart(3)}`,
-      `TICK ${String(w.tick).padStart(4)}`,
-      `${wallSec.toFixed(1)}s`,
-      `// ${phaseLabel(w.phase)}${w.loss_reason ? ` (${w.loss_reason})` : ""}`,
-    ].join("   ");
-    this.hudText.setText(line);
+    // Všechny segmenty header-u procházejí setText každý tick, ať font-load
+    // stabilně chytne celou řadu najednou.
+    this.headerIconText.setText("⊙");
+    this.headerAppText.setX(this.headerIconText.x + this.headerIconText.width);
+    this.headerAppText.setText("VOIDSPAN");
+    this.headerMetaText.setX(this.headerAppText.x + this.headerAppText.width + 8);
+    this.headerMetaText.setText(
+      `v${pkg.version} Teegarden.Belt1.Seg042 ${time}${w.loss_reason ? ` // LOSS (${w.loss_reason})` : ""}`,
+    );
+    this.headerRightText.setText("Help");
+
+    // Resource bary (demo seedy — dokud world.ts nepřepíšeme na nový model).
+    // TODO: napojit na w.resources.energy/work/slab/flux/coin.
+    const parts: string[] = [
+      formatResource(0.15, 12, "E"),
+      formatResource(18, 32, "W"),
+      formatResource(45, 100, "S"),
+      formatResource(80, 120, "F"),
+      `◎ ${formatScalar(20)}`,
+    ];
+    // Inline za meta, gap 24 px mezi položkami.
+    let x = this.headerMetaText.x + this.headerMetaText.width + 32;
+    for (let i = 0; i < parts.length; i++) {
+      const t = this.headerResourceTexts[i];
+      if (!t) continue;
+      t.setX(x);
+      t.setText(parts[i]);
+      x += t.width + 24;
+    }
   }
 
   private renderSegment(): void {
@@ -357,9 +631,10 @@ export class GameScene extends Phaser.Scene {
       if (!rect || !tile) continue;
 
       if (tile.kind === "damaged") {
-        // Damaged bez assetu zatím — červená poloprůhledná vrstva přes rect.
-        rect.setFillStyle(COL_TILE_DAMAGED, 0.6);
-        this.removeSprite(i);
+        // Damaged tile = floor_damaged asset (textura trhliny) + tenký červený
+        // stroke jako status-signál (urgentnost nese UI, ne asset sám).
+        rect.setFillStyle(0x000000, 0);
+        this.drawTileSprite(i, "tile_floor_damaged");
       } else if (tile.kind === "empty") {
         rect.setFillStyle(0x000000, 0); // průhledné pozadí, sprite je celý obsah
         this.drawTileSprite(i, "tile_floor");

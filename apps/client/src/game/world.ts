@@ -28,6 +28,18 @@ export const FOOD_DRAIN_PER_TICK = 8 / 960;
 // (souhlasí s CAL-A1b optimum). Tři constructory dohromady ~67 s.
 export const TICKS_PER_GAME_DAY = 960;
 
+// Formát herního času — AXIOM: `T:D.HH:MM` (GLOSSARY → UI Layout).
+// D = den od 0, HH 00–15 (16h den), MM 00–59. Sekundy nezobrazujeme —
+// granularita tiku = 1 game minuta (1 tick = 60 game sec), SS by byl stále 00.
+export function formatGameTime(tick: number): string {
+  const gameMin = tick; // 1 tick = 1 game minuta
+  const day = Math.floor(gameMin / (16 * 60));
+  const minInDay = gameMin % (16 * 60);
+  const hh = String(Math.floor(minInDay / 60)).padStart(2, "0");
+  const mm = String(minInDay % 60).padStart(2, "0");
+  return `T:${day}.${hh}:${mm}`;
+}
+
 // Predefinovaný index damaged tile při phase_a (§14 side-effect).
 // Zvolíme T6 (row 0, col 5) — mimo centrum, aby šlo vidět vizuálně.
 export const DAMAGED_TILE_IDX = 5;
