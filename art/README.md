@@ -1,6 +1,8 @@
-# art/
+# art/ — ⊙ Voidspan
 
-Zdrojové grafické assety Voidspanu. **40×40 native**, pixel art ve stylu Dune II (1992).
+Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art ve stylu Dune II (1992).
+
+**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, font **VT323**, tile scale 2×.
 
 ## Struktura
 
@@ -31,6 +33,21 @@ pnpm build:assets
 Script (`scripts/build-assets.ps1`) projde celé `art/`, aplikuje chroma key (magenta → alpha), zrcadlí strukturu do `apps/client/public/assets/`, a vyčistí orphany (soubory v `public/assets/`, ke kterým už neexistuje zdroj).
 
 Po buildu: **Ctrl+Shift+R** v prohlížeči (kvůli PNG cache).
+
+## Palette compliance — `pnpm recolor:art`
+
+Každý source PNG musí používat pouze barvy z **Voidspan 16** (viz style-guide §1). Pokud asset vznikl v editoru bez palette swatcheru (nebo předchází definici palety), snapni ho na nejbližší paletu:
+
+```bash
+pnpm recolor:art -- -SrcPath art/<kat>/<name>.png -DstPath art/<kat>/<name>.png
+```
+
+Script (`scripts/recolor-to-palette.ps1`) projde pixel po pixelu, najde nejbližší paletovou barvu (RGB Euklid) a vytiskne audit:
+- `touched pixels` — kolik ne-transparentních pixelů se přerenderovalo
+- `max distance before snap` — 0 = exact, 30+ = výrazný shift (asset byl významně mimo paletu)
+- per-color histogram — které paletové barvy dominují
+
+Po recoloru pusť `pnpm build:assets` pro ship.
 
 ## Workflow s AI
 

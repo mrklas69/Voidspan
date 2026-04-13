@@ -1,4 +1,4 @@
-# SCENARIO.md — Voidspan
+# SCENARIO.md — ⊙ Voidspan
 
 Narativní scénář hry. Hybridní model: **autorská páteř + scripted eventy + procedurální generace + hráčská emergence**.
 

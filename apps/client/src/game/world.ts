@@ -2,8 +2,8 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně (budoucí unit testy).
 
-import type { World, Tile, Phase, LossReason, Module } from "./model";
-import { MODULE_DEFS } from "./model";
+import type { World, Tile, Phase, LossReason, Actor, Task, ActorKind } from "./model";
+import { ACTOR_DEFS, TASK_DEFS } from "./model";
 
 // === Konstanty (§10 seed hodnoty) ===
 
@@ -21,6 +21,13 @@ export const AIR_DRAIN_PER_TICK = 100 / AIR_TIMEOUT_TICKS;
 // Úbytek: 8 jídla / 960 ticků = 1/120 za tick.
 export const FOOD_DRAIN_PER_TICK = 8 / 960;
 
+// 1 game day = 16 game hours × 15 s wall = 240 s = 960 ticků (viz FOOD_DRAIN výše).
+// WD = "watt-day" = 1 W actor pracující 1 game day. Per-tick progress jednoho actora:
+//   wd_per_tick = power_w * (1 / TICKS_PER_GAME_DAY)
+// Příklad: Constructor (12 W) sám opraví 10 WD damaged tile za 800 ticků = 200 s wall ≈ 3.3 min
+// (souhlasí s CAL-A1b optimum). Tři constructory dohromady ~67 s.
+export const TICKS_PER_GAME_DAY = 960;
+
 // Predefinovaný index damaged tile při phase_a (§14 side-effect).
 // Zvolíme T6 (row 0, col 5) — mimo centrum, aby šlo vidět vizuálně.
 export const DAMAGED_TILE_IDX = 5;
@@ -35,6 +42,17 @@ export function createInitialWorld(): World {
   // (kdybychom dali `new Array(16).fill(...)`, sdílí se reference — past v TS).
   const segment: Tile[] = Array.from({ length: 16 }, () => ({ kind: "empty" }));
 
+  // Actor pool §10: 3× Constructor + 2× Hauler + 1× Player. Všichni idle při bootu.
+  // Pojmenování id čitelně (player/c1/c2/c3/h1/h2) — usnadní debug v Inspectoru/logu.
+  const actors: Actor[] = [
+    { id: "player", kind: "player", state: "idle" },
+    { id: "c1", kind: "constructor", state: "idle" },
+    { id: "c2", kind: "constructor", state: "idle" },
+    { id: "c3", kind: "constructor", state: "idle" },
+    { id: "h1", kind: "hauler", state: "idle" },
+    { id: "h2", kind: "hauler", state: "idle" },
+  ];
+
   return {
     tick: 0,
     phase: "boot",
@@ -45,9 +63,88 @@ export function createInitialWorld(): World {
     },
     segment,
     modules: {},
-    actors: [],
+    actors,
     tasks: [],
+    next_task_id: 1,
   };
+}
+
+// === Task engine ===
+
+// Vytvoří repair task pro damaged tile. Idempotent — pokud už task existuje na ten samý
+// tile, vrátí false a nic nepřidá (klikneš podruhé, nic se neduplikuje).
+// Vrací true při úspěšném enqueue, false jinak (tile není damaged / už má task).
+export function enqueueRepairTask(w: World, tileIdx: number): boolean {
+  const tile = w.segment[tileIdx];
+  if (!tile || tile.kind !== "damaged") return false;
+  const exists = w.tasks.some(
+    (t) => t.kind === "repair" && t.target.tileIdx === tileIdx
+  );
+  if (exists) return false;
+
+  w.tasks.push({
+    id: `task_${w.next_task_id++}`,
+    kind: "repair",
+    target: { tileIdx },
+    wd_total: tile.wd_to_repair,
+    wd_done: 0,
+    assigned: [],
+    priority: 1,
+  });
+  return true;
+}
+
+// Auto-assign: každý idle actor dostane první kompatibilní task. KISS — bez stropu
+// počtu actors per task (saturace), bez priority sortu (zatím všechny priority = 1).
+function assignIdleActors(w: World): void {
+  for (const actor of w.actors) {
+    if (actor.state !== "idle") continue;
+    // Najdi první task, který tenhle actor kind smí dělat.
+    const task = w.tasks.find((t) =>
+      TASK_DEFS[t.kind].allowed_actors.includes(actor.kind as ActorKind)
+    );
+    if (!task) continue;
+    actor.state = "working";
+    actor.taskId = task.id;
+    task.assigned.push(actor.id);
+  }
+}
+
+// Drain WD per task podle Σ power_w přiřazených actors. Po dokončení aplikuj efekt.
+function progressTasks(w: World): void {
+  // Procházíme přes index, abychom mohli bezpečně mazat hotové (iterate odzadu).
+  for (let i = w.tasks.length - 1; i >= 0; i--) {
+    const task = w.tasks[i]!;
+    if (task.assigned.length === 0) continue;
+
+    // Σ power_w přiřazených actors. Pokud actor zmizí (ne náš případ v P1), filtruj.
+    let powerSum = 0;
+    for (const aid of task.assigned) {
+      const a = w.actors.find((x) => x.id === aid);
+      if (a && a.state === "working") powerSum += ACTOR_DEFS[a.kind].power_w;
+    }
+    task.wd_done += powerSum / TICKS_PER_GAME_DAY;
+
+    if (task.wd_done >= task.wd_total) {
+      completeTask(w, task);
+      w.tasks.splice(i, 1);
+    }
+  }
+}
+
+function completeTask(w: World, task: Task): void {
+  // Aplikuj efekt podle kindu. P1: jen repair.
+  if (task.kind === "repair" && task.target.tileIdx !== undefined) {
+    w.segment[task.target.tileIdx] = { kind: "empty" };
+  }
+  // Uvolni actors zpět do idle.
+  for (const aid of task.assigned) {
+    const a = w.actors.find((x) => x.id === aid);
+    if (a) {
+      a.state = "idle";
+      a.taskId = undefined;
+    }
+  }
 }
 
 // === FSM přechody ===
@@ -101,6 +198,17 @@ export function stepWorld(w: World): void {
 
   w.tick += 1;
 
+  // Task engine: nejprve přiřaď idle actors, pak posuň progress všech tasků.
+  // Dokončené tasky aplikují efekt (např. damaged → empty) a uvolní actors.
+  assignIdleActors(w);
+  progressTasks(w);
+
+  // Auto FSM: pokud jsme v phase_a a v segmentu už není žádný damaged tile,
+  // přepni do phase_b. Nahrazuje (ale neruší) debug klávesu R.
+  if (w.phase === "phase_a" && !w.segment.some((t) => t.kind === "damaged")) {
+    w.phase = "phase_b";
+  }
+
   // Air drain: od phase_a do phase_c (po phase_b by měla regenerovat, ale S9 KISS).
   // Pro teď: v phase_a klesá, v phase_b+ stagnuje (oprava drží). Odpovídá §14.
   if (w.phase === "phase_a") {
@@ -122,32 +230,6 @@ export function stepWorld(w: World): void {
 }
 
 // === Helpers pro debug HUD ===
-
-// === Demo helper (S10) ===
-
-// Naplní segment 16 SolarArray moduly (1×1). Pouze pro vizuální demo renderu
-// a kalibraci asset pipeline — nesouvisí s herní logikou. Debug trigger M.
-export function fillSegmentWithSolars(w: World): void {
-  const def = MODULE_DEFS.SolarArray;
-  w.modules = {};
-  for (let i = 0; i < 16; i++) {
-    const id = `mod_solar_${i}`;
-    const mod: Module = {
-      id,
-      kind: "SolarArray",
-      rootIdx: i,
-      status: "online",
-      hp: def.max_hp,
-      progress_wd: 0,
-    };
-    w.modules[id] = mod;
-    w.segment[i] = {
-      kind: "module_ref",
-      moduleId: id,
-      rootOffset: { dx: 0, dy: 0 },
-    };
-  }
-}
 
 export function phaseLabel(phase: Phase): string {
   // Mapa pro čitelný HUD. U `loss` se důvod doplňuje mimo.

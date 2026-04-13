@@ -1,4 +1,4 @@
-# SPECIFICATION.md — Voidspan
+# SPECIFICATION.md — ⊙ Voidspan
 
 **Souhrnná zadávací dokumentace projektu Voidspan.**
 

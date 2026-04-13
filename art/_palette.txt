@@ -1,0 +1,20 @@
+; Voidspan 16 - Hull & Amber
+; Axiom palette. Load in Paint.NET: Window -> Colors -> More -> Palette menu -> Open
+; Format: AARRGGBB (uppercase)
+
+FF0A0A10   ; 01 void-black
+FF1A1E28   ; 02 hull-dark
+FF2E3440   ; 03 hull-mid
+FF4C5462   ; 04 hull-light
+FF6A7080   ; 05 metal-gray
+FF8A8E98   ; 06 metal-light
+FFC0C4CC   ; 07 bright-metal
+FFFF4848   ; 08 alert-red
+FFFF8020   ; 09 warn-orange
+FFFFC030   ; 10 warn-amber
+FF60C060   ; 11 ok-green
+FF4088C8   ; 12 info-blue
+FF080808   ; 13 bg-near-black
+FFB08030   ; 14 amber-dim
+FFFFD060   ; 15 amber-bright
+FFFFFFFF   ; 16 text-white

@@ -12,5 +12,7 @@ export default defineConfig({
     target: "es2022",
     outDir: "dist",
     sourcemap: true,
+    // Phaser sám má ~1.4 MB min; default 500 kB warning je pro POC bez splittingu zbytečný šum.
+    chunkSizeWarningLimit: 1500,
   },
 });

@@ -1,4 +1,4 @@
-# TODO.md — Voidspan
+# TODO.md — ⊙ Voidspan
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 

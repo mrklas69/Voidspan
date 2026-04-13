@@ -10,12 +10,24 @@ import {
   repairDone,
   dockComplete,
   endDay,
-  fillSegmentWithSolars,
+  enqueueRepairTask,
   phaseLabel,
   TICK_MS,
 } from "./world";
-import type { World, Module } from "./model";
-import { MODULE_DEFS } from "./model";
+import type { World, Module, Actor, Task } from "./model";
+import { MODULE_DEFS, ACTOR_DEFS } from "./model";
+import {
+  UI_BORDER_DIM,
+  UI_TEXT_PRIMARY,
+  UI_TEXT_DIM,
+  UI_TEXT_ACCENT,
+  UI_SELECT_STROKE,
+  UI_TILE_DAMAGED,
+  FONT_FAMILY,
+  FONT_SIZE_HUD,
+  FONT_SIZE_LABEL,
+  FONT_SIZE_HINT,
+} from "./palette";
 
 // === Layout konstanty §16 (1280×720 canvas) ===
 
@@ -41,15 +53,15 @@ const SEGMENT_H = 2 * TILE_PX; // 160
 const SEGMENT_X = (CANVAS_W - SEGMENT_W) / 2; // 320
 const SEGMENT_Y = MID_Y + (MID_H - SEGMENT_H) / 2; // 340
 
-// === Barvy ===
-
-const COL_ZONE_BORDER = 0x333333;
-const COL_ZONE_LABEL = "#555555";
-const COL_TILE_DAMAGED = 0x6b2020;
-const COL_TILE_SELECTED = 0xffcc33;
-const COL_TEXT = "#d0d0d0";
-const COL_TEXT_DIM = "#888888";
-const COL_TEXT_ACCENT = "#ffcc33";
+// === Barvy — přes palette.ts (axiom Voidspan 16) ===
+// Lokální aliasy drží GameScene-specific jména, ale hodnoty jdou z palety.
+const COL_ZONE_BORDER = UI_BORDER_DIM;
+const COL_ZONE_LABEL = UI_TEXT_DIM;
+const COL_TILE_DAMAGED = UI_TILE_DAMAGED;
+const COL_TILE_SELECTED = UI_SELECT_STROKE;
+const COL_TEXT = UI_TEXT_PRIMARY;
+const COL_TEXT_DIM = UI_TEXT_DIM;
+const COL_TEXT_ACCENT = UI_TEXT_ACCENT;
 
 export class GameScene extends Phaser.Scene {
   private world!: World;
@@ -57,6 +69,10 @@ export class GameScene extends Phaser.Scene {
 
   // HUD
   private hudText?: Phaser.GameObjects.Text;
+
+  // Actors + Task queue dynamic text
+  private actorsText?: Phaser.GameObjects.Text;
+  private taskQueueText?: Phaser.GameObjects.Text;
 
   // Segment — pozadí rectangle + sprite (volitelný) per tile.
   private tileRects: Phaser.GameObjects.Rectangle[] = [];
@@ -115,8 +131,8 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, COL_ZONE_BORDER);
 
     this.hudText = this.add.text(16, 18, "", {
-      fontFamily: "monospace",
-      fontSize: "16px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_HUD,
       color: COL_TEXT,
     });
   }
@@ -130,25 +146,17 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, COL_ZONE_BORDER);
 
     this.add.text(ACTORS_X + 10, MID_Y + 8, "ACTORS", {
-      fontFamily: "monospace",
-      fontSize: "12px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
       color: COL_ZONE_LABEL,
     });
 
-    const rows = [
-      "▸ Player   8 W",
-      "▸ C1       12 W",
-      "▸ C2       12 W",
-      "▸ C3       12 W",
-      "▸ H1        8 W",
-      "▸ H2        8 W",
-    ];
-    rows.forEach((text, i) => {
-      this.add.text(ACTORS_X + 10, MID_Y + 40 + i * 24, text, {
-        fontFamily: "monospace",
-        fontSize: "12px",
-        color: COL_TEXT_DIM,
-      });
+    // Dynamický seznam actors — renderActors() přepisuje per frame.
+    this.actorsText = this.add.text(ACTORS_X + 10, MID_Y + 40, "", {
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
+      color: COL_TEXT,
+      lineSpacing: 6,
     });
   }
 
@@ -190,29 +198,32 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, COL_ZONE_BORDER);
 
     this.add.text(TASKQUEUE_X + 10, MID_Y + 8, "TASK QUEUE", {
-      fontFamily: "monospace",
-      fontSize: "12px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
       color: COL_ZONE_LABEL,
     });
-    this.add.text(TASKQUEUE_X + 10, MID_Y + 40, "— prázdno —", {
-      fontFamily: "monospace",
-      fontSize: "12px",
-      color: COL_TEXT_DIM,
+    // Dynamický task list — renderTaskQueue() přepisuje per frame.
+    this.taskQueueText = this.add.text(TASKQUEUE_X + 10, MID_Y + 40, "", {
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
+      color: COL_TEXT,
+      wordWrap: { width: TASKQUEUE_W - 20 },
+      lineSpacing: 4,
     });
 
     const divY = MID_Y + MID_H / 2;
     this.add.line(TASKQUEUE_X, divY, 0, 0, TASKQUEUE_W, 0, COL_ZONE_BORDER).setOrigin(0, 0);
 
     this.add.text(TASKQUEUE_X + 10, divY + 8, "INSPECTOR", {
-      fontFamily: "monospace",
-      fontSize: "12px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
       color: COL_ZONE_LABEL,
     });
 
     // Dynamický text — refresh v renderInspector(). Word wrap, ať se popis vejde.
     this.inspectorText = this.add.text(TASKQUEUE_X + 10, divY + 32, "", {
-      fontFamily: "monospace",
-      fontSize: "12px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
       color: COL_TEXT,
       wordWrap: { width: TASKQUEUE_W - 20 },
       lineSpacing: 4,
@@ -229,18 +240,18 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, COL_ZONE_BORDER);
 
     this.add.text(16, logY + 8, "LOG", {
-      fontFamily: "monospace",
-      fontSize: "12px",
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_LABEL,
       color: COL_ZONE_LABEL,
     });
 
     this.add.text(
       16,
       logY + 28,
-      "[SPACE] start  [R] repair  [E] dock  [W] end day  [M] fill with solars  [F5] new game",
+      "[SPACE] start  klikni damaged tile = repair task  [R/E/W] skip phase  [F5] new",
       {
-        fontFamily: "monospace",
-        fontSize: "11px",
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_HINT,
         color: COL_TEXT_DIM,
       }
     );
@@ -254,14 +265,18 @@ export class GameScene extends Phaser.Scene {
     kb?.on("keydown-R", () => repairDone(this.world));
     kb?.on("keydown-E", () => dockComplete(this.world));
     kb?.on("keydown-W", () => endDay(this.world));
-    // M — vizuální demo, vyplň segment 16 solary (neherní stav).
-    kb?.on("keydown-M", () => fillSegmentWithSolars(this.world));
   }
 
   // === Klik na tile → Inspector ============================================
 
   private selectTile(idx: number): void {
     this.selectedTileIdx = idx;
+    // Damaged tile = klik je zároveň enqueue repair task. Idempotent —
+    // druhý klik na ten samý damaged nic nepřidá. Empty/module_ref tile = jen select.
+    const tile = this.world.segment[idx];
+    if (tile?.kind === "damaged") {
+      enqueueRepairTask(this.world, idx);
+    }
   }
 
   // === Tick loop + render ==================================================
@@ -275,7 +290,47 @@ export class GameScene extends Phaser.Scene {
 
     this.renderHud();
     this.renderSegment();
+    this.renderActors();
+    this.renderTaskQueue();
     this.renderInspector();
+  }
+
+  // === Render Actors a Task Queue (S11 task engine) ========================
+
+  private renderActors(): void {
+    if (!this.actorsText) return;
+    // Kompaktní řádek per actor: ▸ id (kind power) state. Working má za sebou taskId.
+    const lines = this.world.actors.map((a: Actor) => {
+      const def = ACTOR_DEFS[a.kind];
+      const tag = a.state === "working" ? `→ ${a.taskId ?? "?"}` : "idle";
+      // Padding aby state sloupec lícoval. id má max 6 znaků (player), pad pravý.
+      const idCell = a.id.padEnd(7);
+      return `${idCell}${def.power_w}W  ${tag}`;
+    });
+    this.actorsText.setText(lines);
+  }
+
+  private renderTaskQueue(): void {
+    if (!this.taskQueueText) return;
+    const tasks = this.world.tasks;
+    if (tasks.length === 0) {
+      this.taskQueueText.setText("— prázdno —");
+      this.taskQueueText.setColor(COL_TEXT_DIM);
+      return;
+    }
+    // Per task: id + kind + target + progress %. KISS, žádné drag&drop ani cancel.
+    const lines = tasks.flatMap((t: Task) => {
+      const pct = Math.min(100, (t.wd_done / t.wd_total) * 100);
+      const target =
+        t.target.tileIdx !== undefined ? `tile ${t.target.tileIdx}` : "—";
+      const bar = renderBar(pct, 12);
+      return [
+        `${t.id}  ${t.kind}  ${target}`,
+        `  ${bar} ${pct.toFixed(0)}%  (${t.assigned.length}× actor)`,
+      ];
+    });
+    this.taskQueueText.setText(lines);
+    this.taskQueueText.setColor(COL_TEXT);
   }
 
   private renderHud(): void {
@@ -284,7 +339,7 @@ export class GameScene extends Phaser.Scene {
     const wallSec = (w.tick * TICK_MS) / 1000;
 
     const line = [
-      `VOIDSPAN`,
+      `⊙ VOIDSPAN`,
       `AIR ${w.resources.air.toFixed(1).padStart(5)}%`,
       `FOOD ${w.resources.food.toFixed(1).padStart(5)}`,
       `KREDO ${String(w.resources.kredo).padStart(3)}`,
@@ -408,4 +463,11 @@ export class GameScene extends Phaser.Scene {
       this.inspectorText.setColor(COL_TEXT);
     }
   }
+}
+
+// ASCII progress bar pro task queue. width = počet znaků celkem.
+// Příklad: renderBar(50, 10) → "█████░░░░░"
+function renderBar(pct: number, width: number): string {
+  const filled = Math.round((pct / 100) * width);
+  return "█".repeat(filled) + "░".repeat(width - filled);
 }

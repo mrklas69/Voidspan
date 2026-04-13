@@ -1,4 +1,4 @@
-# CLAUDE.md — Voidspan
+# CLAUDE.md — ⊙ Voidspan
 
 Projektové instrukce. Rozšiřují globální `~/.claude/CLAUDE.md`.
 

@@ -1,4 +1,4 @@
-# IDEAS.md — Voidspan
+# IDEAS.md — ⊙ Voidspan
 
 Raw nápady a inspirace. Nezralé myšlenky patří sem. Konkrétní úkoly → `TODO.md`. Ustavené pojmy → `GLOSSARY.md`. Narativní scénář → `SCENARIO.md`.
 

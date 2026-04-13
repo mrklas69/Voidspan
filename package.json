@@ -8,7 +8,9 @@
     "build": "pnpm --filter @voidspan/client build",
     "preview": "pnpm --filter @voidspan/client preview",
     "test": "pnpm --filter @voidspan/client test",
-    "build:assets": "powershell -ExecutionPolicy Bypass -File scripts/build-assets.ps1"
+    "build:assets": "powershell -ExecutionPolicy Bypass -File scripts/build-assets.ps1",
+    "recolor:art": "powershell -ExecutionPolicy Bypass -File scripts/recolor-to-palette.ps1",
+    "export:palette": "powershell -ExecutionPolicy Bypass -File scripts/export-palette.ps1"
   },
   "packageManager": "pnpm@10.33.0"
 }

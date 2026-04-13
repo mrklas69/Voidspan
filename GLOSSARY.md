@@ -1,4 +1,4 @@
-# GLOSSARY.md — Voidspan
+# GLOSSARY.md — ⊙ Voidspan
 
 Jediný zdroj pravdy pro klíčové pojmy projektu. Když se pojem mění, mění se zde. Ostatní dokumenty (IDEAS, TODO, SCENARIO, sessions, kód) se na tento glosář odvolávají.
 

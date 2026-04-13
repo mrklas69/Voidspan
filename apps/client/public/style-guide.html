@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <title>⊙ Voidspan — Grafický manuál</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #080808;
+        color: #ffd060;
+        font-family: "VT323", ui-monospace, Consolas, monospace;
+      }
+      body {
+        padding: 32px 48px 96px;
+        font-size: 20px;
+      }
+      h1 {
+        color: #ffffff;
+        font-weight: normal;
+        font-size: 42px;
+        margin: 0 0 8px 0;
+        letter-spacing: 2px;
+      }
+      .subtitle {
+        color: #b08030;
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      .axiom {
+        color: #4088c8;
+        font-size: 18px;
+        margin-bottom: 32px;
+      }
+      h2 {
+        color: #ffffff;
+        font-weight: normal;
+        font-size: 28px;
+        letter-spacing: 1px;
+        margin: 48px 0 12px 0;
+        border-bottom: 1px solid #2e3440;
+        padding-bottom: 4px;
+      }
+      h3 {
+        color: #ffd060;
+        font-weight: normal;
+        font-size: 22px;
+        letter-spacing: 1px;
+        margin: 24px 0 8px 0;
+      }
+      code {
+        color: #ffffff;
+        background: #1a1e28;
+        padding: 1px 6px;
+      }
+      .note {
+        color: #b08030;
+        font-size: 18px;
+        line-height: 1.5;
+        margin: 12px 0;
+      }
+
+      /* ========== Paleta ========== */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .swatch {
+        display: flex;
+        flex-direction: column;
+        background: #1a1e28;
+        border: 1px solid #2e3440;
+      }
+      .chip { height: 100px; width: 100%; }
+      .meta { padding: 10px 14px; color: #ffd060; }
+      .idx  { color: #b08030; font-size: 18px; }
+      .hex  { color: #ffffff; font-size: 22px; }
+      .role { color: #b08030; font-size: 18px; }
+      .strip { margin-top: 16px; display: flex; height: 32px; border: 1px solid #2e3440; }
+      .strip > div { flex: 1 1 auto; }
+
+      /* ========== Typografie ========== */
+      .type-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 16px;
+        align-items: baseline;
+        padding: 10px 0;
+        border-bottom: 1px solid #1a1e28;
+      }
+      .type-row .label { color: #b08030; font-size: 18px; }
+      .type-sample { color: #ffd060; }
+      .pangram {
+        margin-top: 16px;
+        padding: 16px 20px;
+        background: #1a1e28;
+        border: 1px solid #2e3440;
+      }
+      .pangram .big { color: #ffffff; font-size: 32px; line-height: 1.1; }
+      .pangram .mid { color: #ffd060; font-size: 22px; margin-top: 6px; }
+      .pangram .sm  { color: #b08030; font-size: 18px; margin-top: 4px; }
+
+      /* ========== Tile grid ========== */
+      .tile-demo {
+        display: flex;
+        gap: 32px;
+        align-items: flex-start;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .tile-demo .cell {
+        background: #1a1e28;
+        border: 1px solid #2e3440;
+        padding: 12px;
+        text-align: center;
+      }
+      .tile-demo .cell .cap { color: #b08030; font-size: 16px; margin-top: 6px; }
+      .checker {
+        background-image:
+          linear-gradient(45deg, #2e3440 25%, transparent 25%),
+          linear-gradient(-45deg, #2e3440 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #2e3440 75%),
+          linear-gradient(-45deg, transparent 75%, #2e3440 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+        image-rendering: pixelated;
+      }
+
+      /* ========== Status badges ========== */
+      .badges { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+      .badge {
+        padding: 4px 12px;
+        border: 1px solid;
+        font-size: 18px;
+      }
+      .b-alert { color: #ff4848; border-color: #ff4848; }
+      .b-warn-o { color: #ff8020; border-color: #ff8020; }
+      .b-warn-a { color: #ffc030; border-color: #ffc030; }
+      .b-ok    { color: #60c060; border-color: #60c060; }
+      .b-info  { color: #4088c8; border-color: #4088c8; }
+
+      /* ========== Progress bar ========== */
+      .pb-ascii { font-size: 22px; color: #ffd060; }
+      .pb-ascii .dim { color: #4c5462; }
+
+      /* 8-bit pixel bar — segmentovaný, chunky, bez antialiasingu.
+         Každý segment = solid barva. 2× scale → screen pixel = 2× native. */
+      .pb-row {
+        display: grid;
+        grid-template-columns: 80px 1fr 180px;
+        gap: 16px;
+        align-items: center;
+        padding: 6px 0;
+      }
+      .pb-row .pct { color: #b08030; font-size: 18px; text-align: right; padding-right: 8px; }
+      .pb-row .cap { color: #b08030; font-size: 18px; }
+      .pb-bar {
+        display: inline-flex;
+        gap: 2px;
+        padding: 2px;
+        background: #1a1e28;
+        border: 2px solid #2e3440;
+        image-rendering: pixelated;
+      }
+      .pb-bar .seg {
+        width: 14px;
+        height: 20px;
+        background: #2e3440;
+      }
+      .seg-fill-amber  { background: #ffd060 !important; }
+      .seg-fill-warn-a { background: #ffc030 !important; }
+      .seg-fill-warn-o { background: #ff8020 !important; }
+      .seg-fill-alert  { background: #ff4848 !important; }
+      .seg-fill-info   { background: #4088c8 !important; }
+      /* Solid varianta (bez segmentů) — jeden průchozí pruh s bevel borderem. */
+      .pb-solid {
+        position: relative;
+        width: 220px;
+        height: 22px;
+        background: #2e3440;
+        border-top: 2px solid #1a1e28;
+        border-left: 2px solid #1a1e28;
+        border-right: 2px solid #4c5462;
+        border-bottom: 2px solid #4c5462;
+      }
+      .pb-solid .fill {
+        height: 100%;
+        background: #ffd060;
+      }
+
+      /* ========== Sample HUD ========== */
+      .sample {
+        margin-top: 16px;
+        padding: 20px 24px;
+        background: #080808;
+        border: 1px solid #2e3440;
+      }
+      .sample .hud   { color: #ffd060; font-size: 22px; }
+      .sample .dim   { color: #b08030; }
+      .sample .alert { color: #ff4848; }
+      .sample .warn  { color: #ffc030; }
+      .sample .info  { color: #4088c8; }
+    </style>
+  </head>
+  <body>
+    <h1>⊙ VOIDSPAN — GRAFICKÝ MANUÁL</h1>
+    <div class="subtitle">závazný vzorník · VT323 + paleta Hull &amp; Amber · native 40×40 · scale 2×</div>
+    <div class="axiom">AXIOM · zdroj pravdy pro UI + asset pipeline · změny procházejí review</div>
+
+    <!-- ==================== PALETA ==================== -->
+    <h2>1. Paleta — Voidspan 16 · Hull &amp; Amber</h2>
+    <div class="note">
+      16 barev, 3 vrstvy. Pocta Dune II v disciplíně (omezená, tlumená paleta + amber UI);
+      hue-anchor opačný — studený vesmírný kov místo pouštního tepla. Tepelný akcent
+      (red/orange/amber) vyskočí na šedém pozadí — cinematic důraz na status/krizi.
+    </div>
+
+    <h3>01–07 · Svět — studený kov, void</h3>
+    <div class="grid" id="grid-world"></div>
+
+    <h3>08–12 · Status / život — teplé akcenty</h3>
+    <div class="grid" id="grid-status"></div>
+
+    <h3>13–16 · UI / terminál — amber na tmavém</h3>
+    <div class="grid" id="grid-ui"></div>
+
+    <h3>Celá paleta v pruhu (16×1 px — axiom target, save do <code>art/_palette.png</code>)</h3>
+    <div class="strip" id="strip"></div>
+
+    <!-- ==================== TYPOGRAFIE ==================== -->
+    <h2>2. Typografie — VT323</h2>
+    <div class="note">
+      Jediný font napříč UI (KISS). VT323 je bitmap CRT-terminál font z Google Fonts (OFL).
+      Sedí k suchému military/tech tónu (§17 onboarding) a k amber-na-tmavém UI vrstvě
+      palety. Monospace → tabulární zarovnání HUD/actors/queue přirozeně funguje.
+    </div>
+
+    <h3>Stupnice velikostí</h3>
+    <div class="type-row"><div class="label">48px · Hero</div>    <div class="type-sample" style="font-size:48px">VOIDSPAN</div></div>
+    <div class="type-row"><div class="label">36px · H1</div>      <div class="type-sample" style="font-size:36px">HULL BREACH</div></div>
+    <div class="type-row"><div class="label">28px · H2</div>      <div class="type-sample" style="font-size:28px">TASK QUEUE</div></div>
+    <div class="type-row"><div class="label">22px · HUD</div>     <div class="type-sample" style="font-size:22px">AIR 32.4%   FOOD 28.1   KREDO 20</div></div>
+    <div class="type-row"><div class="label">20px · Body</div>    <div class="type-sample" style="font-size:20px">task_1  repair  tile 5  (3× actor)</div></div>
+    <div class="type-row"><div class="label">18px · Label</div>   <div class="type-sample" style="font-size:18px">secondary text / caption / dim</div></div>
+    <div class="type-row"><div class="label">16px · Hint</div>    <div class="type-sample" style="font-size:16px">[SPACE] start · klikni damaged · [F5] new</div></div>
+
+    <h3>Test diakritiky — česká pangrama</h3>
+    <div class="pangram">
+      <div class="big">Příliš žluťoučký kůň úpěl ďábelské ódy.</div>
+      <div class="mid">Příliš žluťoučký kůň úpěl ďábelské ódy.</div>
+      <div class="sm">Příliš žluťoučký kůň úpěl ďábelské ódy. — áéíóúýčďěňřšťůž ÁÉÍÓÚÝČĎĚŇŘŠŤŮŽ</div>
+    </div>
+    <div class="note">
+      Kontrola: háčky (č/š/ř/ž/ť/ď/ň/ě), čárky (á/é/í/ó/ú/ý), kroužek (ů), dlouhé Ů/Ú.
+      Pokud některý glyph chybí nebo se fallbackne na systémový font, hlaš — řešíme
+      volbou alternativy (Px437, m5x7) nebo preload weight.
+    </div>
+
+    <!-- ==================== TILE GRID ==================== -->
+    <h2>3. Tile grid — 40×40 native, 2× scale</h2>
+    <div class="note">
+      Source art leží v <code>art/&lt;kat&gt;/&lt;name&gt;.png</code> jako <strong>40×40 px
+      native</strong> (POC_P1 §9, S10 pipeline). <code>pnpm build:assets</code> aplikuje
+      magenta chroma key <code>#ff00ff</code> → průhlednost a mirroruje do
+      <code>public/assets/</code>. V Phaseru pixelArt mode + setScale(2) → 80×80 px na canvasu
+      bez filtering. Tablet baseline 1024×768, tile-to-screen ratio ~5.2 %.
+    </div>
+    <div class="tile-demo">
+      <div class="cell">
+        <div class="checker" style="width:40px;height:40px"></div>
+        <div class="cap">40×40 native<br/>(source)</div>
+      </div>
+      <div class="cell">
+        <div class="checker" style="width:80px;height:80px"></div>
+        <div class="cap">80×80 scale 2×<br/>(canvas target)</div>
+      </div>
+      <div class="cell">
+        <div class="checker" style="width:160px;height:160px"></div>
+        <div class="cap">160×160 scale 4×<br/>(review/zoom)</div>
+      </div>
+    </div>
+
+    <!-- ==================== STATUS BADGES ==================== -->
+    <h2>4. Status barvy — kdy co použít</h2>
+    <div class="note">
+      Status barvy (08–12) nejsou dekorativní. Každá má přesnou sémantiku.
+      Nikdy nepoužívej status barvu na neutrální obsah — rozbiješ signalizaci.
+    </div>
+    <div class="badges">
+      <div class="badge b-alert">ALERT · damaged, LOSS, fatal</div>
+      <div class="badge b-warn-o">CRITICAL · air &lt; 10%, food &lt; 5</div>
+      <div class="badge b-warn-a">WARNING · flotila přilétá, limit</div>
+      <div class="badge b-ok">OK · reserve (P2+ greenhouse)</div>
+      <div class="badge b-info">INFO · dock, fleet, neutrální info</div>
+    </div>
+
+    <!-- ==================== PROGRESS BAR ==================== -->
+    <h2>5. Progress bar — tři varianty</h2>
+    <div class="note">
+      ASCII = nejlevnější (text), 8-bit segmentovaný = cinematic (HUD, klíčové resources),
+      solid bevel = klasická arcade/RPG estetika. Doporučení dole.
+    </div>
+
+    <h3>5a. ASCII (v textu, task queue)</h3>
+    <div class="pb-ascii">  0%   ░░░░░░░░░░░░ <span style="color:#b08030">(0× actor)</span></div>
+    <div class="pb-ascii"> 25%   ███░░░░░░░░░ <span style="color:#b08030">(1× actor)</span></div>
+    <div class="pb-ascii"> 62%   ███████░░░░░ <span style="color:#b08030">(3× actor)</span></div>
+    <div class="pb-ascii"> 99%   ███████████░ <span style="color:#b08030">(3× actor)</span></div>
+    <div class="pb-ascii">100%   ████████████ <span style="color:#b08030">done · actors → idle</span></div>
+
+    <h3>5b. 8-bit segmentovaný — task progress (amber fill)</h3>
+    <div id="bars-task"></div>
+
+    <h3>5c. 8-bit segmentovaný — resource (threshold colors)</h3>
+    <div class="note">
+      Barva se mění podle prahu — signalizace krize bez nutnosti číst číslo.
+      Prahy: &gt;50 % amber · 20–50 % warn-amber · 10–20 % warn-orange · &lt;10 % alert.
+    </div>
+    <div id="bars-resource"></div>
+
+    <h3>5d. Solid bevel — arcade/RPG variant</h3>
+    <div class="pb-row">
+      <div class="pct">25%</div>
+      <div class="pb-solid"><div class="fill" style="width:25%"></div></div>
+      <div class="cap">jednodušší, bez segmentace</div>
+    </div>
+    <div class="pb-row">
+      <div class="pct">62%</div>
+      <div class="pb-solid"><div class="fill" style="width:62%;background:#ffc030"></div></div>
+      <div class="cap">warn-amber threshold</div>
+    </div>
+    <div class="pb-row">
+      <div class="pct">8%</div>
+      <div class="pb-solid"><div class="fill" style="width:8%;background:#ff4848"></div></div>
+      <div class="cap">alert threshold</div>
+    </div>
+
+    <h3>Doporučení</h3>
+    <ul class="note" style="line-height:1.7">
+      <li><strong>Task queue</strong> → <strong>5a ASCII</strong>. Bar je inline v textu, font už sedí, nic extra.</li>
+      <li><strong>HUD resources (AIR / FOOD)</strong> → <strong>5c segmentovaný threshold</strong>. Primární status, barva = okamžitá signalizace krize.</li>
+      <li><strong>Budoucí module HP / building progress</strong> → <strong>5b amber segmentovaný</strong>. Monotónní akce, není třeba threshold signál.</li>
+      <li><strong>5d bevel</strong> — drží v záloze pro případ, kdy by segmenty byly vizuálně moc „pestrý".</li>
+    </ul>
+
+    <!-- ==================== HUD SAMPLE ==================== -->
+    <h2>6. HUD v kontextu — integrační preview</h2>
+    <div class="sample">
+      <div class="hud">⊙ VOIDSPAN   AIR <span class="warn">32.4%</span>   FOOD 28.1   KREDO  20   TICK 1247   // PHASE A — HULL BREACH</div>
+      <div style="height: 12px"></div>
+      <div class="dim">player   8W  idle</div>
+      <div class="dim">c1      12W  → task_1</div>
+      <div class="dim">c2      12W  → task_1</div>
+      <div class="dim">c3      12W  → task_1</div>
+      <div style="height: 12px"></div>
+      <div class="hud">TASK QUEUE</div>
+      <div>task_1  repair  tile 5</div>
+      <div class="dim">  ████████░░░░ 62%  (3× actor)</div>
+      <div style="height: 12px"></div>
+      <div class="alert">▶ damaged hull · WD to repair: 10</div>
+      <div class="info">▶ dock online · flotila připojena</div>
+    </div>
+
+    <!-- ==================== AXIOMATIZACE ==================== -->
+    <h2>7. Axiomatizace — co bude po schválení</h2>
+    <ul class="note" style="line-height:1.7">
+      <li><code>src/game/palette.ts</code> — exportuje 16 konstant (<code>COL_HULL_MID</code>, <code>COL_AMBER_BRIGHT</code>, …) + typografické velikosti.</li>
+      <li><code>GameScene</code> — nahradí stávající ad-hoc literály refermi do <code>palette.ts</code>.</li>
+      <li><code>art/_palette.png</code> — 16×1 native swatch, reference pro hand-pixel.</li>
+      <li><code>POC_P1.md §9 Konvence</code> — pravidlo „source art používá jen barvy z palety".</li>
+      <li><code>art/README.md</code> — odkaz na tento grafický manuál jako závazný vzorník.</li>
+    </ul>
+
+    <script>
+      const WORLD = [
+        ["01", "#0a0a10", "void-black · pozadí, prázdnota"],
+        ["02", "#1a1e28", "hull-dark · stín, spodek"],
+        ["03", "#2e3440", "hull-mid · primární plech"],
+        ["04", "#4c5462", "hull-light · rim, hrana"],
+        ["05", "#6a7080", "metal-gray · opotřebované plátování"],
+        ["06", "#8a8e98", "metal-light · leštěná hrana"],
+        ["07", "#c0c4cc", "bright-metal · specular"],
+      ];
+      const STATUS = [
+        ["08", "#ff4848", "alert-red · damaged, LOSS"],
+        ["09", "#ff8020", "warn-orange · critical"],
+        ["10", "#ffc030", "warn-amber · warning, flotila"],
+        ["11", "#60c060", "ok-green · reserve (Greenhouse P2+)"],
+        ["12", "#4088c8", "info-blue · dock, fleet"],
+      ];
+      const UI = [
+        ["13", "#080808", "bg-near-black · panely"],
+        ["14", "#b08030", "amber-dim · secondary text"],
+        ["15", "#ffd060", "amber-bright · primární text"],
+        ["16", "#ffffff", "text-white · nadpisy, akcent"],
+      ];
+
+      function render(id, arr) {
+        const el = document.getElementById(id);
+        for (const [idx, hex, role] of arr) {
+          const sw = document.createElement("div");
+          sw.className = "swatch";
+          sw.innerHTML = `
+            <div class="chip" style="background:${hex}"></div>
+            <div class="meta">
+              <div class="idx">${idx}</div>
+              <div class="hex">${hex}</div>
+              <div class="role">${role}</div>
+            </div>`;
+          el.appendChild(sw);
+        }
+      }
+      render("grid-world", WORLD);
+      render("grid-status", STATUS);
+      render("grid-ui", UI);
+
+      const strip = document.getElementById("strip");
+      for (const [, hex] of [...WORLD, ...STATUS, ...UI]) {
+        const d = document.createElement("div");
+        d.style.background = hex;
+        d.title = hex;
+        strip.appendChild(d);
+      }
+
+      // ========== 8-bit segmentové bary ==========
+      const SEGMENTS = 12; // 12 segmentů = ~8.3 % krok, přirozený grain
+
+      // Vyrobí jeden řádek s bar 12 segmentů, procenta a caption.
+      function makeBar(containerId, pct, fillClass, caption) {
+        const row = document.createElement("div");
+        row.className = "pb-row";
+        row.innerHTML = `
+          <div class="pct">${pct}%</div>
+          <div><div class="pb-bar">${
+            Array.from({length: SEGMENTS}, (_, i) => {
+              const segPct = ((i + 1) / SEGMENTS) * 100;
+              const filled = segPct <= pct + 0.5;
+              return `<div class="seg ${filled ? fillClass : ""}"></div>`;
+            }).join("")
+          }</div></div>
+          <div class="cap">${caption}</div>`;
+        document.getElementById(containerId).appendChild(row);
+      }
+
+      // Task progress (amber fill, monotónní).
+      for (const [pct, cap] of [
+        [0,   "idle · 0× actor"],
+        [25,  "1× actor právě začal"],
+        [62,  "3× actor v plné práci"],
+        [99,  "dokončování"],
+        [100, "done · tile → empty"],
+      ]) {
+        makeBar("bars-task", pct, "seg-fill-amber", cap);
+      }
+
+      // Resource threshold — barva podle zbývající hodnoty.
+      function thresholdClass(pct) {
+        if (pct > 50) return "seg-fill-amber";
+        if (pct > 20) return "seg-fill-warn-a";
+        if (pct > 10) return "seg-fill-warn-o";
+        return "seg-fill-alert";
+      }
+      for (const [pct, cap] of [
+        [100, "AIR 100% · plný stav"],
+        [75,  "AIR 75% · amber"],
+        [42,  "AIR 42% · warn-amber"],
+        [15,  "AIR 15% · warn-orange · CRITICAL"],
+        [7,   "AIR 7% · alert · FATAL"],
+      ]) {
+        makeBar("bars-resource", pct, thresholdClass(pct), cap);
+      }
+    </script>
+  </body>
+</html>

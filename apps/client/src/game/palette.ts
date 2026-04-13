@@ -1,0 +1,90 @@
+// Voidspan 16 — Hull & Amber
+// Závazný vzorník (axiom) — jediný zdroj pravdy pro barvy a typografii v UI/rendereru.
+// Vizuální reference: `apps/client/public/style-guide.html` (dev: /style-guide.html).
+// Zdroj pro hand-pixel: `art/_palette.png` + `art/_palette.txt` (Paint.NET).
+//
+// Barvy jsou k dispozici ve dvou formátech:
+//   - `HEX_*` string (`"#rrggbb"`) pro Phaser Text color, CSS, log.
+//   - `COL_*` number (`0xrrggbb`) pro Phaser fillStyle, strokeStyle, rectangle barvu.
+//
+// NIKDY nepoužívej ad-hoc hex literály v kódu — vždy přes tento modul.
+
+// ============================================================================
+// 1. Paleta — 16 barev, 3 vrstvy
+// ============================================================================
+
+// --- Svět: studený kov, void (01-07) ---
+export const HEX_VOID_BLACK    = "#0a0a10"; // 01
+export const HEX_HULL_DARK     = "#1a1e28"; // 02
+export const HEX_HULL_MID      = "#2e3440"; // 03
+export const HEX_HULL_LIGHT    = "#4c5462"; // 04
+export const HEX_METAL_GRAY    = "#6a7080"; // 05
+export const HEX_METAL_LIGHT   = "#8a8e98"; // 06
+export const HEX_BRIGHT_METAL  = "#c0c4cc"; // 07
+
+// --- Status: teplé akcenty (08-12) ---
+export const HEX_ALERT_RED     = "#ff4848"; // 08
+export const HEX_WARN_ORANGE   = "#ff8020"; // 09
+export const HEX_WARN_AMBER    = "#ffc030"; // 10
+export const HEX_OK_GREEN      = "#60c060"; // 11
+export const HEX_INFO_BLUE     = "#4088c8"; // 12
+
+// --- UI / terminál: amber na tmavém (13-16) ---
+export const HEX_BG_NEAR_BLACK = "#080808"; // 13
+export const HEX_AMBER_DIM     = "#b08030"; // 14
+export const HEX_AMBER_BRIGHT  = "#ffd060"; // 15
+export const HEX_TEXT_WHITE    = "#ffffff"; // 16
+
+// --- Number varianty (0xrrggbb) pro Phaser primitives ---
+export const COL_VOID_BLACK    = 0x0a0a10;
+export const COL_HULL_DARK     = 0x1a1e28;
+export const COL_HULL_MID      = 0x2e3440;
+export const COL_HULL_LIGHT    = 0x4c5462;
+export const COL_METAL_GRAY    = 0x6a7080;
+export const COL_METAL_LIGHT   = 0x8a8e98;
+export const COL_BRIGHT_METAL  = 0xc0c4cc;
+export const COL_ALERT_RED     = 0xff4848;
+export const COL_WARN_ORANGE   = 0xff8020;
+export const COL_WARN_AMBER    = 0xffc030;
+export const COL_OK_GREEN      = 0x60c060;
+export const COL_INFO_BLUE     = 0x4088c8;
+export const COL_BG_NEAR_BLACK = 0x080808;
+export const COL_AMBER_DIM     = 0xb08030;
+export const COL_AMBER_BRIGHT  = 0xffd060;
+export const COL_TEXT_WHITE    = 0xffffff;
+
+// ============================================================================
+// 2. Sémantické aliasy — UI role (nikoli další barvy, jen pojmenované použití)
+// ============================================================================
+// Preferuj tyto aliasy v UI kódu. Když se paleta někdy upraví, stačí přebalit
+// tenhle blok a sémantika drží. Direct COL_* jen pro pixel-art/debug.
+
+export const UI_BG             = HEX_BG_NEAR_BLACK;     // panel background
+export const UI_BORDER_DIM     = COL_HULL_MID;          // zónové hranice
+export const UI_TEXT_PRIMARY   = HEX_AMBER_BRIGHT;      // hlavní text, hodnoty
+export const UI_TEXT_DIM       = HEX_AMBER_DIM;         // secondary, labels, inactive
+export const UI_TEXT_ACCENT    = HEX_TEXT_WHITE;        // nadpisy, důraz
+export const UI_TEXT_HEADING   = HEX_TEXT_WHITE;        // synonym, readability
+
+export const UI_SELECT_STROKE  = COL_AMBER_BRIGHT;      // klik výběr
+export const UI_TILE_DAMAGED   = COL_ALERT_RED;         // damaged tile fill (alpha < 1)
+
+export const UI_STATUS_ALERT   = HEX_ALERT_RED;         // LOSS, damaged, fatal
+export const UI_STATUS_WARN    = HEX_WARN_AMBER;        // warning threshold
+export const UI_STATUS_INFO    = HEX_INFO_BLUE;         // dock, fleet, neutral
+export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
+
+// ============================================================================
+// 3. Typografie — VT323 size scale (style-guide §2)
+// ============================================================================
+// VT323 je bitmap CRT font (Google Fonts, OFL). Drž tyto velikosti, jinak rozbiješ
+// rytmus UI. Jednotky px, tak jak je přijímá Phaser Text a CSS font-size.
+
+export const FONT_FAMILY    = "VT323, monospace";
+export const FONT_SIZE_HERO    = "48px"; // wordmark, title card
+export const FONT_SIZE_H1      = "36px"; // screen heading
+export const FONT_SIZE_H2      = "28px"; // section heading
+export const FONT_SIZE_HUD     = "22px"; // HUD lišta, primární hodnoty
+export const FONT_SIZE_BODY    = "20px"; // běžný text, task list
+export const FONT_SIZE_LABEL   = "18px"; // popisky, caption, dim text
+export const FONT_SIZE_HINT    = "16px"; // nejmenší čitelný — hotkeys, legenda

@@ -114,6 +114,7 @@ export type World = {
   modules: Record<string, Module>;
   actors: Actor[];
   tasks: Task[];
+  next_task_id: number; // monotonic counter pro generování task id (KISS, žádný UUID)
   loss_reason?: LossReason;
 };
 
