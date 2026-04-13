@@ -42,7 +42,7 @@ Hráč dostavší se do LOSS konce řekne: *„Dáme ještě jeden pokus."* (Př
 | Engine | 2×2 | **K demontáži** |
 | Storage | 1×1 | Zásoby (X dní jídla/vzduchu) |
 | MedCore | 1×1 | |
-| Assembler | 1×1 | Výroba modulů z Kredo |
+| Assembler | 1×1 | Výroba modulů z Coin (◎) |
 | CommandPost | 1×1 | UI root |
 | `[damaged tile]` | 1×1 | **Únik vzduchu — vzniká při startu** |
 | `[empty]` + `[empty]` | 2×1 | Volné tiles pro stavbu Docku 2×2 |
@@ -67,7 +67,7 @@ Hráč dostavší se do LOSS konce řekne: *„Dáme ještě jeden pokus."* (Př
 
 **Cíl:** Demontovat Engine (2×2, 120 WD z S5) a na stejném místě postavit Docking Station (2×2).
 **Narativ:** Dock umožní připojit moduly flotily, které parkují opodál (Greenhouse, další Habitat, další SolarArray — nejsou součástí P1 WIN podmínky, jen indikátor rozšíření).
-**Rozpočet zdrojů (v Kredo/Echo):** ladí se tak, aby optimum bylo realizovatelné a slack factor 2× dával rezervu na omyly.
+**Rozpočet zdrojů (Coin ◎, Energy E — Resource Model v0.1):** ladí se tak, aby optimum bylo realizovatelné a slack factor 2× dával rezervu na omyly.
 **WIN:** Dock ve stavu `docked` (= online + minimálně 1 modul flotily připojený).
 **LOSS:** Zásoby jídla/vzduchu vyčerpány dřív, než je Dock hotový.
 
@@ -175,7 +175,12 @@ Konkrétní hodnoty se určují playtestem, ne dopředu.
 
 ---
 
-## 10. Kalibrace — seed hodnoty (S7)
+## 10. Kalibrace — seed hodnoty P1-lokální (S7)
+
+**P1-lokální seed hodnoty, ne z GLOSSARY `CONST_*`** (F10 — audit 260413).
+GLOSSARY `CONST_*` jsou univerzální konstanty pro P2+ feature set (např. `CONST_BELT_LENGTH = 256`). POC_P1 §10 hodnoty jsou **jen pro tento puzzle** — ladí se playtestem P1–P4 a do GLOSSARY `CONST_*` se povyšují až po kalibraci.
+
+**Terminologie (Resource Model v0.1):** `Kredo` = `Coin` (◎), `Echo` = `Energy` (E). V P1 kódu (`cost_coin`) i datech (`resources.coin`) se používají nové názvy; v §10 tabulkách níže zůstává „Kredo" pro historickou čitelnost — bude přepsáno na ◎ při kalibraci.
 
 Logika: **target total wall ~12–15 min** (crisis ~2 min + Engine→Dock ~8 min + rezerva/bonus ~3 min). Slack factor 2× aplikujeme na timeouty. Všechna čísla jsou **nástřel k playtestu**, ne kánon.
 
@@ -204,13 +209,13 @@ Logika: **target total wall ~12–15 min** (crisis ~2 min + Engine→Dock ~8 min
 |---|---|---|---|
 | **CAL-B1** | Engine demontáž | **60 WD** | Revize z S5 (bylo 120 WD) — 120 bylo odvozeno z 2-segment SHIP; pro 15min wall target moc. 3 Constructor (36 W) = 1,67 game day ≈ 6,7 min wall |
 | **CAL-B2a** | Dock 2×2 stavba (WD) | **48 WD** | 3 Constructor = 1,33 game day ≈ 5,3 min wall |
-| **CAL-B2b** | Dock 2×2 (Kredo) | **20 Kredo** | Předpokládá Storage start = 40 Kredo; slack 2× pro chyby |
+| **CAL-B2b** | Dock 2×2 (Coin ◎) | **20 ◎** | Předpokládá Storage start = 40 ◎; slack 2× pro chyby |
 | **CAL-B3a** | Food depletion | **8 osob × 1 jídlo / game day** | 1 „jídlo" / osoba / herní den (=4 min wall) |
 | **CAL-B3b** | Storage food start | **40 jídla** | 40 / 8 = 5 game days = 20 min wall → slack proti 12–15 min target |
 
 ### Poznámky k seedům
 
-- **Kredo:** v P1 stačí **1 zdroj** (Kredo ze Storage), Echo nepoužíváme (úspora složitosti; Echo přijde s Greenhouse v P2).
+- **Coin (◎, dříve Kredo):** v P1 stačí **1 zdroj** (◎ ze Storage), Energy (dříve Echo) nepoužíváme (úspora složitosti; Energy přijde s Greenhouse v P2).
 - **Engine 120 → 60 WD:** S5 hodnotu vědomě revidujeme dolů. P1 je 1 segment, ne 2 — práce se škáluje s objemem.
 - **„Game hour = 15 s wall":** agresivní komprese. Pokud hráči nestíhají číst / reagovat, snižujeme na 180× (20 s / game hour). První tuning páka.
 - **2 volné tiles** na SHIPu pro Dock 2×2 — Engine (2×2) se demontuje *tam*, Dock staví *tam*. Jediné místo, kam Dock pasuje.
@@ -288,10 +293,12 @@ type Phase = "boot" | "phase_a" | "phase_b" | "phase_c" | "win" | "loss";
 type World = {
   tick: number;                       // počet logických ticků od startu
   phase: Phase;
+  // Resource Model v0.1 (axiom GLOSSARY). P1 používá podmnožinu os:
+  //   Slab.food (S.food), Flux.air (F.air), Coin (◎). Energy/Work v P2+.
   resources: {
-    air: number;                      // 0..100 (%)
-    food: number;                     // jednotky jídla (seed: start 40)
-    kredo: number;                    // stavební měna (seed: start 20)
+    slab: { food: number };           // solid materials → food (seed: 40)
+    flux: { air: number };            // fluids+gases → air 0..100 %
+    coin: number;                     // měna (seed: 20; dříve „Kredo")
   };
   segment: Tile[];                    // 16 tiles (2 řady × 8 sloupců), index = row*8 + col (row-major)
   modules: Record<string, Module>;    // id → modul
@@ -343,14 +350,14 @@ type Task = {
   wd_done: number;
   assigned: string[];                 // ids actors pracujících na tasku
   priority: number;                   // vyšší = dřív; hráč může měnit
-  cost_kredo?: number;                // jen "build"; strhne se při zahájení
+  cost_coin?: number;                 // jen "build"; strhne se při zahájení (◎)
 };
 ```
 
 **Poznámky:**
 - **`Tile.module_ref`** umožňuje 2×2 modulům zabírat 4 tiles, ale logika se řeší nad `Module` (root tile). Klik na kterýkoli tile modulu → vybere se modul.
 - **`docked_count`** u Docku drží WIN podmínku (≥ 1).
-- **Echo** v P1 nepoužíváme (úspora, viz §10 poznámky).
+- **Energy (dříve Echo)** v P1 nepoužíváme (úspora, viz §10 poznámky).
 
 ---
 
@@ -404,7 +411,7 @@ win | loss ──(refresh stránky)──▶ boot (nová hra)
 **Task queue panel (pravý sloupec):**
 - Seznam aktivních i čekajících tasků s progress barem (`wd_done / wd_total`) a ETA v game-time.
 - Přetažení = změna priority.
-- Tlačítko `Cancel` (vrátí částečný kredo? v P1 ne — KISS, peníze propadají).
+- Tlačítko `Cancel` (vrátí částečný ◎? v P1 ne — KISS, peníze propadají).
 - Tlačítko `Přiřadit drona` pro manuální override.
 
 **Actor panel (levý sloupec):**
@@ -414,7 +421,7 @@ win | loss ──(refresh stránky)──▶ boot (nová hra)
 **HUD (horní lišta):**
 - Air % (s barevným warningem pod 30 %).
 - Food count.
-- Kredo count.
+- Coin (◎) count.
 - Wall clock + game clock.
 - Fáze (A/B/C).
 
@@ -433,6 +440,8 @@ Každý tick:
 ---
 
 ## 16. UI wireframe
+
+> **Mode:** P1 je **Observer mode** (viz `GLOSSARY.md` §UI Modes, axiom S15). Top Bar 5 resource bars zobrazuje **kolonijní** zdroje, ne hráčovy. Per-actor HP / osobní inventář jsou Player mode (P2+).
 
 **Target device:** primárně **tablet** (baseline 768×1024 portrait / 1024×768 landscape); desktop a iPhone portrait jako kompatibilní bonus.
 **Pixel art baseline:** tile **40×40 px native**, integer scaling 1×/2×/3× (nearest-neighbor, `pixelArt: true` v Phaser config). Na tabletu typicky 1× nebo 2×, na desktopu 2×, na 4K 3×. Non-integer scale rozbije pixel art → držet integer násobky.
@@ -464,7 +473,7 @@ Viz `GLOSSARY.md` → **UI Layout — panely** pro axiom. Žádné trvale ukotve
          │ KOLONISTÉ K │   │ ÚKOLY     U │   │ ZDROJE    Z │
          │ ▸ Player wk │   │ [1] Rep 42% │   │ Air   87%   │
          │ ▸ C1 idle   │   │ [2] Dem 10% │   │ Food   38   │
-         │ ▸ C2 work   │   │ [Cancel]    │   │ Kredo  20   │
+         │ ▸ C2 work   │   │ [Cancel]    │   │ Coin ◎ 20   │
          └─────────────┘   └─────────────┘   └─────────────┘
          ┌─────────────┐   ┌─────────────┐
          │ UDÁLOSTI  E │   │ PODROBN.  P │
@@ -492,7 +501,7 @@ Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
 | **Úkoly** | `U` | Task queue: repair/build/demolish/haul. Progress bar, assigned actors, cancel. P1 bez drag&drop priority. |
 | **Události** | `E` | Filtrovatelný Event Log. P1: scroll + simple filter by severity. |
 | **Podrobnosti** | `P` / `Tab` | Kontextový inspector: tile (empty/damaged/module) / modul (2×2, status) / actor / task. |
-| **Zdroje** | `Z` | Air / Food / Kredo + hodnoty. P1 plain čísla; P2+ mini-sparkline. |
+| **Zdroje** | `Z` | E / W / S (food) / F (air) / ◎ — Resource Model v0.1. P1 plain čísla; P2+ mini-sparkline. |
 
 **Rules:** druhé stisknutí téže klávesy = zavřít. `Esc` = zavřít všechny. Panely lze otevřít souběžně (hráč si skládá workspace); pozice zatím fixní (P1), drag v P2+.
 
@@ -503,7 +512,7 @@ Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
 **Kandidáti z Tableru:**
 - `droplet` → Air
 - `apple` → Food
-- `coin` → Kredo
+- `coin` → ◎ (dříve Kredo)
 - `clock` → Wall/Day
 - `robot` → Constructor
 - `forklift` → Hauler

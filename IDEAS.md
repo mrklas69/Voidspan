@@ -14,7 +14,7 @@ Raw nápady a inspirace. Nezralé myšlenky patří sem. Konkrétní úkoly → 
 Prstenec kolem cizí hvězdy. Vertikální pás cells. Uzavírá se postupně do kruhu.
 
 ### Orbitální mechaniky
-- **Orbital Shift** = kolektivní povýšení / snížení orbitu. Globální dopady na Echo, teplotu, rok.
+- **Orbital Shift** = kolektivní povýšení / snížení orbitu. Globální dopady na Energy (E), teplotu, rok.
 - Víceúrovňové belty jako pokročilá fáze hry.
 
 ### Entropie
@@ -25,7 +25,7 @@ Prstenec kolem cizí hvězdy. Vertikální pás cells. Uzavírá se postupně do
 ### Ekonomika (monopoly + bublina + recyklace)
 - Vlastník cell = vybírá mýto.
 - Spekulativní bubliny nad claims.
-- Dva zdroje: **Echo**, **Kredo**. Vedlejší zdroj z **recyklace kapslí**.
+- **Resource Model v0.1** (kánon, viz `GLOSSARY.md` / `SPECIFICATION.md` §4.5): 5 os **E / W / S / F / ◎**. Starý termín „Echo" → Energy, „Kredo" → Coin. Vedlejší zdroj z **recyklace kapslí** → Coin.
 - Ceny a výnosy ovlivněné pozicí cell vůči hvězdě (sluneční / stinná strana).
 
 ### NPC-správce (offline proxy)
@@ -116,8 +116,8 @@ Tenet **T1**. Dějová pole (všechna opcionální):
 
 | Větev | Obsahuje | Provedení VOIDSPAN | Hráčské role |
 |---|---|---|---|
-| **3.3.1 Materiál & provoz** | výroba, vlastnictví, údržba, entropie | Echo/Kredo produkce, claim cell, mýto, drone repair, boj proti decay | Builder, Landlord, Spekulant, Technik, Správce |
-| **3.3.2 Výměna** | obchod, diplomacie | Směna Echo↔Kredo, intra-belt trasy, karavany mezi belty (R1), smlouvy, obranné pakty | Trader, Kupec, Caravan Master, Diplomat, Vyjednavač |
+| **3.3.1 Materiál & provoz** | výroba, vlastnictví, údržba, entropie | E/W/S/F produkce, claim cell, mýto, drone repair, boj proti decay | Builder, Landlord, Spekulant, Technik, Správce |
+| **3.3.2 Výměna** | obchod, diplomacie | Směna S↔◎, E↔◎, intra-belt trasy, karavany mezi belty (R1), smlouvy, obranné pakty | Trader, Kupec, Caravan Master, Diplomat, Vyjednavač |
 | **3.3.3 Řád** | politika, právo, justice | Parlament, volby, dekrety, koalice, soud, zákony, amnestie, penal colony, spory o claim | Politik, Řečník, Koaliční lídr, Soudce, Advokát, Šerif |
 | **3.3.4 Společnost** | skupiny 3-tier + migrace | **Underground** (tajné) / **Unofficial** (cechy, kluby) / **Official** (strany, aliance). Review kapslí, citizenship path, kvóty. Neprotokolovaná komunikace. | Organizátor, Špion, Vůdce, Immigration advokát, Komisař |
 | **3.3.5 Konflikt** | válka, sabotáž, rebelie | Útok/obrana cells, sabotáže, povstání, mezi-kolonijní válka (R1) | Stratég, Voják, Sabotér, Generál, Rebel |
@@ -136,11 +136,11 @@ Tenet **T1**. Dějová pole (všechna opcionální):
 První nástřely palet akcí pro kombinaci STATUS × CELL. Neúplné, kanonizovat až s Q-Player-Schema a Q9.
 
 **Dělník @ CELL_UNDERCONSTRUCTION:**
-- Pracuj (staveb. úkon → Kredo/XP)
+- Pracuj (staveb. úkon → ◎/XP)
 - Komunikuj se sousedy (chat, neprotokolované)
 - Jdi [target cell]
-- Najez se (Echo cost)
-- Spi (Echo regen)
+- Najez se (Slab.food cost)
+- Spi (Energy regen)
 - Poptávej (trh, nákup)
 - Nabízej (trh, prodej)
 - Zaútoč (pokud povoleno status + místo)
@@ -185,7 +185,7 @@ Nad brains ještě dva režimy, **overthinked a odložené**:
 
 **Otevřené pro Phase 2+:**
 - Q-Delegate-Scope: co smí nad brains.
-- Q-Delegate-Cost: platí se CPU/Echo/Kredo za běh.
+- Q-Delegate-Cost: platí se CPU/Energy/Coin za běh.
 - Q-Delegate-Audit: vidí hráči, kdo má zapnutou.
 - Q-Delegate-Abuse: alt-farma s 5× API.
 
@@ -240,7 +240,7 @@ Kolem Teegardenovy hvězdy **víc beltů na různých orbitech**. „Nad námi" 
 Důsledky pro design:
 - **Orbital Shift = pohyb beltu mezi vrstvami** (ne jen změna poloměru). Kolektivní akt s fyzickým dopadem na sousední belty.
 - **Observatory Event** (viz SCENARIO §5.A) = narativní start Belt Network vrstvy.
-- **Mezi-kolonijní doprava:** kapsle, průzkumné lodi, obchodní karavany přes orbity. Pravděpodobně drahé (Echo-intenzivní), aby se vrstvy daly odlišit kulturně i politicky.
+- **Mezi-kolonijní doprava:** kapsle, průzkumné lodi, obchodní karavany přes orbity. Pravděpodobně drahé (Energy-intenzivní), aby se vrstvy daly odlišit kulturně i politicky.
 - **Interference:** jeden belt může zastínit solar produkci jiného — emergentní zdroj konfliktu.
 
 ## Mýto a poplatky — varianty (S5, do POC jen základ)

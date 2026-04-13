@@ -68,10 +68,12 @@ export function createInitialWorld(): World {
   return {
     tick: 0,
     phase: "boot",
+    // Resource Model v0.1 — viz model.ts komentář u World.resources.
+    // P1 seed hodnoty (§10): flux.air=100 %, slab.food=40, coin=20.
     resources: {
-      air: 100,
-      food: 40,
-      kredo: 20,
+      slab: { food: 40 },
+      flux: { air: 100 },
+      coin: 20,
     },
     segment,
     modules: {},
@@ -165,7 +167,7 @@ function completeTask(w: World, task: Task): void {
 export function startGame(w: World): void {
   if (w.phase !== "boot") return;
   w.segment[DAMAGED_TILE_IDX] = { kind: "damaged", wd_to_repair: DAMAGED_WD };
-  w.resources.air = 100;
+  w.resources.flux.air = 100;
   w.phase = "phase_a";
 }
 
@@ -224,8 +226,8 @@ export function stepWorld(w: World): void {
   // Air drain: od phase_a do phase_c (po phase_b by měla regenerovat, ale S9 KISS).
   // Pro teď: v phase_a klesá, v phase_b+ stagnuje (oprava drží). Odpovídá §14.
   if (w.phase === "phase_a") {
-    w.resources.air = Math.max(0, w.resources.air - AIR_DRAIN_PER_TICK);
-    if (w.resources.air <= 0) {
+    w.resources.flux.air = Math.max(0, w.resources.flux.air - AIR_DRAIN_PER_TICK);
+    if (w.resources.flux.air <= 0) {
       toLoss(w, "air");
       return;
     }
@@ -233,8 +235,8 @@ export function stepWorld(w: World): void {
 
   // Food drain: od phase_b dál.
   if (w.phase === "phase_b" || w.phase === "phase_c") {
-    w.resources.food = Math.max(0, w.resources.food - FOOD_DRAIN_PER_TICK);
-    if (w.resources.food <= 0) {
+    w.resources.slab.food = Math.max(0, w.resources.slab.food - FOOD_DRAIN_PER_TICK);
+    if (w.resources.slab.food <= 0) {
       toLoss(w, "food");
       return;
     }

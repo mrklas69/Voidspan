@@ -61,3 +61,11 @@ export function formatScalar(value: number, digits: number = 2): string {
 export function formatResource(current: number, max: number, unit: string): string {
   return `${formatScalar(current)}/${formatScalar(max)} ${unit}`;
 }
+
+// ASCII progress bar pro task queue. `width` = celkový počet znaků.
+// Příklad: renderBar(50, 10) → "█████░░░░░"
+// Čistá funkce bez Phaser závislostí — testovatelná solo.
+export function renderBar(pct: number, width: number): string {
+  const filled = Math.round((pct / 100) * width);
+  return "█".repeat(filled) + "░".repeat(width - filled);
+}

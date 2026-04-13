@@ -4,8 +4,10 @@
 
 Cílem tohoto dokumentu je poskytnout **úplný a sebe-nosný zdroj** pro programování, nasazení a rozvoj aplikace. Kompletní validovaný dokument **ukončí přípravnou fázi** projektu.
 
-**Verze:** v0.1 DRAFT (2026-04-12, sezení 4) — **nekompletní, viz sekci 10 a 11**.
-**Status:** <span style="color:red">**PREPARATION PHASE — NOT YET VERIFIED**</span>
+**Verze:** v0.2 (2026-04-13, snapshot po sezení 14) — **nekompletní, viz sekci 10 a 11**.
+**Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (POC_P1 v0.5.0)**</span>
+
+**Changelog v0.1 → v0.2:** Uzavřeno 12 otázek napříč S5–S13 (Q-World-1, Q-P1-*, Q11, Q12, Q13, Q-Player-Schema). E1 (SCENARIO paralelní struktura) vyřešeno v S14. W3 (Resource Model v GLOSSARY/SCENARIO) vyřešeno v S13 sweep. §4.5 Zdroje aktualizováno na Resource Model v0.1 (E/W/S/F/◎).
 
 ---
 
@@ -119,7 +121,7 @@ Brains je **rule-based agent**, který za hráče provádí akce offline podle n
 
 | Oblast | Obsah | Priorita POC |
 |---|---|---|
-| 3.3.1 Materiál & provoz | Ekonomika (Echo/Kredo), infrastruktura, údržba | **MUST** |
+| 3.3.1 Materiál & provoz | Ekonomika (Resource Model v0.1: E/W/S/F/◎), infrastruktura, údržba | **MUST** |
 | 3.3.2 Výměna | Obchod, diplomacie | must-minimum |
 | 3.3.3 Řád | Politika, právo, justice | **MUST** (minimální parlament + spor o claim) |
 | 3.3.4 Společnost | Skupiny 3-tier (underground/unofficial/official), migrace | **MUST** (základní skupiny) |
@@ -128,8 +130,15 @@ Brains je **rule-based agent**, který za hráče provádí akce offline podle n
 
 ### 4.5 Zdroje
 
-- **Echo** (solární palivo) — život, pohyb, akce.
-- **Kredo** (stavební zdroj) — stavba, upgrady, opravy.
+**Resource Model v0.1** (axiom — viz `GLOSSARY.md` §Resources). Pět os:
+
+- **Energy (E)** — rate + storage; slunce, baterie, pohonné jednotky.
+- **Work (W)** — throughput lidské/dronové práce (power_w × čas).
+- **Slab (S)** — solid materials (subtypy: food, metal, components, …).
+- **Flux (F)** — fluids + gases (subtypy: air, water, coolant, …).
+- **Coin (◎)** — univerzální měna (dříve „Kredo" / „Echo" ve v0.0, retirováno).
+
+P1 scope používá jen `Slab.food`, `Flux.air`, `Coin` (viz `POC_P1.md` §10).
 
 ### 4.6 Social layer
 
@@ -178,7 +187,7 @@ Brains je **rule-based agent**, který za hráče provádí akce offline podle n
 2.7 Ending            — Flourish / Stagnation / Schism / Civil War / Extinction / Abandonment / Reset
 ```
 
-<span style="color:red">**WARNING:** SCENARIO.md obsahuje paralelně novou arc strukturu (§2) I legacy strukturu („Act -1 až Post-Closure"). Nutno přerozdělit.</span>
+<span style="color:green">**RESOLVED (S14):** Legacy Act -1 až Post-Closure struktura smazána. Detailní obsah přesunut do Appendix A (Invitation) a Appendix B (Awakening) jako detail pro Player Arc 1.0/1.1.</span>
 
 ### 5.3 Network Arc (A) — <span style="color:red">PRÁZDNO</span>
 
@@ -290,34 +299,43 @@ Potenciálně později: buymeacoffee nebo podobný **volitelný** model. Hra **n
 
 ## 10. OTEVŘENÉ OTÁZKY, MEZERY, VAROVÁNÍ, CHYBY
 
-### 10.1 <span style="color:red">ERRORS (blokátory)</span>
+### 10.1 <span style="color:green">RESOLVED</span> (S5–S14)
 
-<span style="color:red">**E1** — `SCENARIO.md` obsahuje **dvě paralelní struktury** (nová arcs + legacy Act -1 až Post-Closure). Nutné přerozdělit před implementací, jinak hrozí nekonzistence.</span>
+- ✅ **E1** SCENARIO paralelní struktura — vyřešeno v **S14** (legacy Backbone smazán, §3/§4 → Appendix A/B).
+- ✅ **W3** Resource Model propagace — vyřešeno v **S13** sweep (SPEC §4.5, IDEAS, GLOSSARY, POC_P1).
+- ✅ **Q-World-1** — vertikální stacking kolem Teegarden, adresa `Teegarden.BeltN` (S5).
+- ✅ **Q12** — jméno hvězdy: Teegarden's Star (S5).
+- ✅ **Q13** — `CONST_BELT_LENGTH = 256` (S5).
+- ✅ **Q11** — žádná vítězná podmínka, peak = pamatovatelný příběh (S1–S4).
+- ✅ **Q-Player-Schema** — STATUS + RANK + SKILL (S4).
+- ✅ **Q9 Tempo** — time-gated, ~1×/den, brains drží prioritu (S4).
+- ✅ **Q-P1-Arch / Telemetry / Input / Character / Tick / UI / Onboarding / Dialogs** — uzavřeny v S7, viz `POC_P1.md`.
 
-### 10.2 <span style="color:red">WARNINGS</span>
+### 10.2 <span style="color:red">ERRORS (blokátory)</span>
+
+*Žádné otevřené.* (E1 uzavřeno v S14.)
+
+### 10.3 <span style="color:red">WARNINGS</span>
 
 <span style="color:red">**W1** — Brains vs. T2 napětí s alts (R3). Alt-farma s několika účty může obcházet T2 zákaz automatizace politiky. Policy nenavržena.</span>
 
 <span style="color:red">**W2** — Tenety T1–T4 jsou **kandidáti, ne kánon**. Nelze je používat jako nepochybná pravidla v implementaci, dokud neprojdou POC playtestem.</span>
 
-<span style="color:red">**W3** — Revize R1 (multi-colony) nebyla promítnuta do `GLOSSARY.md` a `SCENARIO.md`. Tyto dokumenty stále implicitně předpokládají jeden belt.</span>
-
 <span style="color:red">**W4** — 40 % experiment ratio opravňuje plný event log, telemetrii, replay. Implikuje **netriviální GDPR / privacy / data retention** povinnosti, nenavržené.</span>
 
-### 10.3 <span style="color:red">GAPS (otevřené otázky)</span>
+<span style="color:red">**W5** (S13 audit)** — `GameScene.ts` monolit 748 LOC. Refactor na panely (Header/Segment/Actors) plánován pro S15. Neblokuje P1, blokuje kvalitní expansion P2+.</span>
+
+### 10.4 <span style="color:red">GAPS (otevřené otázky)</span>
 
 | ID | Otázka | Blokuje |
 |---|---|---|
-| <span style="color:red">Q-World-1</span> | Fyzický vztah mezi belty (1 hvězda / soustava / galaxie) | Network Arc, 3.1 topologie |
-| <span style="color:red">Q-Brains-Schema</span> | UX brains sliders, kategorie, granularita | **P1 implementace** |
+| <span style="color:red">Q-Brains-Schema</span> | UX brains sliders, kategorie, granularita | **P2+ implementace** (P1 skrz task-oriented input, viz POC_P1 §15) |
 | <span style="color:red">Q-Institutional-Mail</span> | Formát, protokol, timeline | Session Arc interakce |
 | <span style="color:red">Q-Session-Rhythm</span> | Notifikace vs. přirozená zvědavost; anti-exploit | UX retence |
 | <span style="color:red">Q-Comm-Privacy</span> | Rozsah neprotokolované komunikace, anti-abuse | Moderace |
 | <span style="color:red">Q-Player-Origin</span> | Proč hráč uniká ze Země (varianty prologu) | Onboarding copy |
-| <span style="color:red">Q12</span> | Jméno hvězdy | Setting polish |
-| <span style="color:red">Q13</span> | `CONST_BELT_LENGTH` | P1 scope |
 | <span style="color:red">Q14</span> | Orbital Shift cena, mechanismus | Phase 2 |
-| <span style="color:red">Q-ORM</span> | Drizzle vs. Prisma | Server skeleton |
+| <span style="color:red">Q-ORM</span> | Drizzle vs. Prisma | Server skeleton (P2+) |
 | <span style="color:red">Q-Entropy</span> | Decay rychlost, entropy tick | Balancing |
 
 ### 10.4 <span style="color:red">EMPTY NODES</span>

@@ -104,6 +104,12 @@ Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodn
 - [ ] Deploy na **GitHub Pages** nebo **Netlify** (static bundle).
 - [ ] Ověřit: static build funguje, URL sdílitelná pro P1–P4.
 
+## Player mode (P2+)
+
+- [ ] **Player mode** — per-actor HP a osobní inventář (◎, food) v datovém modelu. Rozšířit `Actor` o `hp`, `inventory`. Implementovat HP drain (CONST_HOMELESS_HP_DRAIN). Observer vs. Player axiom viz `GLOSSARY.md` §UI Modes.
+- [ ] **Mode switch UX** — hotkey toggle nebo zoom-level (mapa beltu → colony Observer → actor Player). Top Bar reskin: Observer = kolonijní agregáty, Player = osobní stavy.
+- [ ] **Floating panel *Kolonisté* [K]** — seznam aktérů s per-actor HP / inventory sparkline (první krok před full Player mode).
+
 ## Infrastruktura (po rozhodnutí Q17)
 
 - [ ] Objednat Forpsi VPS Linux Basic (až bude POC lokálně + na Renderu funkční).

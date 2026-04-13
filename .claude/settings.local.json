@@ -3,12 +3,10 @@
     "allow": [
       "WebFetch(domain:support.forpsi.com)",
       "WebFetch(domain:www.forpsi.com)",
-
       "Bash(pnpm:*)",
       "Bash(npm:*)",
       "Bash(corepack:*)",
       "Bash(powershell:*)",
-
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(rm:*)",
@@ -17,16 +15,12 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
-
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git remote:*)",
-
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "Bash(head:*)",
+      "Bash(git:*)",
       "Bash(kill:*)",
       "Bash(exit:*)"
     ]

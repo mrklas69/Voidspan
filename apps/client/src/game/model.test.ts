@@ -40,7 +40,7 @@ describe("MODULE_DEFS catalog invariants", () => {
       expect(def.max_hp).toBeGreaterThan(0);
       expect(def.wd_to_build).toBeGreaterThanOrEqual(0);
       expect(def.wd_to_demolish).toBeGreaterThanOrEqual(0);
-      expect(def.cost_kredo).toBeGreaterThanOrEqual(0);
+      expect(def.cost_coin).toBeGreaterThanOrEqual(0);
     }
   });
 

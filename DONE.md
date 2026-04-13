@@ -2,6 +2,29 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-13 (Sezení 13–15 — Audit + refactor)
+
+### S13 Audit 260413 + fixes (CODE F1/F2/F5/F12, DOCS F2/F3/F4/F5/F10)
+
+- [x] **@AUDIT** paralelně DOCS + CODE, reporty do `audit/audit_260413_docs.md` a `audit/audit_260413_code.md`.
+- [x] **CODE F1 Resource Model refactor** — `world.ts` `{air, food, kredo}` → `{slab:{food}, flux:{air}, coin}`, `model.ts` `cost_kredo` → `cost_coin`, testy aktualizovány.
+- [x] **CODE F2 Hotkeys case-insensitive** — unified `keydown` handler s `event.key.toLowerCase()`.
+- [x] **CODE F12 Smoke test** — `renderBar` přesunut do `format.ts` + 5 nových testů. 40 → 45 zelených.
+- [x] **DOCS F2 Echo/Kredo sweep** — SPECIFICATION §4.5 (Resource Model v0.1), IDEAS §Ekonomika, POC_P1 §10/§13/§16, GLOSSARY legacy sekce retired.
+- [x] **DOCS F5** SCENARIO §1.1 T4 kandidát tón, **F10** POC_P1 §10 P1-lokální seed header.
+
+### S14 SCENARIO refactor (DOCS F1) + SPECIFICATION v0.2 (F11)
+
+- [x] **SCENARIO.md v0.5** — smazáno §2.LEGACY + §2 Backbone (legacy) duplicate; §3 → Appendix A (Invitation), §4 → Appendix B (Awakening). Cross-refs přepsány.
+- [x] **SPECIFICATION.md v0.2** — nová §10.1 RESOLVED sekce (12 uzavřených Q), ERRORS prázdné, GAPS 11 → 8, Q-Brains-Schema reklasifikován P1 → P2+.
+
+### S15 CODE F3 GameScene split + UX polish + Observer mode axiom
+
+- [x] **GameScene split 759 → 201 LOC** (−73 %). Vytvořen `apps/client/src/game/ui/`: `layout.ts`, `panel_header.ts`, `header.ts`, `actors.ts`, `segment.ts`, `side_right.ts`. GameScene = orchestrator.
+- [x] **Top Bar vycentrován** — `HeaderPanel.render()` měří total width a pozicuje od středu (`x = (CANVAS_W − totalW) / 2`).
+- [x] **Help přesunut do Bottom Baru** — inline v centrovaném hintu `[SPACE] start  [H] help  [L] asteroid …`, hotkey `H` trigger.
+- [x] **Observer vs. Player mode axiom** — GLOSSARY §UI Modes (kolonijní vs. per-actor HUD), POC_P1 §16 poznámka, TODO P2+ sekce s Player mode úkoly.
+
 ## 2026-04-13 (Sezení 9 — Data model + FSM do kódu)
 
 - [x] **`apps/client/src/game/types.ts`** — kompletní typy §13: `World`, `Tile` (tagged union), `Module`, `Actor`, `Task`, `Phase`, `LossReason`. Indexace segmentu row-major `row*8+col`.
@@ -25,7 +48,7 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 - [x] **Q-P1-Arch:** Architektura P1 = **pure client, static hosting** (Vite + TS + Phaser 3, GH Pages / Netlify). Žádný server, žádná DB, žádný log.
 - [x] **Q-P1-Telemetry:** Žádný event log v P1. Feedback mimo hru (rozhovor s P1–P4).
-- [x] **Seed kalibrace (CAL-*):** SolarArray 24W, Constructor 12W, Hauler 8W, 3 Constructor + 2 Hauler, TIME_COMPRESSION 240×, Engine 60 WD (revize ze 120), Dock 48 WD + 20 Kredo, Storage 40 jídla.
+- [x] **Seed kalibrace (CAL-*):** SolarArray 24W, Constructor 12W, Hauler 8W, 3 Constructor + 2 Hauler, TIME_COMPRESSION 240×, Engine 60 WD (revize ze 120), Dock 48 WD + 20 ◎ (Coin; v S7 zapsáno jako „Kredo", přejmenováno v S13), Storage 40 jídla.
 - [x] **Q-P1-Input:** Task-oriented (hráč cíle, engine auto-assign dronů) s micro-override. Priority drag&drop.
 - [x] **Q-P1-Character:** Hráč = aktér-drone (W=8), v P1 vždy `working`, prohrává s kolonií.
 - [x] **Q-P1-Tick:** Logický tick 250 ms (4×/s), render na rAF.

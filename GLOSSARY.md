@@ -72,7 +72,7 @@ Startovní sada na palubě `SHIP` (viz SHIP konfigurace). Další moduly vznikaj
 | Modul | Rozměr (typ.) | Role |
 |---|---|---|
 | **SolarArray** | 2×2 | Produkce energie W (napájí drony a moduly) |
-| **Storage** | 2×2 a větší | Sklad Kredo/Echo, zásoby jídla |
+| **Storage** | 2×2 a větší | Sklad Slab/Flux/Coin (materiály, kapaliny, měna), zásoby jídla |
 | **Habitat** | 1×1 (start) | Bydlení (cryo-lůžka, ložnice, kuchyň, sport, kultura). `CONST_HABITAT_CAPACITY = 8`. Větší habitat = lineárně škálovaná kapacita × efekt Module Specialization. |
 | **MedCore** | 1×1 (start) | Integrovaná kryo + nemocnice + márnice + research. Slabé. Postupně se odštěpuje do dedikovaných Hospital / Cryobank / Morgue / Lab. |
 | **Assembler** | 1×1 | Výroba modulů a dílů. Bez něj kolonie nestaví. |
@@ -117,7 +117,7 @@ Jednotná mechanika pro **hmotnou práci** (stavba, demontáž, přesun materiá
 - **`W` (watt):** okamžitý výkon jednoho aktora v roli `Build` nebo `Haul`.
 - **`WD` (watt-day):** jednotka práce. Každá akce má `cost_WD`.
 - **`duration_days = cost_WD / Σ(W_aktorů)`**
-- **Příklad (A18):** demontáž Engine stojí **120 WD**. Při 4 Constructor (4×10) + 1 hráč (8) = 48W → **2,5 dne** hry. Výstup: +4 Echo, +80 Kredo, Dock slot odemčen.
+- **Příklad (A18):** demontáž Engine stojí **120 WD**. Při 4 Constructor (4×10) + 1 hráč (8) = 48W → **2,5 dne** hry. Výstup: +4 E (Energy), +80 ◎ (Coin), Dock slot odemčen.
 
 **Napájení:** `SolarArray 2×2 = 48 W` (provisional, pokrývá přesně 4 Constructory + 1 hráče). Energetický limit omezuje počet simultánně aktivních aktorů — úvodní „max 4 drony" plyne z 1 SolarArray.
 
@@ -233,13 +233,13 @@ Všechna čísla v UI (HUD, panely, tooltipy, log) procházejí **`formatScalar(
 
 ---
 
-## Resources (legacy — bude přepsáno)
+## Resources (legacy — RETIRED, viz Resource Model v0.1 výše)
 
-### Echo
-Solární palivo (fotovoltaika). Produkce = funkce orbitu a pozice segmentu vůči hvězdě. Pohon života, pohybu, běžných akcí.
-
-### Kredo
-Stavební zdroj (hmota, materiál). Získává se těžbou, recyklací, dovozem. Funkce: stavba, upgrady, oprava. **Recyklace kapslí** (viz *Capsule*) je vedlejší zdroj Kredo + Echo.
+> **Echo** a **Kredo** jsou retirované pojmy z v0.0. Mapování:
+> - **Echo → Energy (E)** — solární / pohon / provozní energie.
+> - **Kredo → Coin (◎)** — univerzální měna (stavba, obchod, mzdy).
+>
+> Aktuální kánon: `Resource Model v0.1` (5 os: E / W / S / F / ◎). Starý dvouvýznamový model (E = hmota + peníze, jaký vycházel z „Kredo" jako stavební zdroj) byl v S12 rozdělen: materiály → **Slab (S)**, kapaliny/plyny → **Flux (F)**, měna → **Coin (◎)**. Recyklace kapslí (viz *Capsule*) je vedlejší zdroj Coin a Slab.
 
 ---
 
@@ -310,6 +310,27 @@ Grafické výstupy držíme **kompaktní — jediná mezera mezi prvky**. Žádn
 
 ---
 
+## UI Modes — Observer vs. Player (axiom, S15)
+
+Hra má **dvě perspektivy** s oddělenými HUD rozsahy:
+
+| Mode | Pohled | HUD obsah | Fáze |
+|---|---|---|---|
+| **Observer** | kolonie jako celek | `World.resources` agregované (E/W/S/F/◎) | **P1 scope** |
+| **Player** | jeden aktér + jeho kontext | per-actor HP, osobní inventář (◎, food), pozice, action palette | P2+ |
+
+**Princip:** Top Bar 5 resource bars je **Observer-only** — zobrazuje stav kolonie, ne hráče. Per-actor indikátory (HP, osobní zásoby) patří do floating panelu *Podrobnosti* [P] nebo *Kolonisté* [K] v Observer módu; v Player módu (P2+) migrují do Top Baru a kolonijní souhrny se přesunou do floating panelu.
+
+**Izomorfismus:** stejné zdroje (◎, Slab.food, Flux.air, …) se v obou módech zobrazují v **Top Baru**, ale jiná škála — kolonijní vs. osobní. Pojmenování jednotek shodné.
+
+**Mode switch** (P2+): patrně zoom-level přechod (mapa beltu → colony view = Observer → actor view = Player) nebo hotkey toggle. Finální UX TBD.
+
+**P1 důsledek:** hráč v P1 nemá samostatné HP / osobní zásoby — sdílí osud kolonie (viz POC_P1 §Q-P1-Character).
+
+---
+
+## UI Layout (3 zóny + floating panely)
+
 Rozložení obrazovky drží **tři ukotvené zóny** (top / main / bottom) + **plovoucí panely** otevírané na vyžádání. Cíl: Main Panel zabírá maximum plochy; vše ostatní se objeví jen když to hráč potřebuje.
 
 ### Horní panel (Top Bar / HUD)
@@ -317,7 +338,7 @@ Ukotvená horní lišta. Vždy viditelná. Obsah:
 - **Vlevo:** `⊙Voidspan v1.0  <Adresa.pásu>  T <čas>` (branding + identita + lokace + herní čas)
 - **Vpravo:** `[?] Help`
 
-Zdroje (Air / Food / Kredo) jsou zatím ve floating panelu *Zdroje*. Pokud se v ladění ukáže, že stavová viditelnost trpí (hráč mine hladovění), přesunou se sem mezi čas a Help.
+Zdroje (E / W / S (food) / F (air) / ◎ — Resource Model v0.1) jsou zatím ve floating panelu *Zdroje*. Pokud se v ladění ukáže, že stavová viditelnost trpí (hráč mine hladovění), přesunou se sem mezi čas a Help.
 
 ### Hlavní panel (Main Panel)
 Ukotvená střední plocha. Primární hrací prostor — segment grid 8×2, orbitální dekor, interakce (klik tile = task, klik modul = inspekce). Full-width mezi Top a Bottom Bar.
@@ -334,7 +355,7 @@ Ukotvená dolní lišta. Vždy viditelná. Kompaktní ticker posledních 3–5 u
 | **Úkoly** | Tasks | `U` | Task queue. Drag&drop priority, progress bar, assigned actors, cancel. (P2+: filtr podle kind / status.) |
 | **Události** | Events | `E` | Plný filtrovatelný Event Log. Historie, search, filtr podle type/severity. Rozšíření Bottom Bar tickeru. |
 | **Podrobnosti** | Details (Inspector) | `P` / `Tab` | Kontextový inspector vybraného objektu (tile / modul / actor / task). Kontext určuje obsah. |
-| **Zdroje** | Resources | `Z` | Air / Food / Kredo s historií (mini-sparkline). Kandidát na přesun do Top Baru, pokud always-visibility bude nutná. |
+| **Zdroje** | Resources | `Z` | E / W / S (food) / F (air) / ◎ s historií (mini-sparkline) — Resource Model v0.1. Kandidát na přesun do Top Baru, pokud always-visibility bude nutná. |
 
 **Princip:** žádné trvale ukotvené sidebary. Main Panel není krájený na sloupce. Plovoucí panely jsou **dočasné nástroje**, ne fixní HUD.
 
@@ -365,8 +386,8 @@ Jeden běh Colony Arc (Founding → Ending). Po *Reset* zakončení může vznik
 | `CONST_MARSHAL_BASELINE` | Baseline Marshals pro lawlessness=0 | **4** |
 | `CONST_HOMELESS_HP_DRAIN` | HP ztráta bezdomovce / herní hod | **1** (provisional) |
 | `CONST_CAPSULE_TIMEOUT` | Timeout rozhodnutí o kapsli | TBD (hodiny / 1–2 dny) |
-| `CONST_RECYCLE_YIELD_ECHO` | Echo výnos z recyklace kapsle | TBD |
-| `CONST_RECYCLE_YIELD_KREDO` | Kredo výnos z recyklace kapsle | TBD |
+| `CONST_RECYCLE_YIELD_ENERGY` | Energy (E) výnos z recyklace kapsle | TBD |
+| `CONST_RECYCLE_YIELD_COIN` | Coin (◎) výnos z recyklace kapsle | TBD |
 | `CONST_DECAY_DEV_TO_DECAYING` | Trvání fáze DEVELOPED bez údržby | TBD (3–7 dní?) |
 | `SHIP_SOLARARRAY_POWER` | W jedné SolarArray 1×1 | TBD (S5 hodnota 48 W platila pro 2×2, re-derive pro 1×1) |
 | `CONST_PUZZLE_SLACK_FACTOR` | Timeout / budget = `factor × optimum` v puzzle módu | **2** |

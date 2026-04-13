@@ -25,9 +25,9 @@ describe("createInitialWorld", () => {
     const w = createInitialWorld();
     expect(w.phase).toBe("boot");
     expect(w.tick).toBe(0);
-    expect(w.resources.air).toBe(100);
-    expect(w.resources.food).toBe(40);
-    expect(w.resources.kredo).toBe(20);
+    expect(w.resources.flux.air).toBe(100);
+    expect(w.resources.slab.food).toBe(40);
+    expect(w.resources.coin).toBe(20);
   });
 
   it("má 16 prázdných tiles v segmentu", () => {
@@ -123,10 +123,10 @@ describe("stepWorld: air drain v phase_a", () => {
   it("tick zvyšuje counter a snižuje air", () => {
     const w = createInitialWorld();
     startGame(w);
-    const airBefore = w.resources.air;
+    const airBefore = w.resources.flux.air;
     stepWorld(w);
     expect(w.tick).toBe(1);
-    expect(w.resources.air).toBeCloseTo(airBefore - AIR_DRAIN_PER_TICK, 5);
+    expect(w.resources.flux.air).toBeCloseTo(airBefore - AIR_DRAIN_PER_TICK, 5);
   });
 
   it("air klesne na 0 za AIR_TIMEOUT_TICKS → loss air", () => {
@@ -135,14 +135,14 @@ describe("stepWorld: air drain v phase_a", () => {
     for (let i = 0; i < AIR_TIMEOUT_TICKS; i++) stepWorld(w);
     expect(w.phase).toBe("loss");
     expect(w.loss_reason).toBe("air");
-    expect(w.resources.air).toBe(0);
+    expect(w.resources.flux.air).toBe(0);
   });
 
   it("v boot se nic neděje (terminální/startovní stav)", () => {
     const w = createInitialWorld();
     stepWorld(w);
     expect(w.tick).toBe(0);
-    expect(w.resources.air).toBe(100);
+    expect(w.resources.flux.air).toBe(100);
   });
 });
 
@@ -151,17 +151,17 @@ describe("stepWorld: food drain v phase_b a phase_c", () => {
     const w = createInitialWorld();
     startGame(w);
     repairDone(w);
-    const foodBefore = w.resources.food;
+    const foodBefore = w.resources.slab.food;
     stepWorld(w);
-    expect(w.resources.food).toBeCloseTo(foodBefore - FOOD_DRAIN_PER_TICK, 5);
+    expect(w.resources.slab.food).toBeCloseTo(foodBefore - FOOD_DRAIN_PER_TICK, 5);
   });
 
   it("v phase_a food neklesá (ještě není žízeň)", () => {
     const w = createInitialWorld();
     startGame(w);
-    const foodBefore = w.resources.food;
+    const foodBefore = w.resources.slab.food;
     stepWorld(w);
-    expect(w.resources.food).toBe(foodBefore);
+    expect(w.resources.slab.food).toBe(foodBefore);
   });
 
   it("food → 0 v phase_b vede k loss food", () => {

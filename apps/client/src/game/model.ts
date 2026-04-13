@@ -37,7 +37,7 @@ export type ModuleDef = {
   power_w: number; // + produkce / − spotřeba (W); 0 = pasivní
   wd_to_build: number;
   wd_to_demolish: number;
-  cost_kredo: number; // cena stavby
+  cost_coin: number; // cena stavby v Coin (◎) — Resource Model v0.1
   max_hp: number;
   description: string; // Inspector text (2–3 věty)
 };
@@ -96,7 +96,7 @@ export type Task = {
   wd_done: number;
   assigned: string[]; // ids aktérů pracujících na tasku
   priority: number; // vyšší = dřív
-  cost_kredo?: number; // jen "build"; strhne se při zahájení
+  cost_coin?: number; // jen "build"; strhne se při zahájení (◎)
 };
 
 // === Root state: celý svět ===
@@ -105,10 +105,17 @@ export type Task = {
 export type World = {
   tick: number; // počet logických ticků od startu (0..n)
   phase: Phase;
+  // Resource Model v0.1 (axiom v GLOSSARY §Resources):
+  //   5 os = Energy (E) | Work (W) | Slab (S) | Flux (F) | Coin (◎)
+  // P1 scope používá jen podmnožinu:
+  //   - Slab.food     — solid materials, subtyp food (seed 40)
+  //   - Flux.air      — fluids+gases, subtyp air (0..100 %)
+  //   - Coin          — měna (seed 20, bylo "Kredo" v0.0)
+  // Energy a Work nejsou v P1 modelovány (P2+ rozšíření).
   resources: {
-    air: number; // 0..100 (%)
-    food: number; // jednotky jídla (seed: 40)
-    kredo: number; // stavební měna (seed: 20)
+    slab: { food: number };
+    flux: { air: number };
+    coin: number;
   };
   segment: Tile[]; // 16 tiles (2×8)
   modules: Record<string, Module>;
@@ -134,7 +141,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     power_w: 24, // §10: CAL-C2a (revize z 2×2 na 1×1)
     wd_to_build: 20,
     wd_to_demolish: 10,
-    cost_kredo: 8,
+    cost_coin: 8,
     max_hp: 40,
     description: "Solární panel. Hlavní zdroj energie v P1.",
   },
@@ -147,7 +154,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     power_w: 0, // nefunkční, bude demolován v P1
     wd_to_build: 80, // TODO calibrate (v P1 se nestaví, jen demolition)
     wd_to_demolish: 60, // §10: revize z 120 na 60
-    cost_kredo: 30,
+    cost_coin: 30,
     max_hp: 120,
     description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
   },
@@ -160,7 +167,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     power_w: -6, // TODO calibrate
     wd_to_build: 48, // §10
     wd_to_demolish: 20,
-    cost_kredo: 20, // §10
+    cost_coin: 20, // §10
     max_hp: 100,
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
   },

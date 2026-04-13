@@ -2,11 +2,11 @@
 
 Narativní scénář hry. Hybridní model: **autorská páteř + scripted eventy + procedurální generace + hráčská emergence**.
 
-> Viz též `GLOSSARY.md` pro definice pojmů (WORLD/BELT/SEGMENT/MODULE/TILE, SHIP, Energy Model, Capability Matrix, Drone Fleet, Teegarden System, Echo, Kredo, Capsule, Citizen Tier, Tenets T1–T4).
+> Viz též `GLOSSARY.md` pro definice pojmů (WORLD/BELT/SEGMENT/MODULE/TILE, SHIP, Energy Model, Capability Matrix, Drone Fleet, Teegarden System, Resource Model v0.1 — E/W/S/F/◎, Capsule, Citizen Tier, Tenets T1–T4 kandidáti).
 
-Verze: **0.4** (S6: SHIP revidován na 1 segment, POC_P1 puzzle reference).
+Verze: **0.5** (S14: legacy Act -1 → Act V backbone retirován. Detailní obsah bývalých §3/§4 přesunut do Appendix A/B jako detail pro Player Arc 1.0/1.1.)
 
-> **Pozn. k terminologii (S5):** pojem „Cell" byl retirován. V textu níže (sekce 2.LEGACY, 4.1, 13 a další) stará zmínka „cell" = **segment** (dílek beltu). Migrace textu postupně.
+> **Pozn. k terminologii (S5):** pojem „Cell" byl retirován. V textu níže (Appendix B §4.1, §13 a další) stará zmínka „cell" = **segment** (dílek beltu). Migrace textu postupně.
 
 ---
 
@@ -16,29 +16,31 @@ Verze: **0.4** (S6: SHIP revidován na 1 segment, POC_P1 puzzle reference).
 
 | Vrstva | Kdo určuje | Cíl | Příklad |
 |---|---|---|---|
-| **Backbone** | Autoři, pevně | Dramatický oblouk, milníky | Act -1 → Act V, Belt Closure |
+| **Backbone** | Autoři, pevně | Dramatický oblouk, milníky | 4 arcs (§2 níže): Network, Colony, Player, Session |
 | **Scripted events** | Autoři, trigger-based | Řízené krize, narativní beaty | „Velitel NPC rezignuje, vyhlašují se volby" |
 | **Procedural events** | Engine (+ LLM?) | Drobná agenda, živost světa | Náhodné poruchy, questy, místní spory |
 | **Emergent events** | Hráči sami | Politika, aliance, intriky | Volby, zrady, bubliny, občanské války |
 
 **Poměr:** page-designed páteř a scripted ~20 %, procedurální ~30 %, emergentní ~50 %. Páteř dává dramatický oblouk, hráči dodávají duši.
 
-### 1.1 Design kompas — Forgiveness rewarded
+### 1.1 Design kompas — Forgiveness rewarded (T4 kandidát)
+
+> **Pozn.:** Tenet T4 je **kandidát**, ne ustálený kánon. Viz `IDEAS.md` §Tenet kandidáti a `SPECIFICATION.md` §3.2. Kompas platí jako designová hypotéza testovaná playtestem; může být revidován.
 
 Herní mechaniky mají **odměňovat strategie tit-for-tat s odpuštěním** (Axelrod, Prisoner's Dilemma). Cíl: hra má **výchovný efekt pro hráče-diktátory** — dlouhodobě vítězí ti, kdo spolupracují a odpouští, ne ti, kdo jen exploitují. Tento kompas ovlivňuje balancování všech mechanik (ekonomika, politika, recruitment).
 
 ---
 
-## 2. Čtyři oblouky (arcs) — nová struktura v0.3
+## 2. Čtyři oblouky (arcs) — struktura v0.4
 
-Scénář se rozkládá do **čtyř nezávislých časových oblouků** (viz MINDMAP bod 4). Dosavadní „Act -1 až post-closure" (sekce 2.LEGACY níže) je **Player Arc + Colony Arc smíchaný dohromady**; postupně se rozpustí do nové struktury.
+Scénář se rozkládá do **čtyř nezávislých časových oblouků** (viz MINDMAP bod 4).
 
 | Arc | Scope | Délka | Kde je v dokumentu |
 |---|---|---|---|
 | **A Network Arc** | síť beltů v serveru | měsíce–roky | TBD (po R1, viz Q-World-1) |
-| **B Colony Arc** | jeden belt od založení po ending | dny–měsíce | sekce 2.LEGACY (přerozdělit) |
-| **C Player Arc** | hráč od pozvánky po exit | hodiny–týdny | **sekce 2C níže (draft)** |
-| **D Session Arc** | jeden login → logout | minuty–hodiny | TBD (POC-kritické) |
+| **B Colony Arc** | jeden belt od založení po ending | dny–měsíce | §6 Endings Spectrum; milníky TBD |
+| **C Player Arc** | hráč od pozvánky po exit | hodiny–týdny | **§2C níže** (draft) + Appendix A (Invitation), Appendix B (Awakening) |
+| **D Session Arc** | jeden login → logout | minuty–hodiny | **§2D níže** (draft) |
 
 ---
 
@@ -47,10 +49,10 @@ Scénář se rozkládá do **čtyř nezávislých časových oblouků** (viz MIN
 Oblouk jednoho hráčského účtu. Mnoho paralelních hráčů v jedné kolonii, každý ve své fázi oblouku.
 
 ### 1.0 Invitation — pozvánka
-Detail v sekci 3 (Act -1). Welcome / email / reklama + motivační dopis + kapsle na orbitu.
+Detail v **Appendix A** (dříve §3 „Act -1"). Welcome / email / reklama + motivační dopis + kapsle na orbitu.
 
 ### 1.1 Awakening — přijetí + briefing
-Detail v sekci 4 (Act 0). Kolonie rozhodne o kapsli → revival → první volba.
+Detail v **Appendix B** (dříve §4 „Act 0"). Kolonie rozhodne o kapsli → revival → první volba.
 
 ### 1.2 Active Life — správcovská smyčka
 Jádro hráčského zážitku. **Hráč nastavuje směr, akce běží brains.** Rytmus ~1× denně, viz Session Arc (2D).
@@ -111,78 +113,10 @@ Hráč v libovolném pořadí:
 
 ---
 
-## 2.LEGACY — dosavadní Act -1 až Post-Closure
 
-**Status:** přerozdělit do Colony Arc (2.1 založení až 2.7 ending) a Player Arc (1.0, 1.1). Zatím ponecháno beze změny pro kontinuitu.
+## Appendix A — Invitation & Capsule (detail pro Player Arc 1.0)
 
----
-
-## 2. Backbone — páteř scénáře (legacy)
-
-Pre-game Act -1 + pět hlavních Actů + post-closure fáze.
-
-### Act -1 — Invitation & Capsule (pre-game)
-
-- **Cíl:** Přetavit potenciálního hráče v zainteresovaného kolonistu ještě před první herní akcí.
-- **Trigger začátku:** Příchod skrze welcome stránku / email / reklamu.
-- **Trigger konce:** Kapsle hráče je vypuštěna do orbity a čeká na rozhodnutí existující kolonie.
-- **Centrální napětí:** Dočkám se oživení? Proč by mě měli vybrat?
-
-*Detail níže v sekci 3.*
-
-### Act 0 — Awakening (Onboarding)
-
-- **Cíl:** Hráč se probudí, dostane briefing, rozumí světu, provede první volbu.
-- **Trigger začátku:** Kapsle byla kolonií přijata a hráč probouzen.
-- **Trigger konce:** Hráč opustí fish-processing dílnu a učiní první vědomou volbu.
-- **Centrální napětí:** Kdo jsem? Kde jsem? Co mě zachrání?
-- **Trvání:** 30–60 minut hráčského času.
-
-*Detail níže v sekci 4.*
-
-### Act I — First Steps & Basic Loop
-
-- **Cíl:** Hráč pochopí ekonomiku (Echo/Kredo), postaví první strukturu nebo si vydělá první mzdu.
-- **Trigger začátku:** Konec Act 0.
-- **Trigger konce:** Hráč má funkční příjem a první vlastní cell nebo stabilní práci.
-- **Centrální napětí:** Pracovat pro kolonii (jistota) nebo riskovat claim (jackpot)?
-- **Trvání:** hráčské dny až týdny.
-
-### Act II — First Institutions
-
-- **Cíl:** Kolonie přechází z NPC-spravované na hráči-spravovanou.
-- **Trigger začátku:** Populace kolonie překročí threshold.
-- **Trigger konce:** Funkční parlament, volený šerif, první soudní spor.
-- **Centrální napětí:** Kdo má moc? Jaká pravidla si dáme?
-- **Trvání:** serverové týdny až měsíce.
-
-### Act III — Crisis(es)
-
-- **Cíl:** Kolonie čelí krizi. Iterovatelné (IIIa, IIIb, IIIc).
-- **Centrální napětí:** Přežít bez autoritářství? Upnout se na silnou ruku? Rozdělit se?
-- **Typy krizí:** epidemie, ekonomický kolaps, vražda, vlna nových kolonistů, trhlina v beltu, orbitální incident.
-
-### Act IV — Belt Approach
-
-- **Cíl:** Belt se blíží k uzavření, poslední segmenty jsou politicky drahé.
-- **Trigger začátku:** Belt dosáhne ~80 % obvodu.
-- **Trigger konce:** Poslední cell před hubem dokončen.
-- **Centrální napětí:** Kdo postaví „poslední cell"? Boj o prestiž.
-
-### Act V — Belt Closure Event
-
-- **Cíl:** Ceremoniální spojení posledního cell s hubem. Historický zápis řádu ~10M.
-- **Centrální napětí:** Žádné. Oslava.
-- **Trvání:** hodiny až den.
-
-### Post-Closure — New Game Dynamics
-
-- **Cíl:** Hra se posune od expanze k hustotě, konkurenci, politice.
-- **Trigger konce:** Žádný pevný; pokračuje do některého koncového stavu (viz sekce 6).
-
----
-
-## 3. Act -1 — Invitation & Capsule (detailně)
+> Historicky „Act -1". Přejmenováno v S14 po retirování legacy Act struktury. Interní číslování §3.x zachováno pro kontinuitu cross-refs.
 
 ### 3.0 Dva typy pozvánky (od S5)
 
@@ -200,7 +134,7 @@ Pre-game Act -1 + pět hlavních Actů + post-closure fáze.
 
 - Kapsle na orbitě, nejistota revival / limbo / recycling.
 - Hráč startuje v citizen tier **Indenture** nebo **Probationary** (rozhoduje vláda kolonie).
-- Klasická pipeline z Act -1 detailů (3.1–3.5 níže).
+- Klasická pipeline z Appendix A §3.1–3.5 níže.
 
 ### 3.1 Welcome / pozvánka
 
@@ -241,7 +175,9 @@ Delay mezi odesláním pozvánky a rozhodnutím = **hodiny až 1–2 dny**. Krat
 
 ---
 
-## 4. Act 0 — Awakening (detailně)
+## Appendix B — Awakening (detail pro Player Arc 1.1)
+
+> Historicky „Act 0". Přejmenováno v S14 po retirování legacy Act struktury. Interní číslování §4.x zachováno pro kontinuitu cross-refs.
 
 ### 4.0 SHIP Wake-up (Founding Colonist scénář, od S5)
 
@@ -271,7 +207,7 @@ Pro zakládající posádku platí **odlišný onboarding** od kapslové variant
 
 Tempo záměrně pomalé. *Trpělivý přístup.* Hráč zadá akci → brains ji vykoná → další session (po wall-clock hodinách) vidí výsledek.
 
-**Konec scénáře SHIP Wake-up:** probuzeno alespoň 3 kolonistů + postavena Greenhouse + Dock odemčen. Kolonie přechází do Act I.
+**Konec scénáře SHIP Wake-up:** probuzeno alespoň 3 kolonistů + postavena Greenhouse + Dock odemčen. Kolonie přechází do Colony Arc — First Steps (základní loop, TBD).
 
 ### 4.1 Tři varianty přijetí
 
@@ -373,7 +309,7 @@ Pole: formální frakce (instituce), neformální (aliance), NPC → hráč tran
 
 ## 8. Immigration Mechanics
 
-**TBD.** K rozpracování. Propojeno s Act -1 (kapsle na orbitě) a sekcí 12 (recruitment process).
+**TBD.** K rozpracování. Propojeno s Appendix A (kapsle na orbitě) a §12 (recruitment process).
 
 Nápady: vlny > plynulý přísun; velikost vlny = funkce stability; parlament hlasuje o imigrační politice.
 
@@ -418,7 +354,7 @@ rozhodnutí kolonie (viz sekce 12)
     ↓
 Var 1: Recycling  | Var 2: Limbo  | Var 3: Revival
                                      ↓
-                                    Act 0
+                                 Awakening
 ```
 
 ### 11.4 Moderation motivačních dopisů
@@ -437,7 +373,7 @@ Var 1: Recycling  | Var 2: Limbo  | Var 3: Revival
 **Vláda kolonie.** Forma vlády je emergentní a mění se v čase:
 
 - **Ranný stav** — NPC velitel + doktor, automatizované rozhodování.
-- **Po Act II** — volený parlament nebo zvolený šerif/starosta.
+- **Po Colony Arc „First Institutions" milestone** — volený parlament nebo zvolený šerif/starosta.
 - **Degenerativní scénář** — jediný diktátor (pokud to kolonie dopustí).
 
 Kdo právě tvoří vládu, ten rozhoduje. Design kompas (sekce 1.1) ale **odměňuje inkluzivní strategie**, ne dlouhodobě destruktivní.

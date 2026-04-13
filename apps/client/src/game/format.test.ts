@@ -52,3 +52,23 @@ describe("formatResource", () => {
     expect(formatResource(45, 100, "S")).toBe("45/100 S");
   });
 });
+
+import { renderBar } from "./format";
+
+describe("renderBar", () => {
+  it("0 % = samé prázdné znaky", () => {
+    expect(renderBar(0, 10)).toBe("░".repeat(10));
+  });
+  it("100 % = samé plné znaky", () => {
+    expect(renderBar(100, 10)).toBe("█".repeat(10));
+  });
+  it("50 % z 10 = 5+5", () => {
+    expect(renderBar(50, 10)).toBe("█████░░░░░");
+  });
+  it("33 % z 10 zaokrouhlí na 3 plné", () => {
+    expect(renderBar(33, 10)).toBe("███░░░░░░░");
+  });
+  it("width=0 → prázdný string", () => {
+    expect(renderBar(50, 0)).toBe("");
+  });
+});
