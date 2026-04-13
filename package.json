@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "pnpm --filter @voidspan/client dev",
     "build": "pnpm --filter @voidspan/client build",
-    "preview": "pnpm --filter @voidspan/client preview"
+    "preview": "pnpm --filter @voidspan/client preview",
+    "test": "pnpm --filter @voidspan/client test",
+    "build:assets": "powershell -ExecutionPolicy Bypass -File scripts/build-assets.ps1"
   },
   "packageManager": "pnpm@10.33.0"
 }

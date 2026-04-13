@@ -156,14 +156,22 @@ Konkrétní hodnoty se určují playtestem, ne dopředu.
 
 ## 9. Asset list
 
-→ Viz samostatné **Art sezení** (TBD). Přehled potřebných assetů:
+→ Viz samostatné **Art sezení** (TBD) a **`art/README.md`** pro pipeline. Přehled potřebných assetů:
 
-**Moduly (tile sprites):** Habitat, SolarArray, Docking Station, Engine, Storage, MedCore, Assembler, CommandPost, damaged tile, empty/floor.
+**Moduly (tile sprites, 40×40 native):** SolarArray, Docking Station, Engine (P1 katalog). Habitat/Storage/MedCore/Assembler/CommandPost jsou P2+.
+**Tiles (stav políčka):** floor (prázdná podlaha), damaged (poškozený trup).
 **Aktéři:** Kolonista (idle/walk/work), Constructor drone, Hauler drone, kryo-kolonista (static).
 **Flotila:** silueta-sprity parkujících modulů u SHIPu.
 **VFX:** air-leak particle, build progress bar, weld/spark.
 **UI:** Resource HUD, session clock, action menu, WIN/LOSS screen, module inspector.
 **Audio (optional):** ship hum, alarm loop, build SFX, WIN/LOSS sting.
+
+### Konvence
+
+- **Rozlišení:** 40×40 px native, PNG 32-bit RGBA.
+- **Chroma key:** magenta `#ff00ff` v source PNG = vždy průhledná (project-wide konvence). Pipeline ji převede na `alpha=0`. Magenta se NIKDY nesmí vyskytovat v obsahu.
+- **Source vs ship:** `art/<kat>/<name>.png` (source) → `apps/client/public/assets/<kat>/<name>.png` (shipped). Build přes `pnpm build:assets`.
+- **Pipeline:** viz `art/README.md` a `scripts/downscale-asset.ps1` / `scripts/build-assets.ps1`.
 
 ---
 
@@ -285,7 +293,7 @@ type World = {
     food: number;                     // jednotky jídla (seed: start 40)
     kredo: number;                    // stavební měna (seed: start 20)
   };
-  segment: Tile[];                    // 16 tiles (2×8), index = y*2 + x
+  segment: Tile[];                    // 16 tiles (2 řady × 8 sloupců), index = row*8 + col (row-major)
   modules: Record<string, Module>;    // id → modul
   actors: Actor[];                    // drony + hráč
   tasks: Task[];                      // fronta, setříděná podle priority
@@ -426,7 +434,8 @@ Každý tick:
 
 ## 16. UI wireframe
 
-**Target resolution:** 1280×720 (16:9) design-baseline; responsive scale nahoru. P1–P4 na běžných laptopech.
+**Target device:** primárně **tablet** (baseline 768×1024 portrait / 1024×768 landscape); desktop a iPhone portrait jako kompatibilní bonus.
+**Pixel art baseline:** tile **40×40 px native**, integer scaling 1×/2×/3× (nearest-neighbor, `pixelArt: true` v Phaser config). Na tabletu typicky 1× nebo 2×, na desktopu 2×, na 4K 3×. Non-integer scale rozbije pixel art → držet integer násobky.
 
 ### Rozložení
 
@@ -460,7 +469,7 @@ Každý tick:
 |---|---|---|
 | **ACTORS** (levý sloupec) | ~150 px | 6 řádků: 1 hráč + 3 Constructor + 2 Hauler. Kind, power_w, state, task ref. Klik → highlight v queue |
 | **Levý orbit** | flex | Dekor: kapsle, debris, parking flotila (WIN indikátor) |
-| **SHIP segment** (střed) | 640×160 px | **Horizontální 8×2 grid**, tiles 80×80 px. Primární hrací plocha |
+| **SHIP segment** (střed) | 320×80 px native (1×) / 640×160 px @2× | **Horizontální 8×2 grid**, tiles **40×40 px native**. Primární hrací plocha |
 | **Pravý orbit** | flex | Dekor: Teegardenova hvězda, solar flares |
 | **TASK QUEUE + INSPECTOR** (pravý sloupec) | ~250 px | Queue nahoře (seznam tasků, drag&drop priority), Inspector pod (výběr modulu / tile) |
 | **HUD** (horní lišta) | full width | Zdroje (ikona + číslo), čas, fáze |

@@ -2,7 +2,8 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně (budoucí unit testy).
 
-import type { World, Tile, Phase, LossReason } from "./types";
+import type { World, Tile, Phase, LossReason, Module } from "./model";
+import { MODULE_DEFS } from "./model";
 
 // === Konstanty (§10 seed hodnoty) ===
 
@@ -121,6 +122,32 @@ export function stepWorld(w: World): void {
 }
 
 // === Helpers pro debug HUD ===
+
+// === Demo helper (S10) ===
+
+// Naplní segment 16 SolarArray moduly (1×1). Pouze pro vizuální demo renderu
+// a kalibraci asset pipeline — nesouvisí s herní logikou. Debug trigger M.
+export function fillSegmentWithSolars(w: World): void {
+  const def = MODULE_DEFS.SolarArray;
+  w.modules = {};
+  for (let i = 0; i < 16; i++) {
+    const id = `mod_solar_${i}`;
+    const mod: Module = {
+      id,
+      kind: "SolarArray",
+      rootIdx: i,
+      status: "online",
+      hp: def.max_hp,
+      progress_wd: 0,
+    };
+    w.modules[id] = mod;
+    w.segment[i] = {
+      kind: "module_ref",
+      moduleId: id,
+      rootOffset: { dx: 0, dy: 0 },
+    };
+  }
+}
 
 export function phaseLabel(phase: Phase): string {
   // Mapa pro čitelný HUD. U `loss` se důvod doplňuje mimo.
