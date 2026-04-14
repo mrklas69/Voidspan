@@ -32,7 +32,7 @@ TBD. Volně upřesnitelné později bez konfliktu s existujícím kánonem.
 Rozhodnuto v S5. Pět úrovní, od globální po atomickou:
 
 ```
-WORLD → BELT → SEGMENT → MODULE → TILE
+WORLD → BELT → SEGMENT → MODULE → BAY
 ```
 
 ### WORLD
@@ -44,21 +44,21 @@ Kolonijní prstenec na konkrétní oběžné dráze kolem hvězdy. Obvod = `CONS
 **Belt Network (R1):** více beltů na různých orbitech jedné hvězdy. Adresování `Teegarden.BeltN.SegXXX…`. Naše startovní kolonie = **Belt1** (default). Objevení dalších beltů = `Observatory Event` (narativní spouštěč).
 
 ### SEGMENT
-Jeden z `CONST_BELT_LENGTH` dílků beltu. Obsahuje grid **2×8 = 16 tiles** (`CONST_SEGMENT_VOLUME`). Má horního a dolního souseda podél prstence. Stavy: `EMPTY → DEVELOPED → DECAYING → LOST`.
+Jeden z `CONST_BELT_LENGTH` dílků beltu. Obsahuje grid **2×8 = 16 bays** (`CONST_SEGMENT_VOLUME`). Má horního a dolního souseda podél prstence. Stavy: `EMPTY → DEVELOPED → DECAYING → LOST`.
 
 Segment je zároveň kontejner hráčova stavu — viz `Cell Binding Protocol` (název protokolu zachován; označuje fyzickou lokalizaci hráče do segmentu).
 
 ### MODULE
-Funkční stavební celek v segmentu. Zabírá **1..N tiles** v Tetris/Pentomino layoutu. Největší přípustný modul = celý `CONST_SEGMENT_VOLUME`. Typy modulů viz sekce *Module Types* níže.
+Funkční stavební celek v segmentu. Zabírá **1..N bays** v Tetris/Pentomino layoutu. Největší přípustný modul = celý `CONST_SEGMENT_VOLUME`. Typy modulů viz sekce *Module Types* níže.
 
 **Module Specialization Principle:** integrované multi-purpose moduly (malé, 1×1) mají **minimální výkon a kapacitu**. Dedikované jednoúčelové stavby (velké, až celý segment, s personálem) jsou řádově výkonnější (příklad: 1 lůžko v MedCore vs. 1024 lůžek v plné Nemocnici). Upgrade curve = motivace specializovat se, jakmile kolonie dospěje.
 
-### TILE
-Atomická jednotka prostoru (1 políčko gridu segmentu). Jeden modul může zabírat víc tilů; jeden tile však vždy patří nejvýše jednomu modulu. Pro stavbu většího modulu je nutné **vybourat** potřebné tiles.
+### BAY
+Atomická jednotka prostoru (1 políčko gridu segmentu). Jeden modul může zabírat víc tilů; jeden bay však vždy patří nejvýše jednomu modulu. Pro stavbu většího modulu je nutné **vybourat** potřebné bays.
 
 ### Adresa
 `Teegarden.BeltN.SegXXX.MYY.TZ`  
-Např. `Teegarden.Belt1.Seg042.M03.T5` = Teegarden System, belt 1, segment 42, modul 3, tile 5.
+Např. `Teegarden.Belt1.Seg042.M03.T5` = Teegarden System, belt 1, segment 42, modul 3, bay 5.
 
 ### Hub
 **Flag** na segmentu (`segment.is_hub = true`), ne vlastní entita. Hub-segmenty jsou nedestruktibilní a hostí instituce (**Katastr**, **Soud**, **Banka**, **Šerif**, **Parlament** — postupně se odštěpují z `CommandPost`). Kolektivně vlastněné.
@@ -87,13 +87,13 @@ Další moduly (Hospital, Cryobank, Morgue, Lab, Parlament, Bank, Court, Sheriff
 
 ## SHIP — startovní konfigurace kolonie
 
-Mateřská loď generačního typu, **zaparkovaná na orbitě Teegardenu**. Zabírá **jeden segment** (Belt1.Seg000). Celkem `CONST_SEGMENT_VOLUME = 16` tiles. Startovní posádka `CONST_FOUNDING_CREW = 8` v kryospánku, probouzí se postupně podle příchozích pozvánek (viz `Founding Colonist Invitation`).
+Mateřská loď generačního typu, **zaparkovaná na orbitě Teegardenu**. Zabírá **jeden segment** (Belt1.Seg000). Celkem `CONST_SEGMENT_VOLUME = 16` bays. Startovní posádka `CONST_FOUNDING_CREW = 8` v kryospánku, probouzí se postupně podle příchozích pozvánek (viz `Founding Colonist Invitation`).
 
-> Revize S6: Původní návrh S5 počítal se SHIP přes 2 segmenty, ale modulová math se vešla do jednoho (14/16 tiles) s menšími moduly (1×1 místo 2×2). KISS + izomorfismus vítězí — **P1 i plný SHIP sdílí stejnou 1-segment konfiguraci**.
+> Revize S6: Původní návrh S5 počítal se SHIP přes 2 segmenty, ale modulová math se vešla do jednoho (14/16 bays) s menšími moduly (1×1 místo 2×2). KISS + izomorfismus vítězí — **P1 i plný SHIP sdílí stejnou 1-segment konfiguraci**.
 
-**SHIP (Seg000), 14/16 tiles využito, 2 tiles volno:**
+**SHIP (Seg000), 14/16 bays využito, 2 bays volno:**
 
-| Modul | Rozměr | Tiles | Stavy |
+| Modul | Rozměr | Bays | Stavy |
 |---|---|---|---|
 | Habitat (+cryo pro posádku) | 1×1 | 1 | built / occupied |
 | SolarArray | 1×1 | 1 | day-lit / night |
@@ -127,7 +127,7 @@ Jednotná mechanika pro **hmotnou práci** (stavba, demontáž, přesun materiá
 
 ## Capability Matrix (role a výkony)
 
-Actor se v schedule slotu věnuje **jedné roli současně** (`Specializace`, KISS). W/WD platí pro Build/Haul. Ostatní role používají `CP` (Capability Points) — např. Guard 10 CP = jeden dron pokryje 10 CP-tiles území, Heal 4 CP = rychlost léčení na lůžku.
+Actor se v schedule slotu věnuje **jedné roli současně** (`Specializace`, KISS). W/WD platí pro Build/Haul. Ostatní role používají `CP` (Capability Points) — např. Guard 10 CP = jeden dron pokryje 10 CP-bays území, Heal 4 CP = rychlost léčení na lůžku.
 
 Nástřel čísel (kalibrace v P1 playtestu):
 
@@ -341,7 +341,7 @@ Ukotvená horní lišta. Vždy viditelná. Obsah:
 Zdroje (E / W / S (food) / F (air) / ◎ — Resource Model v0.1) jsou zatím ve floating panelu *Zdroje*. Pokud se v ladění ukáže, že stavová viditelnost trpí (hráč mine hladovění), přesunou se sem mezi čas a Help.
 
 ### Hlavní panel (Main Panel)
-Ukotvená střední plocha. Primární hrací prostor — segment grid 8×2, orbitální dekor, interakce (klik tile = task, klik modul = inspekce). Full-width mezi Top a Bottom Bar.
+Ukotvená střední plocha. Primární hrací prostor — segment grid 8×2, orbitální dekor, interakce (klik bay = task, klik modul = inspekce). Full-width mezi Top a Bottom Bar.
 
 ### Dolní panel (Bottom Bar / Event Log ticker)
 Ukotvená dolní lišta. Vždy viditelná. Kompaktní ticker posledních 3–5 událostí. Pro plnou filtrovatelnou historii → floating panel *Události*.
@@ -354,7 +354,7 @@ Ukotvená dolní lišta. Vždy viditelná. Kompaktní ticker posledních 3–5 u
 | **Kolonisté** | Colonists | `K` | Seznam aktérů (hráč + drony). Kind, power_w, state, current task. Klik → highlight tasku a actor path. |
 | **Úkoly** | Tasks | `U` | Task queue. Drag&drop priority, progress bar, assigned actors, cancel. (P2+: filtr podle kind / status.) |
 | **Události** | Events | `E` | Plný filtrovatelný Event Log. Historie, search, filtr podle type/severity. Rozšíření Bottom Bar tickeru. |
-| **Podrobnosti** | Details (Inspector) | `P` / `Tab` | Kontextový inspector vybraného objektu (tile / modul / actor / task). Kontext určuje obsah. |
+| **Podrobnosti** | Details (Inspector) | `P` / `Tab` | Kontextový inspector vybraného objektu (bay / modul / actor / task). Kontext určuje obsah. |
 | **Zdroje** | Resources | `Z` | E / W / S (food) / F (air) / ◎ s historií (mini-sparkline) — Resource Model v0.1. Kandidát na přesun do Top Baru, pokud always-visibility bude nutná. |
 
 **Princip:** žádné trvale ukotvené sidebary. Main Panel není krájený na sloupce. Plovoucí panely jsou **dočasné nástroje**, ne fixní HUD.
@@ -378,7 +378,7 @@ Jeden běh Colony Arc (Founding → Ending). Po *Reset* zakončení může vznik
 | Konstanta | Význam | Hodnota |
 |---|---|---|
 | `CONST_BELT_LENGTH` | Obvod prstence v segmentech | **256** |
-| `CONST_SEGMENT_VOLUME` | Tiles v segmentu (grid 2×8) | **16** |
+| `CONST_SEGMENT_VOLUME` | Bays v segmentu (grid 2×8) | **16** |
 | `CONST_HABITAT_CAPACITY` | Lidí v 1×1 Habitatu | **8** |
 | `CONST_FOUNDING_CREW` | Zakládající posádka v kryo | **8** |
 | `CONST_DAY_HOURS` | Herních hodin v herním dni | **16** |
@@ -396,7 +396,7 @@ Jeden běh Colony Arc (Founding → Ending). Po *Reset* zakončení může vznik
 
 ## Deprecated / Parkováno
 
-- **`Cell` jako entita** (S5) — nahrazeno hierarchií SEGMENT/MODULE/TILE. Dříve používaný pojem „Cell" = **segment**. Parkováno; v kódu nepoužívat.
+- **`Cell` jako entita** (S5) — nahrazeno hierarchií SEGMENT/MODULE/BAY. Dříve používaný pojem „Cell" = **segment**. Parkováno; v kódu nepoužívat.
 - **SHIP přes 2 segmenty** (S5) — revidováno v S6 na 1 segment. SHIP-Bow / SHIP-Stern naming retired.
 - **Binární strom jako topologie** — nahrazeno prstencem. Parkováno v IDEAS.md.
 - **Fork event / forks** — nahrazeno Belt Closure Event a Orbital Shift. Parkováno v IDEAS.md.

@@ -76,7 +76,7 @@ export const UI_TEXT_ACCENT    = HEX_TEXT_WHITE;        // nadpisy, důraz
 export const UI_TEXT_HEADING   = HEX_TEXT_WHITE;        // synonym, readability
 
 export const UI_SELECT_STROKE  = COL_AMBER_BRIGHT;      // klik výběr
-export const UI_TILE_DAMAGED   = COL_ALERT_RED;         // damaged tile fill (alpha < 1)
+export const UI_BAY_DAMAGED   = COL_ALERT_RED;         // damaged bay fill (alpha < 1)
 export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // ⊙ ikona AppName — křiklavá oranžová
 
 // Status dot palette — barevné kuličky v seznamech (Kolonisté, úkoly, události).
@@ -95,12 +95,36 @@ export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
 export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / štíty (Flux.water/coolant)
 
 // ============================================================================
-// 3. Typografie — VT323 size scale (style-guide §2)
+// 2b. Dashboard semafor (S18) — globální prahy pro metriky v Top Baru a panelech
 // ============================================================================
-// VT323 je bitmap CRT font (Google Fonts, OFL). Drž tyto velikosti, jinak rozbiješ
-// rytmus UI. Jednotky px, tak jak je přijímá Phaser Text a CSS font-size.
+// Tříbarevný indikátor: red < CRIT ≤ orange < WARN ≤ green.
+// Sjednoceno pro všechny metriky (Energy/Work/Slab/Flux/Coin atd.). Pro
+// invertované metriky (utilizace, kde "vysoké = problém", např. Work)
+// použij `metricColor(pct, true)` — interně přepočítá na 100-pct.
+//
+// Kompoziční pravidlo: parent metric color = nejhorší child (red > orange > green).
 
-export const FONT_FAMILY    = "VT323, monospace";
+export const THRESHOLD_CRIT_PCT = 15;  // pod = red
+export const THRESHOLD_WARN_PCT = 40;  // pod = orange, nad = green
+
+// Helper: podle pct (0..100) vrátí HEX barvu pro Phaser Text.
+// `inverted` = true pro utilizační metriky (Work) — vysoké pct = červeně.
+export function metricColor(pct: number, inverted = false): string {
+  const p = inverted ? 100 - pct : pct;
+  if (p < THRESHOLD_CRIT_PCT) return HEX_ALERT_RED;
+  if (p < THRESHOLD_WARN_PCT) return HEX_WARN_ORANGE;
+  return HEX_OK_GREEN;
+}
+
+// ============================================================================
+// 3. Typografie — Jersey 25 size scale (style-guide §2)
+// ============================================================================
+// Jersey 25 je pixel terminál font na 25-unit native gridu (Google Fonts, OFL).
+// Vyšší rozlišení než VT323 → čitelnější na mobilu, drží retro vibe. Drž tyto
+// velikosti, jinak rozbiješ rytmus UI. Jednotky px, tak jak je přijímá Phaser
+// Text a CSS font-size.
+
+export const FONT_FAMILY    = '"Jersey 25", monospace';
 export const FONT_SIZE_HERO    = "48px"; // wordmark, title card
 export const FONT_SIZE_H1      = "36px"; // screen heading
 export const FONT_SIZE_H2      = "28px"; // section heading

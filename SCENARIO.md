@@ -2,7 +2,7 @@
 
 Narativní scénář hry. Hybridní model: **autorská páteř + scripted eventy + procedurální generace + hráčská emergence**.
 
-> Viz též `GLOSSARY.md` pro definice pojmů (WORLD/BELT/SEGMENT/MODULE/TILE, SHIP, Energy Model, Capability Matrix, Drone Fleet, Teegarden System, Resource Model v0.1 — E/W/S/F/◎, Capsule, Citizen Tier, Tenets T1–T4 kandidáti).
+> Viz též `GLOSSARY.md` pro definice pojmů (WORLD/BELT/SEGMENT/MODULE/BAY, SHIP, Energy Model, Capability Matrix, Drone Fleet, Teegarden System, Resource Model v0.1 — E/W/S/F/◎, Capsule, Citizen Tier, Tenets T1–T4 kandidáti).
 
 Verze: **0.5** (S14: legacy Act -1 → Act V backbone retirován. Detailní obsah bývalých §3/§4 přesunut do Appendix A/B jako detail pro Player Arc 1.0/1.1.)
 
@@ -62,7 +62,7 @@ Jádro hráčského zážitku. **Hráč nastavuje směr, akce běží brains.** 
 **Schéma postavy (POC):** STATUS + RANK + SKILL. PERK Phase 2+.
 
 Příklady palety (seedy pro brains config):
-- `Dělník @ CELL_UNDERCONSTRUCTION.Tile6`
+- `Dělník @ CELL_UNDERCONSTRUCTION.Bay6`
   → Pracuj | Komunikuj | Jdi | Najez se | Spi | Poptávej | Nabízej | Zaútoč
 - `Výzkumník @ CELL_ADMINISTRATION.Greenhouse`
   → Zkoumej (Geologie III…) | Jdi na úřad → [doklady, volit, kandidovat]

@@ -1,6 +1,13 @@
-// Datový model pro POC_P1 — §13 specifikace + statický katalog definic.
-// MVC: tohle je "Model" (data + statické definice). `world.ts` doplňuje pravidla (stepWorld, FSM).
-// Umístění: apps/client/src/game/ (ne packages/shared — YAGNI pro P1, server přijde v P2).
+// Datový model — layered bay axiom (S18).
+//
+// **Layered bay axiom:** každý bay má vrstvový stack:
+//   void → skeleton → covered → module
+// Vnější vrstva je jediná, která se renderuje a má HP. Vnitřní vrstvy
+// logicky existují (při zničení vnější vrstvy se odhalí další), ale HP
+// se u nich nesleduje — nové odhalení startuje na HP_MAX.
+//
+// Axiom nelze stavět na poškozeném základu: stavba začíná povinnou
+// opravou stávající vnější vrstvy, pak teprve přibývá nová.
 //
 // Indexace segmentu: 2 řady × 8 sloupců, row-major → idx = row*8 + col.
 
@@ -10,25 +17,30 @@ export type Phase = "boot" | "phase_a" | "phase_b" | "phase_c" | "win" | "loss";
 
 export type LossReason = "air" | "food" | "session_closed";
 
-// === Tile (políčko 1×1 v segmentu) ===
+// === Cover variant ===
+// Plášť má 5 vizuálních variant (cover1.png – cover5.png). Uloženo na bay
+// (ne na modulu), aby každý bay pod modulem mohl mít svou vlastní variantu
+// — při demolici se odhalí různorodý mix.
+export type CoverVariant = 1 | 2 | 3 | 4 | 5;
 
-// Tagged union. TypeScript umí narrowing přes `tile.kind` → bezpečný switch.
-// HP-unified damage axiom (S16): každá instance Tile nese hp + hp_max.
-//   - empty: hp = hp_max (nepoškozený floor)
-//   - damaged: hp < hp_max (konkrétní damaged = hp 0..hp_max-1)
-//   - module_ref: projekce modulu; hp žije na Module instanci, ne tady.
-export type Tile =
-  | { kind: "empty"; hp: number; hp_max: number }
-  | { kind: "damaged"; hp: number; hp_max: number }
-  | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number } };
+// === Bay (políčko 1×1 v segmentu) ===
+//
+// Tagged union. TypeScript umí narrowing přes `bay.kind` → bezpečný switch.
+// HP žije jen na vnější vrstvě:
+//   - void: žádné HP, žádný render (hvězdy prosvítají)
+//   - skeleton: hp + hp_max (vnější = kostra)
+//   - covered: hp + hp_max + variant (vnější = plášť)
+//   - module_root: cover variant se pamatuje pod modulem; HP žije na Module
+//   - module_ref: projekce multi-bay modulu, variant pod zakrytá
+export type Bay =
+  | { kind: "void" }
+  | { kind: "skeleton"; hp: number; hp_max: number }
+  | { kind: "covered"; hp: number; hp_max: number; variant: CoverVariant }
+  | { kind: "module_root"; moduleId: string; coverVariant: CoverVariant }
+  | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number }; coverVariant: CoverVariant };
 
 // === Modul: definice (katalog) + instance (stav ve světě) ===
 
-// ModuleKind = diskrétní výčet typů modulů v P1. Používá se jako FK do MODULE_DEFS.
-// Mateřská loď (POC_P1 §3, vrácené v S16): 7 modulů na startu — Habitat, SolarArray,
-// MedCore, Assembler, CommandPost, Storage, Engine 2×2. Dock vzniká až buildem.
-// Vlastní mechaniky (jídlo z Habitat, výroba z Assembler, …) jsou P2+ — v P1 jen
-// vizuální/inspector naplnění mateřského segmentu.
 export type ModuleKind =
   | "SolarArray"
   | "Engine"
@@ -40,64 +52,59 @@ export type ModuleKind =
   | "CommandPost";
 
 // Statická definice modulu — jedna na typ, sdílí všechny instance.
-// DRY: size/asset/power_w se neduplikuje do každé instance.
+// DRY: size/asset/power_w/hp_max se neduplikuje do každé instance.
 export type ModuleDef = {
   kind: ModuleKind;
-  label: string; // pro Inspector / Log
-  w: number; // šířka v tiles
-  h: number; // výška v tiles
-  asset: string; // soubor v public/assets/modules/ (40×40 native per tile)
-  power_w: number; // + produkce / − spotřeba (W); 0 = pasivní
+  label: string;
+  w: number;
+  h: number;
+  asset: string;
+  power_w: number;
   wd_to_build: number;
   wd_to_demolish: number;
-  cost_coin: number; // cena stavby v Coin (◎) — Resource Model v0.1
-  max_hp: number;
-  description: string; // Inspector text (2–3 věty)
+  cost_coin: number;
+  max_hp: number; // HP_MAX — viz tabulka dole (hundreds, monotónně vzestupně)
+  description: string;
 };
 
-// Instance modulu ve světě — mění se za běhu.
-// HP-unified axiom (S16): instance nese hp i hp_max. hp_max se při create
-// zkopíruje z MODULE_DEFS[kind].max_hp — katalog je zdroj pravdy pro default,
-// instance pak může žít vlastním životem (damage, repair).
+// Instance modulu ve světě. HP žije tady, cover variant pod ním na Bay.
 export type Module = {
-  id: string; // unikátní runtime id (např. "mod_001")
-  kind: ModuleKind; // FK do MODULE_DEFS
-  rootIdx: number; // pozice root tile v segmentu (row*8+col)
+  id: string;
+  kind: ModuleKind;
+  rootIdx: number;
   status: "online" | "building" | "demolishing" | "offline";
-  hp: number; // 0..hp_max
-  hp_max: number; // kopie z MODULE_DEFS[kind].max_hp při create
-  progress_wd: number; // progres budování/demolice (0..wd_to_build nebo 0..wd_to_demolish)
-  docked_count?: number; // jen Dock: kolik modulů flotily připojeno (WIN ≥ 1)
+  hp: number;
+  hp_max: number;
+  progress_wd: number;
+  docked_count?: number;
 };
 
-// === Aktér: definice + instance ===
+// === Aktér ===
 
 export type ActorKind = "constructor" | "hauler" | "player";
 
 export type ActorDef = {
   kind: ActorKind;
   label: string;
-  power_w: number; // kolik W táhne když `working`
-  asset: string; // animace/sprite — zatím placeholder
-  role: string; // Inspector popis
+  power_w: number;
+  asset: string;
+  role: string;
 };
 
 export type Actor = {
   id: string;
-  kind: ActorKind; // FK do ACTOR_DEFS
+  kind: ActorKind;
   state: "idle" | "working";
-  taskId?: string; // aktuálně přiřazený task
+  taskId?: string;
 };
 
-// === Task: definice + instance ===
+// === Task ===
 
 export type TaskKind = "repair" | "demolish" | "build" | "haul";
 
-// Statická definice — jaké tasky umí hra generovat, jaké cíle berou.
 export type TaskDef = {
   kind: TaskKind;
   label: string;
-  // Kdo může task vykonávat. Pro P1 zjednodušeně: build/demolish/repair = Constructor+Player, haul = Hauler.
   allowed_actors: ActorKind[];
 };
 
@@ -105,51 +112,52 @@ export type Task = {
   id: string;
   kind: TaskKind;
   target: {
-    tileIdx?: number; // repair, build
-    moduleId?: string; // demolish, haul source/target
-    buildSpec?: ModuleKind; // build — který modul stavět
+    bayIdx?: number; // repair skeleton/covered, build
+    moduleId?: string; // repair module, demolish, haul
+    buildSpec?: ModuleKind;
   };
-  wd_total: number; // odvozeno z targetu (repair: hp_max-hp; build: wd_to_build; ...)
+  wd_total: number;
   wd_done: number;
-  assigned: string[]; // ids aktérů pracujících na tasku
-  priority: number; // vyšší = dřív
-  cost_coin?: number; // jen "build"; strhne se při zahájení (◎)
+  assigned: string[];
+  priority: number;
+  cost_coin?: number;
 };
 
-// === Root state: celý svět ===
+// === Root state ===
 
-// Jeden objekt → čisté testy, snadný snapshot/load/save (model-first princip).
 export type World = {
-  tick: number; // počet logických ticků od startu (0..n)
+  tick: number;
   phase: Phase;
-  // Resource Model v0.1 (axiom v GLOSSARY §Resources):
-  //   5 os = Energy (E) | Work (W) | Slab (S) | Flux (F) | Coin (◎)
-  // P1 scope:
-  //   - Energy        — baterie pásu (seed 12, S16)
-  //   - Work          — NEDRŽÍ se v modelu, derivuje se z actors přes computeWork()
-  //                     (DRY: jediný zdroj = actors.state + ACTOR_DEFS.power_w)
-  //   - Slab.food     — solid materials, subtyp food (seed 40)
-  //   - Flux.air      — fluids+gases, subtyp air (0..100 %)
-  //   - Coin          — měna (seed 20, bylo "Kredo" v0.0)
   resources: {
     energy: number;
     slab: { food: number };
     flux: { air: number };
     coin: number;
   };
-  segment: Tile[]; // 16 tiles (2×8)
+  segment: Bay[]; // 16 bays (2×8)
   modules: Record<string, Module>;
   actors: Actor[];
   tasks: Task[];
-  next_task_id: number; // monotonic counter pro generování task id (KISS, žádný UUID)
+  next_task_id: number;
   loss_reason?: LossReason;
 };
 
 // ============================================================================
-// KATALOG — statické definice (MODULE_DEFS, ACTOR_DEFS, TASK_DEFS)
+// KATALOG — statické definice
 // ============================================================================
-// Hodnoty v souladu s POC_P1 §10 (seed kalibrace). Označené `TODO calibrate`
-// nemají v §10 přímý údaj — orientační nástřel pro playtest.
+//
+// HP_MAX tabulka (S18, layered bay axiom):
+//   skeleton       380   nejslabší — holá kostra, vystavená vakuu
+//   covered        500   plášť (průměr — varianty mohou mít vlastní tuning později)
+//   SolarArray     500   křehké panely
+//   Storage        650   jen stěny a bedny
+//   Habitat        700   obytná kapsle
+//   MedCore        800   redundantní systémy
+//   Assembler      850   těžká výroba
+//   CommandPost    900   pancéřovaný můstek
+//   Dock          1000   těžká přetlaková komora
+//   Engine        1240   nejpevnější
+// Monotónní, „hmotnost + kritičnost". Playtest ladí.
 
 export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
   SolarArray: {
@@ -158,24 +166,24 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 1,
     h: 1,
     asset: "solar_array.png",
-    power_w: 24, // §10: CAL-C2a (revize z 2×2 na 1×1)
+    power_w: 24,
     wd_to_build: 20,
     wd_to_demolish: 10,
     cost_coin: 8,
-    max_hp: 40,
+    max_hp: 500,
     description: "Solární panel. Hlavní zdroj energie v P1.",
   },
   Engine: {
     kind: "Engine",
     label: "Engine",
     w: 2,
-    h: 2, // POC_P1 §3: Engine 2×2 (S16 fix — bylo 2×1 omylem)
+    h: 2,
     asset: "engine.png",
-    power_w: 0, // nefunkční, bude demolován v P1
-    wd_to_build: 80, // TODO calibrate (v P1 se nestaví, jen demolition)
-    wd_to_demolish: 60, // §10: revize z 120 na 60
+    power_w: 0,
+    wd_to_build: 80,
+    wd_to_demolish: 60,
     cost_coin: 30,
-    max_hp: 120,
+    max_hp: 1240,
     description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
   },
   Dock: {
@@ -184,27 +192,24 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 2,
     h: 2,
     asset: "dock.png",
-    power_w: -6, // TODO calibrate
-    wd_to_build: 48, // §10
+    power_w: -6,
+    wd_to_build: 48,
     wd_to_demolish: 20,
-    cost_coin: 20, // §10
-    max_hp: 100,
+    cost_coin: 20,
+    max_hp: 1000,
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
   },
-  // === Mateřské moduly (S16) — POC_P1 §3 ===
-  // Vlastní mechaniky P2+. P1 zobrazuje je v segmentu, INSPECTOR čte HP+popis,
-  // všechny placeholder hodnoty mají TODO calibrate.
   Habitat: {
     kind: "Habitat",
     label: "Habitat",
     w: 1,
     h: 1,
     asset: "habitat.png",
-    power_w: -2, // TODO calibrate (drobná spotřeba ECLSS)
+    power_w: -2,
     wd_to_build: 15,
     wd_to_demolish: 8,
     cost_coin: 10,
-    max_hp: 40,
+    max_hp: 700,
     description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
   },
   Storage: {
@@ -213,11 +218,11 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 1,
     h: 1,
     asset: "storage.png",
-    power_w: -1, // TODO calibrate
+    power_w: -1,
     wd_to_build: 12,
     wd_to_demolish: 6,
     cost_coin: 8,
-    max_hp: 30,
+    max_hp: 650,
     description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
   },
   MedCore: {
@@ -226,11 +231,11 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 1,
     h: 1,
     asset: "medcore.png",
-    power_w: -3, // TODO calibrate
+    power_w: -3,
     wd_to_build: 18,
     wd_to_demolish: 9,
     cost_coin: 12,
-    max_hp: 35,
+    max_hp: 800,
     description: "Lékařské centrum. Léčí HP aktérům (P2+).",
   },
   Assembler: {
@@ -239,11 +244,11 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 1,
     h: 1,
     asset: "assembler.png",
-    power_w: -4, // TODO calibrate
+    power_w: -4,
     wd_to_build: 22,
     wd_to_demolish: 10,
     cost_coin: 15,
-    max_hp: 40,
+    max_hp: 850,
     description: "Výrobna modulů z Coin (◎). Bottleneck stavby v P2+.",
   },
   CommandPost: {
@@ -252,11 +257,11 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     w: 1,
     h: 1,
     asset: "command_post.png",
-    power_w: -2, // TODO calibrate
+    power_w: -2,
     wd_to_build: 20,
     wd_to_demolish: 10,
     cost_coin: 14,
-    max_hp: 50,
+    max_hp: 900,
     description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
   },
 };
@@ -265,14 +270,14 @@ export const ACTOR_DEFS: Record<ActorKind, ActorDef> = {
   constructor: {
     kind: "constructor",
     label: "Constructor",
-    power_w: 12, // §10 seed
+    power_w: 12,
     asset: "actor_constructor.png",
     role: "Staví, opravuje, demontuje moduly. 3× v poolu.",
   },
   hauler: {
     kind: "hauler",
     label: "Hauler",
-    power_w: 8, // §10 seed
+    power_w: 8,
     asset: "actor_hauler.png",
     role: "Přepravuje materiál a moduly flotily. 2× v poolu.",
   },
@@ -286,24 +291,8 @@ export const ACTOR_DEFS: Record<ActorKind, ActorDef> = {
 };
 
 export const TASK_DEFS: Record<TaskKind, TaskDef> = {
-  repair: {
-    kind: "repair",
-    label: "Repair",
-    allowed_actors: ["constructor", "player"],
-  },
-  demolish: {
-    kind: "demolish",
-    label: "Demolish",
-    allowed_actors: ["constructor", "player"],
-  },
-  build: {
-    kind: "build",
-    label: "Build",
-    allowed_actors: ["constructor", "player"],
-  },
-  haul: {
-    kind: "haul",
-    label: "Haul",
-    allowed_actors: ["hauler"],
-  },
+  repair: { kind: "repair", label: "Repair", allowed_actors: ["constructor", "player"] },
+  demolish: { kind: "demolish", label: "Demolish", allowed_actors: ["constructor", "player"] },
+  build: { kind: "build", label: "Build", allowed_actors: ["constructor", "player"] },
+  haul: { kind: "haul", label: "Haul", allowed_actors: ["hauler"] },
 };

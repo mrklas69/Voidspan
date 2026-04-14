@@ -2,7 +2,7 @@
 
 Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art ve stylu Dune II (1992).
 
-**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, font **VT323**, tile scale 2×.
+**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, font **VT323**, bay scale 2×.
 
 ## Struktura
 
@@ -10,7 +10,7 @@ Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art ve stylu 
 art/
 ├── modules/     # moduly (v P1: SolarArray, Engine, Dock; P2+: Habitat, Storage, ...)
 ├── actors/      # aktéři (Constructor, Hauler, Player)
-├── tiles/       # stavy/overlay pro tile (floor, damaged, highlight…)
+├── bays/       # stavy/overlay pro bay (floor, damaged, highlight…)
 └── ui/          # HUD ikony, UI elementy
 ```
 

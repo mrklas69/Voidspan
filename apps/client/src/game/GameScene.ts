@@ -52,7 +52,7 @@ export class GameScene extends Phaser.Scene {
   preload(): void {
     // Module assety: loaduj jen ty, které reálně existují v public/assets/modules/.
     // Whitelist (S16) drží Phaser bez warningů — jakmile přidáš nový PNG, dopiš kind sem.
-    // Texture key = ModuleKind (matchuje drawTileSprite v SegmentPanel).
+    // Texture key = ModuleKind (matchuje drawBaySprite v SegmentPanel).
     const AVAILABLE_MODULE_ASSETS: Array<keyof typeof MODULE_DEFS> = [
       "SolarArray", "Engine", "Dock",
       "Habitat", "Storage", "MedCore", "Assembler", "CommandPost",
@@ -60,11 +60,14 @@ export class GameScene extends Phaser.Scene {
     for (const kind of AVAILABLE_MODULE_ASSETS) {
       this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
     }
-    // Tile assety (ne-moduly).
-    this.load.image("tile_floor", "assets/tiles/floor.png");
-    // Construction texture (S16) — fallback sprite pro chybějící moduly/assety.
-    // Vzor černo-žlutých pruhů = univerzální placeholder „TBD asset". KISS.
-    this.load.image("tile_construction", "assets/tiles/construction.png");
+    // Bay assety (ne-moduly) — layered bay axiom (S18).
+    // Skeleton = vnější vrstva pro nepokrytý bay; cover1-5 = 5 variant pláště.
+    this.load.image("bay_skeleton", "assets/bays/skeleton.png");
+    for (let v = 1; v <= 5; v++) {
+      this.load.image(`bay_cover${v}`, `assets/bays/cover${v}.png`);
+    }
+    // Construction texture — fallback sprite pro chybějící moduly/assety.
+    this.load.image("bay_construction", "assets/bays/construction.png");
 
     // Orbitální dekor.
     this.load.image("asteroid2", "assets/sprites/asteroid2.png");
@@ -106,7 +109,7 @@ export class GameScene extends Phaser.Scene {
     this.header = new HeaderPanel(this, getWorld);
     this.actors = new ActorsPanel(this, getWorld);
     this.segment = new SegmentPanel(this, getWorld);
-    this.sideRight = new SideRightPanel(this, getWorld, () => this.segment.getSelectedTileIdx());
+    this.sideRight = new SideRightPanel(this, getWorld, () => this.segment.getSelectedBayIdx());
 
     this.createLog();
     this.bindDebugKeys();
@@ -127,10 +130,10 @@ export class GameScene extends Phaser.Scene {
         "Shortcuts\n" +
         "\n" +
         "[H]      open / close this Help\n" +
-        "[WASD]   move tile selection (yellow cursor)\n" +
+        "[WASD]   move bay selection (yellow cursor)\n" +
         "[ESC]    zavřít tento dialog\n" +
         "\n" +
-        "Klik na damaged tile = enqueue repair task.\n" +
+        "Klik na damaged bay = enqueue repair task.\n" +
         "Hover kdekoli = tooltip s detailem.",
     });
   }
@@ -145,7 +148,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         logY + LOG_H / 2,
-        "[H] help  [WASD] select tile",
+        "[H] help  [WASD] select bay",
         {
           fontFamily: FONT_FAMILY,
           fontSize: FONT_SIZE_HINT,

@@ -220,7 +220,7 @@ Global scope: **hráč uniká ze Země.** Motiv je **záměrně mlhavý**:
 
 Mlhavost je feature, ne bug — dovoluje různým hráčům promítnout různé identity. Propisuje se do **3.1 (kdo je hráč mechanicky)** a do narativu motivačního dopisu.
 
-**Estetika:** 8bit old school, **1D tiles**, reference **DUNA1**. Primitivní forma, bohatý obsah.
+**Estetika:** 8bit old school, **1D bays**, reference **DUNA1**. Primitivní forma, bohatý obsah.
 
 ## Revize z S4 (2026-04-12) — bod 1 mapy
 
@@ -279,7 +279,7 @@ Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jed
 
 ### Datový model
 - Každá instance **Module** musí mít `hp` a `hp_max` (dnes má jen `hp` + `max_hp` v `MODULE_DEFS` — sjednotit tak, že `hp_max` se kopíruje z katalogu do instance při create).
-- Každá instance **Tile** musí mít `hp` a `hp_max`. Empty tile = `hp = hp_max` (nepoškozený floor). Damaged = `hp < hp_max`. Rozestavěné = `hp` roste z 0.
+- Každá instance **Bay** musí mít `hp` a `hp_max`. Empty bay = `hp = hp_max` (nepoškozený floor). Damaged = `hp < hp_max`. Rozestavěné = `hp` roste z 0.
 - Model-first: axiom „instance nese stav, katalog nese definici (max, cost, …)".
 
 ### Mechaniky jako HP transformace
@@ -300,11 +300,11 @@ Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jed
 - Varianty:
   - Fixní damage per asteroid kind (malý / velký).
   - Damage ∝ kinetická energie (mass × velocity²).
-  - Splash damage na sousední tiles podle průměru.
+  - Splash damage na sousední bays podle průměru.
 - Rozhodnout při kalibraci P2+ asteroid eventů.
 
 ### Otevřené otázky
-- **Damaged → empty transition:** kdy se tile po repair vrátí do „plného" stavu? Když `hp=hp_max`, nebo když je task hotov? (Model-first: `hp=hp_max` = jediná podmínka, task je jen mechanismus, jak tam HP doplnit.)
+- **Damaged → empty transition:** kdy se bay po repair vrátí do „plného" stavu? Když `hp=hp_max`, nebo když je task hotov? (Model-first: `hp=hp_max` = jediná podmínka, task je jen mechanismus, jak tam HP doplnit.)
 - **Konstrukční ghost:** rozestavěný modul jako průhledný sprite + červený fill (hp nízké). Finish → fill zmizí spojitě.
 - **Dekonstrukce vs. asteroid hit:** oba snižují HP, UI rozliší podle přítomnosti `demolish` tasku na instanci.
 - **Akcelerace:** paralelní zdroje změny HP (oprava + asteroid současně) — net `Δhp = Σ sources`.

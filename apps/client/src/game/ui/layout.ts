@@ -40,20 +40,20 @@ export const ACTORS_X = 0;
 export const TASKQUEUE_W = 250;
 export const TASKQUEUE_X = CANVAS_W - TASKQUEUE_W; // 1030
 
-// === Segment grid (center, 8×2 tiles) =======================================
+// === Segment grid (center, 8×2 bays) =======================================
 
-export const TILE_NATIVE = 40;
-export const TILE_SCALE = 2;
-export const TILE_PX = TILE_NATIVE * TILE_SCALE; // 80
-export const SEGMENT_W = 8 * TILE_PX; // 640
-export const SEGMENT_H = 2 * TILE_PX; // 160
+export const BAY_NATIVE = 40;
+export const BAY_SCALE = 2;
+export const BAY_PX = BAY_NATIVE * BAY_SCALE; // 80
+export const SEGMENT_W = 8 * BAY_PX; // 640
+export const SEGMENT_H = 2 * BAY_PX; // 160
 export const SEGMENT_X = (CANVAS_W - SEGMENT_W) / 2; // 320
 export const SEGMENT_Y = MID_Y + (MID_H - SEGMENT_H) / 2; // 340
 
 // === Barvy (aliasy z palety — axiom Voidspan 16) =============================
 
 export const COL_PANEL_BG = UI_PANEL_BG;
-export const COL_TILE_SELECTED = UI_SELECT_STROKE;
+export const COL_BAY_SELECTED = UI_SELECT_STROKE;
 export const COL_TEXT = UI_TEXT_PRIMARY;
 export const COL_TEXT_DIM = UI_TEXT_DIM;
 export const COL_TEXT_ACCENT = UI_TEXT_ACCENT;

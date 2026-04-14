@@ -76,7 +76,7 @@ resources: {
 ### F3 `[MAJ]` — GameScene.ts nabobtnalá (748 LOC)
 
 **Stav:** STRUCTURAL DEBT.
-**Detail:** Monolitická scéna — createHeader, renderHeader, renderSegment, renderActors, renderTaskQueue, renderInspector, selectTile, tooltip attach, modal, background scroll v jedné třídě. 50 % game kódu.
+**Detail:** Monolitická scéna — createHeader, renderHeader, renderSegment, renderActors, renderTaskQueue, renderInspector, selectBay, tooltip attach, modal, background scroll v jedné třídě. 50 % game kódu.
 
 **Impact:** KISS/SLAP rozmazané. Budoucí build UI / demolish / docking animation bude dál nafukovat.
 

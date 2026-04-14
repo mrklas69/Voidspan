@@ -1,6 +1,6 @@
 // SideRightPanel — pravý sloupec: TASK QUEUE (horní polovina) + INSPECTOR (dolní).
 // Task queue zobrazuje frontu úkolů s progress bary.
-// Inspector zobrazuje kontext vybraného tile (čte přes `getSelectedTileIdx` ze Segment).
+// Inspector zobrazuje kontext vybraného bay (čte přes `getSelectedBayIdx` ze Segment).
 
 import Phaser from "phaser";
 import type { World, Module, Task } from "../model";
@@ -28,7 +28,7 @@ export class SideRightPanel {
   constructor(
     scene: Phaser.Scene,
     private getWorld: () => World,
-    private getSelectedTileIdx: () => number | null,
+    private getSelectedBayIdx: () => number | null,
   ) {
     // Subtle bg fill — odliší zónu od canvas pozadí bez rámečku.
     scene.add
@@ -79,7 +79,7 @@ export class SideRightPanel {
     tooltips.attach(this.taskQueueText, () => {
       const w = this.getWorld();
       const count = w.tasks.length;
-      return `Úkoly\n\nV queue: ${count}\nProgress = WD done / total\n1 Constructor (12 W) = 12 WD / game day\n\nKlik damaged tile = enqueue repair.`;
+      return `Úkoly\n\nV queue: ${count}\nProgress = WD done / total\n1 Constructor (12 W) = 12 WD / game day\n\nKlik damaged bay = enqueue repair.`;
     });
   }
 
@@ -99,7 +99,7 @@ export class SideRightPanel {
     const lines = tasks.flatMap((t: Task) => {
       const pct = Math.min(100, (t.wd_done / t.wd_total) * 100);
       const target =
-        t.target.tileIdx !== undefined ? `tile ${t.target.tileIdx}` : "—";
+        t.target.bayIdx !== undefined ? `bay ${t.target.bayIdx}` : "—";
       const bar = renderBar(pct, 12);
       return [
         `${t.id}  ${t.kind}  ${target}`,
@@ -111,7 +111,7 @@ export class SideRightPanel {
   }
 
   private renderInspector(): void {
-    const idx = this.getSelectedTileIdx();
+    const idx = this.getSelectedBayIdx();
     if (idx === null) {
       this.inspectorHeader.setText("—");
       this.inspectorText.setText("nic není vybráno");
@@ -120,42 +120,53 @@ export class SideRightPanel {
     }
 
     const w = this.getWorld();
-    const tile = w.segment[idx];
-    if (!tile) return;
+    const bay = w.segment[idx];
+    if (!bay) return;
 
     const row = Math.floor(idx / 8);
     const col = idx % 8;
-    const pos = `tile ${idx} (r${row} c${col})`;
+    const pos = `bay ${idx} (r${row} c${col})`;
 
-    if (tile.kind === "empty") {
-      this.inspectorHeader.setText("Hull plating");
-      this.inspectorText.setText(
-        `${pos}\n\n` +
-          `HP: ${tile.hp.toFixed(1)} / ${tile.hp_max}\n` +
-          `Povrch beze škody, žádný modul.`,
-      );
+    if (bay.kind === "void") {
+      this.inspectorHeader.setText("Void");
+      this.inspectorText.setText(`${pos}\n\nOtevřený prostor. Nic tu není.`);
       this.inspectorText.setColor(COL_TEXT_DIM);
       return;
     }
 
-    if (tile.kind === "damaged") {
-      const missing = tile.hp_max - tile.hp;
-      this.inspectorHeader.setText("Hull breach");
+    if (bay.kind === "skeleton") {
+      const missing = bay.hp_max - bay.hp;
+      this.inspectorHeader.setText("Skeleton");
       this.inspectorText.setText(
         `${pos}\n\n` +
-          `HP: ${tile.hp.toFixed(1)} / ${tile.hp_max}\n` +
-          `WD to repair: ${missing.toFixed(1)}\n` +
-          `Klik = enqueue repair task.`,
+          `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
+          (missing > 0
+            ? `Missing: ${missing.toFixed(0)} HP\nKlik = enqueue repair task.`
+            : `(kostra bez poškození, nevzduchotěsná)`),
       );
-      this.inspectorText.setColor(COL_TEXT_ACCENT);
+      this.inspectorText.setColor(missing > 0 ? COL_TEXT_ACCENT : COL_TEXT_DIM);
       return;
     }
 
-    // module_ref
-    const mod = w.modules[tile.moduleId] as Module | undefined;
+    if (bay.kind === "covered") {
+      const missing = bay.hp_max - bay.hp;
+      this.inspectorHeader.setText(`Covered v${bay.variant}`);
+      this.inspectorText.setText(
+        `${pos}\n\n` +
+          `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
+          (missing > 0
+            ? `Missing: ${missing.toFixed(0)} HP\nKlik = enqueue repair task.`
+            : `(vzduchotěsné, bez poškození)`),
+      );
+      this.inspectorText.setColor(missing > 0 ? COL_TEXT_ACCENT : COL_TEXT_DIM);
+      return;
+    }
+
+    // module_root / module_ref
+    const mod = w.modules[bay.moduleId] as Module | undefined;
     if (!mod) {
       this.inspectorHeader.setText("?");
-      this.inspectorText.setText(`${pos}\n\n[chyba: modul ${tile.moduleId} neexistuje]`);
+      this.inspectorText.setText(`${pos}\n\n[chyba: modul ${bay.moduleId} neexistuje]`);
       return;
     }
     const def = MODULE_DEFS[mod.kind];
@@ -164,7 +175,8 @@ export class SideRightPanel {
       pos,
       "",
       `status: ${mod.status}`,
-      `HP: ${mod.hp} / ${mod.hp_max}`,
+      `HP: ${mod.hp.toFixed(0)} / ${mod.hp_max}`,
+      `cover: v${bay.coverVariant} (pod modulem)`,
       `power: ${def.power_w > 0 ? "+" : ""}${def.power_w} W`,
       `build: ${def.wd_to_build} WD · ◎ ${def.cost_coin}`,
       "",

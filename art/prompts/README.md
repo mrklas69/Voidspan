@@ -54,12 +54,12 @@ Po generaci sheetu nakrájet 12 cells (4×3 grid) + 2 cells (Engine/Dock 2×2) a
 | E    | engine.png          | Engine (2×2)     | mateřská loď |
 | D    | dock.png            | Dock (2×2)       | build target |
 
-## Multi-tile moduly (Engine 2×2, Dock 2×2)
+## Multi-bay moduly (Engine 2×2, Dock 2×2)
 
-Engine sheet je 80×80 native PNG = 2 tiles × 2 tiles × 40 native. Po nasazení:
+Engine sheet je 80×80 native PNG = 2 bays × 2 bays × 40 native. Po nasazení:
 - `apps/client/public/assets/modules/engine.png` = monolit 80×80
 - `AVAILABLE_MODULE_ASSETS` whitelistuje `Engine`
-- `SegmentPanel.drawTileSprite` (S17b) umí render multi-tile: root tile (`rootOffset === {0,0}`) kreslí celou texturu přes span, ref tiles skryjí sprite
+- `SegmentPanel.drawBaySprite` (S17b) umí render multi-bay: root bay (`rootOffset === {0,0}`) kreslí celou texturu přes span, ref bays skryjí sprite
 - Engine nozzle musí mířit **doprava** (ven z trupu), Dock airlock stejná orientace — po demontáži Engine → build Dock drží místo beze změny orientace
 
 ## Zkušenosti s generátory (2026-04-14)

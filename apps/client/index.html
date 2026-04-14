@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>⊙ Voidspan — POC P1</title>
-    <!-- VT323 — CRT terminál font (Google Fonts, OFL). Jeden font napříč UI. -->
+    <!-- Jersey 25 — pixel terminál font, 25-unit native grid (vyšší rozlišení
+         než VT323, drží retro vibe, čitelnější na mobilu). Google Fonts, OFL. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+25&display=swap" rel="stylesheet" />
     <style>
       /* Reset + centrované plátno na černém pozadí (POC_P1 §16: 1280×720 baseline) */
       html, body {
@@ -15,7 +16,7 @@
         padding: 0;
         background: #000;
         color: #ddd;
-        font-family: "VT323", ui-monospace, Consolas, monospace;
+        font-family: "Jersey 25", ui-monospace, Consolas, monospace;
         overflow: hidden;
       }
       #game {

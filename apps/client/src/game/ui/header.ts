@@ -12,8 +12,10 @@ import {
   FONT_FAMILY,
   FONT_SIZE_HUD,
   UI_BRAND_ICON,
+  HEX_WARN_ORANGE,
+  metricColor,
 } from "../palette";
-import { CANVAS_W, HUD_ROW_Y, COL_TEXT, COL_TEXT_DIM, COL_TEXT_ACCENT } from "./layout";
+import { CANVAS_W, HUD_ROW_Y, COL_TEXT, COL_TEXT_ACCENT } from "./layout";
 
 export class HeaderPanel {
   private iconText: Phaser.GameObjects.Text;
@@ -38,11 +40,11 @@ export class HeaderPanel {
     });
     this.appText = scene.add.text(0, HUD_ROW_Y, "", {
       ...baseStyle,
-      color: COL_TEXT_ACCENT,
+      color: UI_BRAND_ICON,
     });
     this.metaText = scene.add.text(0, HUD_ROW_Y, "", {
       ...baseStyle,
-      color: COL_TEXT_DIM,
+      color: COL_TEXT_ACCENT,
     });
 
     // 5× resource Text — za meta, pozice dopočítaná v render().
@@ -145,9 +147,27 @@ export class HeaderPanel {
       formatResource(w.resources.flux.air, 100, "F"),
       `◎ ${formatScalar(w.resources.coin)}`,
     ];
+    // Dashboard semafor (S18) — barva podle prahu metricColor(pct, inverted?).
+    // Index pořadí drží pořadí parts[]: 0=E, 1=W, 2=S, 3=F, 4=Coin.
+    const energyPct = (w.resources.energy / ENERGY_MAX) * 100;
+    const workPct = work.max > 0 ? (work.current / work.max) * 100 : 0;
+    const foodPct = w.resources.slab.food; // max 100 → pct = value
+    const airPct = w.resources.flux.air;   // max 100 → pct = value
+    const colors: string[] = [
+      metricColor(energyPct),
+      metricColor(workPct, /* inverted */ true),
+      metricColor(foodPct),
+      metricColor(airPct),
+      HEX_WARN_ORANGE, // Coin: placeholder oranžová (P2+ = porovnání income/expense)
+    ];
+
     for (let i = 0; i < parts.length; i++) {
       const t = this.resourceTexts[i];
-      if (t) t.setText(parts[i]);
+      if (t) {
+        t.setText(parts[i]);
+        const c = colors[i];
+        if (c) t.setColor(c);
+      }
     }
 
     // --- 2) Změřit celkovou šířku bloku a spočítat počáteční X pro centrování ---

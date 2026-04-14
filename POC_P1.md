@@ -31,9 +31,9 @@ Hráč dostavší se do LOSS konce řekne: *„Dáme ještě jeden pokus."* (Př
 
 ## 3. World scope
 
-**SHIP = 1 SEGMENT = 2×8 = 16 TILES.** (Revize S5 — 2. segment byl zbytečná rezerva, modulová math se vešla do jednoho.)
+**SHIP = 1 SEGMENT = 2×8 = 16 BAYS.** (Revize S5 — 2. segment byl zbytečná rezerva, modulová math se vešla do jednoho.)
 
-**Startovní rozložení modulů (14 tiles z 16, 2 volné pro stavbu):**
+**Startovní rozložení modulů (14 bays z 16, 2 volné pro stavbu):**
 
 | Modul | Velikost | Poznámka |
 |---|---|---|
@@ -44,8 +44,8 @@ Hráč dostavší se do LOSS konce řekne: *„Dáme ještě jeden pokus."* (Př
 | MedCore | 1×1 | |
 | Assembler | 1×1 | Výroba modulů z Coin (◎) |
 | CommandPost | 1×1 | UI root |
-| `[damaged tile]` | 1×1 | **Únik vzduchu — vzniká při startu** |
-| `[empty]` + `[empty]` | 2×1 | Volné tiles pro stavbu Docku 2×2 |
+| `[damaged bay]` | 1×1 | **Únik vzduchu — vzniká při startu** |
+| `[empty]` + `[empty]` | 2×1 | Volné bays pro stavbu Docku 2×2 |
 
 **Drony v poolu:** Constructor + Hauler (počty ladí kalibrace). Marshals/Medics/Fighters mimo scope.
 
@@ -58,10 +58,10 @@ Hráč dostavší se do LOSS konce řekne: *„Dáme ještě jeden pokus."* (Př
 ### 4.A — Krize: Únik vzduchu
 
 **Trigger:** ihned po probuzení hráče.
-**Mechanika:** Jeden tile se rozbije, vzduch v SHIPu klesá lineárně. Hráč musí poslat Constructor(y) utěsnit.
+**Mechanika:** Jeden bay se rozbije, vzduch v SHIPu klesá lineárně. Hráč musí poslat Constructor(y) utěsnit.
 **Timeout:** `CONST_PUZZLE_SLACK_FACTOR × optimum_repair_time` (default 2×).
 **LOSS:** Vzduch → 0, všichni umírají (včetně kolonistů v kryo). Závěrečný dialog + fade.
-**WIN sub-stav:** Tile opraven → scénář přechází do 4.B.
+**WIN sub-stav:** Bay opraven → scénář přechází do 4.B.
 
 ### 4.B — Normal task: Engine → Dock
 
@@ -114,7 +114,7 @@ Tyto systémy **nejsou** v P1 a jejich absence není bug:
 - Orbital Shift
 - Monetizace (žádná)
 - Modeartion, LLM
-- Grafika mimo placeholder tiles
+- Grafika mimo placeholder bays
 
 ---
 
@@ -158,8 +158,8 @@ Konkrétní hodnoty se určují playtestem, ne dopředu.
 
 → Viz samostatné **Art sezení** (TBD) a **`art/README.md`** pro pipeline. Přehled potřebných assetů:
 
-**Moduly (tile sprites, 40×40 native):** SolarArray, Docking Station, Engine (P1 katalog). Habitat/Storage/MedCore/Assembler/CommandPost jsou P2+.
-**Tiles (stav políčka):** floor (prázdná podlaha), damaged (poškozený trup).
+**Moduly (bay sprites, 40×40 native):** SolarArray, Docking Station, Engine (P1 katalog). Habitat/Storage/MedCore/Assembler/CommandPost jsou P2+.
+**Bays (stav políčka):** floor (prázdná podlaha), damaged (poškozený trup).
 **Aktéři:** Kolonista (idle/walk/work), Constructor drone, Hauler drone, kryo-kolonista (static).
 **Flotila:** silueta-sprity parkujících modulů u SHIPu.
 **VFX:** air-leak particle, build progress bar, weld/spark.
@@ -218,7 +218,7 @@ Logika: **target total wall ~12–15 min** (crisis ~2 min + Engine→Dock ~8 min
 - **Coin (◎, dříve Kredo):** v P1 stačí **1 zdroj** (◎ ze Storage), Energy (dříve Echo) nepoužíváme (úspora složitosti; Energy přijde s Greenhouse v P2).
 - **Engine 120 → 60 WD:** S5 hodnotu vědomě revidujeme dolů. P1 je 1 segment, ne 2 — práce se škáluje s objemem.
 - **„Game hour = 15 s wall":** agresivní komprese. Pokud hráči nestíhají číst / reagovat, snižujeme na 180× (20 s / game hour). První tuning páka.
-- **2 volné tiles** na SHIPu pro Dock 2×2 — Engine (2×2) se demontuje *tam*, Dock staví *tam*. Jediné místo, kam Dock pasuje.
+- **2 volné bays** na SHIPu pro Dock 2×2 — Engine (2×2) se demontuje *tam*, Dock staví *tam*. Jediné místo, kam Dock pasuje.
 
 Všechny hodnoty se upravují po prvním playtestu. Seed je východisko, ne cíl.
 
@@ -300,21 +300,21 @@ type World = {
     flux: { air: number };            // fluids+gases → air 0..100 %
     coin: number;                     // měna (seed: 20; dříve „Kredo")
   };
-  segment: Tile[];                    // 16 tiles (2 řady × 8 sloupců), index = row*8 + col (row-major)
+  segment: Bay[];                    // 16 bays (2 řady × 8 sloupců), index = row*8 + col (row-major)
   modules: Record<string, Module>;    // id → modul
   actors: Actor[];                    // drony + hráč
   tasks: Task[];                      // fronta, setříděná podle priority
   loss_reason?: "air" | "food" | "session_closed";
 };
 
-// === Tile (políčko 1×1) ===
-type Tile =
+// === Bay (políčko 1×1) ===
+type Bay =
   | { kind: "empty" }
   | { kind: "damaged"; wd_to_repair: number }
   | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number } };
-  // module_ref: tile patří modulu; rootOffset ukazuje na root tile modulu
+  // module_ref: bay patří modulu; rootOffset ukazuje na root bay modulu
 
-// === Modul (zabírá 1 nebo víc tiles) ===
+// === Modul (zabírá 1 nebo víc bays) ===
 type ModuleKind =
   | "Habitat" | "SolarArray" | "Engine" | "Dock"
   | "Storage" | "MedCore" | "Assembler" | "CommandPost";
@@ -322,9 +322,9 @@ type ModuleKind =
 type Module = {
   id: string;
   kind: ModuleKind;
-  w: number;                          // šířka v tiles (1 nebo 2)
-  h: number;                          // výška v tiles (1 nebo 2)
-  rootIdx: number;                    // index root tile v segmentu
+  w: number;                          // šířka v bays (1 nebo 2)
+  h: number;                          // výška v bays (1 nebo 2)
+  rootIdx: number;                    // index root bay v segmentu
   status: "online" | "building" | "demolishing" | "offline";
   progress_wd: number;                // progres budování/demolice (0..total)
   docked_count?: number;              // jen Dock: kolik modulů flotily zadokovaných
@@ -345,7 +345,7 @@ type TaskKind = "repair" | "demolish" | "build" | "haul";
 type Task = {
   id: string;
   kind: TaskKind;
-  target: { tileIdx?: number; moduleId?: string; buildSpec?: ModuleKind };
+  target: { bayIdx?: number; moduleId?: string; buildSpec?: ModuleKind };
   wd_total: number;
   wd_done: number;
   assigned: string[];                 // ids actors pracujících na tasku
@@ -355,7 +355,7 @@ type Task = {
 ```
 
 **Poznámky:**
-- **`Tile.module_ref`** umožňuje 2×2 modulům zabírat 4 tiles, ale logika se řeší nad `Module` (root tile). Klik na kterýkoli tile modulu → vybere se modul.
+- **`Bay.module_ref`** umožňuje 2×2 modulům zabírat 4 bays, ale logika se řeší nad `Module` (root bay). Klik na kterýkoli bay modulu → vybere se modul.
 - **`docked_count`** u Docku drží WIN podmínku (≥ 1).
 - **Energy (dříve Echo)** v P1 nepoužíváme (úspora, viz §10 poznámky).
 
@@ -365,7 +365,7 @@ type Task = {
 
 ```
 boot ──(uživatel klikne "Start")──▶ phase_a
-phase_a ──(damaged tile vyhojen)──▶ phase_b
+phase_a ──(damaged bay vyhojen)──▶ phase_b
 phase_a ──(air ≤ 0)──▶ loss (reason="air")
 
 phase_b ──(dock.status=online ∧ dock.docked_count ≥ 1)──▶ phase_c
@@ -379,8 +379,8 @@ win | loss ──(refresh stránky)──▶ boot (nová hra)
 ```
 
 **Side-effects při přechodech:**
-- `boot → phase_a`: damaged tile vzniká na predefinovaném indexu; air start = 100 %.
-- `phase_a → phase_b`: tile_damaged → `{ kind: "empty" }`; air stop klesat, regeneruje pomalu.
+- `boot → phase_a`: damaged bay vzniká na predefinovaném indexu; air start = 100 %.
+- `phase_a → phase_b`: bay_damaged → `{ kind: "empty" }`; air stop klesat, regeneruje pomalu.
 - `phase_b → phase_c`: odemkne se stavba volitelných modulů (2. Habitat, 2. SolarArray).
 - `→ loss`: všichni actors `state: "working"` → halt; UI fade + dialog.
 - `→ win`: dialog s shrnutím (čas, bonusy, postaveno).
@@ -401,12 +401,12 @@ win | loss ──(refresh stránky)──▶ boot (nová hra)
 
 ### Interakce
 
-**Primární klik na tile:**
-- Empty tile → menu: `[Postav Habitat 1×1]` `[Postav SolarArray 1×1]`
-- Damaged tile → menu: `[Oprav]`
-- Module tile → inspector vpravo + menu: `[Demontuj]` (jen Engine v P1), `[Dock: čekat na flotilu]` (jen Dock)
+**Primární klik na bay:**
+- Empty bay → menu: `[Postav Habitat 1×1]` `[Postav SolarArray 1×1]`
+- Damaged bay → menu: `[Oprav]`
+- Module bay → inspector vpravo + menu: `[Demontuj]` (jen Engine v P1), `[Dock: čekat na flotilu]` (jen Dock)
 
-**Výběr modulu 2×2:** klik na kterýkoli ze 4 tiles vybere celý modul (rootOffset → modules[rootId]).
+**Výběr modulu 2×2:** klik na kterýkoli ze 4 bays vybere celý modul (rootOffset → modules[rootId]).
 
 **Task queue panel (pravý sloupec):**
 - Seznam aktivních i čekajících tasků s progress barem (`wd_done / wd_total`) a ETA v game-time.
@@ -444,7 +444,7 @@ Každý tick:
 > **Mode:** P1 je **Observer mode** (viz `GLOSSARY.md` §UI Modes, axiom S15). Top Bar 5 resource bars zobrazuje **kolonijní** zdroje, ne hráčovy. Per-actor HP / osobní inventář jsou Player mode (P2+).
 
 **Target device:** primárně **tablet** (baseline 768×1024 portrait / 1024×768 landscape); desktop a iPhone portrait jako kompatibilní bonus.
-**Pixel art baseline:** tile **40×40 px native**, integer scaling 1×/2×/3× (nearest-neighbor, `pixelArt: true` v Phaser config). Na tabletu typicky 1× nebo 2×, na desktopu 2×, na 4K 3×. Non-integer scale rozbije pixel art → držet integer násobky.
+**Pixel art baseline:** bay **40×40 px native**, integer scaling 1×/2×/3× (nearest-neighbor, `pixelArt: true` v Phaser config). Na tabletu typicky 1× nebo 2×, na desktopu 2×, na 4K 3×. Non-integer scale rozbije pixel art → držet integer násobky.
 
 ### Rozložení — tři ukotvené zóny + plovoucí panely
 
@@ -488,7 +488,7 @@ Viz `GLOSSARY.md` → **UI Layout — panely** pro axiom. Žádné trvale ukotve
 | Zóna | Výška / šířka | Obsah |
 |---|---|---|
 | **Top Bar (HUD)** | full width, ~60 px | Vlevo: `⊙Voidspan v1.0  <Adresa>  T <čas>`. Vpravo: `[?] Help`. Zdroje zatím ve floating *Zdroje* (kandidát na přesun sem). |
-| **Main Panel** | full width, flex | Segment 8×2 (native 320×80, @2× 640×160), tiles 40×40 px native. Orbitální dekor nad/pod segmentem. Primární interakce (klik tile / modul) |
+| **Main Panel** | full width, flex | Segment 8×2 (native 320×80, @2× 640×160), bays 40×40 px native. Orbitální dekor nad/pod segmentem. Primární interakce (klik bay / modul) |
 | **Bottom Bar (Event Log ticker)** | full width, ~60 px | Poslední 3–5 událostí, kompaktní. Plná historie → Floating Panel *Události* |
 
 ### Zóny — plovoucí (Floating Panels, toggle)
@@ -500,7 +500,7 @@ Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
 | **Kolonisté** | `K` | 6 řádků: 1 hráč + 3 Constructor + 2 Hauler. Kind, power_w, state, task ref. Klik → highlight tasku. |
 | **Úkoly** | `U` | Task queue: repair/build/demolish/haul. Progress bar, assigned actors, cancel. P1 bez drag&drop priority. |
 | **Události** | `E` | Filtrovatelný Event Log. P1: scroll + simple filter by severity. |
-| **Podrobnosti** | `P` / `Tab` | Kontextový inspector: tile (empty/damaged/module) / modul (2×2, status) / actor / task. |
+| **Podrobnosti** | `P` / `Tab` | Kontextový inspector: bay (empty/damaged/module) / modul (2×2, status) / actor / task. |
 | **Zdroje** | `Z` | E / W / S (food) / F (air) / ◎ — Resource Model v0.1. P1 plain čísla; P2+ mini-sparkline. |
 
 **Rules:** druhé stisknutí téže klávesy = zavřít. `Esc` = zavřít všechny. Panely lze otevřít souběžně (hráč si skládá workspace); pozice zatím fixní (P1), drag v P2+.
@@ -517,7 +517,7 @@ Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
 - `robot` → Constructor
 - `forklift` → Hauler
 - `user` → Player
-- `alert-triangle` → Damaged tile / varování
+- `alert-triangle` → Damaged bay / varování
 - `tool` → Repair task
 - `hammer` → Build task
 - `hammer-off` / `trash` → Demolish task
@@ -525,8 +525,8 @@ Viz GLOSSARY tabulku pro přesné názvy/hotkeys. Specifika P1:
 
 ### Interakce — rekapitulace z §15
 
-- **Klik na tile** → menu kontextových akcí.
-- **Klik na modul (kterýkoli jeho tile)** → Inspector + akce.
+- **Klik na bay** → menu kontextových akcí.
+- **Klik na modul (kterýkoli jeho bay)** → Inspector + akce.
 - **Klik na actor** → highlight aktuálního tasku v queue.
 - **Drag task v queue** → změna priority.
 - **Klik na „Přiřadit drona"** v Inspectoru → manuální override.
@@ -558,7 +558,7 @@ t=0s    BLACK SCREEN + fade-in textu:
 
 t≈3s    KLIK "Probuzení"
         → cryopod opening animace (2 s)
-        → kamera zaostří na Habitat tile
+        → kamera zaostří na Habitat bay
 
 t≈5s    UI fade-in: HUD, Actors, Task Queue (prázdné)
         LOG:
@@ -567,14 +567,14 @@ t≈5s    UI fade-in: HUD, Actors, Task Queue (prázdné)
 
 t≈7s    HULL BREACH TRIGGER
         Air ikona v HUD blikne červeně.
-        Damaged tile T5 blikne červeně.
+        Damaged bay T5 blikne červeně.
         LOG:
-        > ⚠ HULL BREACH detected, Tile 05.
+        > ⚠ HULL BREACH detected, Bay 05.
         > Air pressure 98% and falling.
 
-t≈10s   CONTEXTOVÁ BUBLINA #1 (u damaged tile):
+t≈10s   CONTEXTOVÁ BUBLINA #1 (u damaged bay):
         > "Klikni sem."
-        (Šipka → damaged tile. Bublina zmizí po kliknutí.)
+        (Šipka → damaged bay. Bublina zmizí po kliknutí.)
 
 t≈12s   HRÁČ KLIKNE → menu s jedinou možností:
         > [Oprav (10 WD)]
@@ -584,7 +584,7 @@ t≈14s   KLIK "Oprav"
         → Task se objeví v queue.
         → Volný Constructor auto-assign.
         LOG:
-        > C1 dispatched to Tile 05.
+        > C1 dispatched to Bay 05.
 
 t≈16s   CONTEXTOVÁ BUBLINA #2 (u Actors panelu):
         > "Tví dronové pracují. Ostatní čekají."
@@ -608,9 +608,9 @@ t=30s   Hráč zná: fázi, cíl, ovládání, tempo.
 
 **✓ Správně (suché, military/tech, čárkovité):**
 ```
-⚠ HULL BREACH detected, Tile 05.
+⚠ HULL BREACH detected, Bay 05.
 Cryopod Alpha: subject Colonist #1 vital.
-C1 dispatched to Tile 05.
+C1 dispatched to Bay 05.
 Dock.status: online. Fleet link pending.
 WARN: air pressure 28%.
 ```

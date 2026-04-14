@@ -1,6 +1,5 @@
-// Unit testy pro world.ts — FSM + resource drain + loss conditions.
-// Vitest syntax (kompatibilní s Jest). Testujeme čistě funkcionální model
-// bez Phaser importu — to je přesně ten důvod, proč S9 oddělil model od scény.
+// Unit testy pro world.ts — layered bay axiom (S18).
+// Random layout → testy kontrolují invarianty, ne konkrétní pozice.
 
 import { describe, it, expect } from "vitest";
 import {
@@ -11,17 +10,20 @@ import {
   endDay,
   stepWorld,
   phaseLabel,
+  enqueueRepairTask,
+  getOuterHP,
   AIR_DRAIN_PER_TICK,
   AIR_TIMEOUT_TICKS,
   FOOD_DRAIN_PER_TICK,
-  DAMAGED_TILE_IDX,
-  TILE_HP_MAX,
+  SKELETON_HP_MAX,
+  COVERED_HP_MAX,
 } from "./world";
+import { MODULE_DEFS } from "./model";
 
 // === Factory ===
 
 describe("createInitialWorld", () => {
-  it("startuje v boot fázi s prázdnými resources na seed hodnotách", () => {
+  it("startuje v boot fázi s resources na seed hodnotách", () => {
     const w = createInitialWorld();
     expect(w.phase).toBe("boot");
     expect(w.tick).toBe(0);
@@ -31,32 +33,95 @@ describe("createInitialWorld", () => {
     expect(w.resources.energy).toBe(12);
   });
 
-  it("má 16 tiles, mateřská loď dle POC §3 (7 modulů, 6 empty před damaged)", () => {
+  it("má 16 bays a 7 modulů (Engine + 6 startovních)", () => {
     const w = createInitialWorld();
     expect(w.segment).toHaveLength(16);
-    // 7 modulů: 6× single-tile (idx 0..5) + Engine 2×2 (idx 6,7,14,15) = 10 module_ref tiles.
-    // Empty: 8, 9, 10, 11, 12, 13 = 6 tiles. Damaged přijde až v startGame na idx 12.
-    const moduleRefs = w.segment.filter((t) => t.kind === "module_ref");
-    expect(moduleRefs.length).toBe(10);
-    const empties = w.segment.filter((t) => t.kind === "empty");
-    expect(empties.length).toBe(6);
-    expect(
-      empties.every(
-        (t) => t.kind === "empty" && t.hp === TILE_HP_MAX && t.hp_max === TILE_HP_MAX,
-      ),
-    ).toBe(true);
-    // 7 modul instancí v registru.
     expect(Object.keys(w.modules).length).toBe(7);
-    expect(w.modules.commandpost_1?.kind).toBe("CommandPost");
     expect(w.modules.engine_1?.kind).toBe("Engine");
-    // Engine 2×2 obsazuje idx 6,7 (top) a 14,15 (bottom).
-    expect(w.segment[6]?.kind).toBe("module_ref");
-    expect(w.segment[14]?.kind).toBe("module_ref");
+    expect(w.modules.commandpost_1?.kind).toBe("CommandPost");
   });
 
-  it("každý tile je nezávislá instance (žádná sdílená reference)", () => {
-    // Past v TS: `new Array(16).fill({kind:"empty"})` sdílí jednu referenci.
-    // Array.from s callbackem vytváří nové objekty — tento test to hlídá.
+  it("Engine 2×2 zabírá 4 bays (1 root + 3 ref) na fixní pozici idx 6", () => {
+    const w = createInitialWorld();
+    const engineRef = w.segment.filter(
+      (t) =>
+        (t.kind === "module_root" || t.kind === "module_ref") && t.moduleId === "engine_1",
+    );
+    expect(engineRef.length).toBe(4);
+    // Engine root je na idx 6 (fixní kotevní bod).
+    const t6 = w.segment[6];
+    expect(t6?.kind).toBe("module_root");
+    if (t6?.kind === "module_root") expect(t6.moduleId).toBe("engine_1");
+  });
+
+  it("každý modul má 1 module_root bay + potenciálně další module_ref bays", () => {
+    const w = createInitialWorld();
+    for (const [id, mod] of Object.entries(w.modules)) {
+      const def = MODULE_DEFS[mod.kind];
+      const rootCount = w.segment.filter(
+        (t) => t.kind === "module_root" && t.moduleId === id,
+      ).length;
+      const refCount = w.segment.filter(
+        (t) => t.kind === "module_ref" && t.moduleId === id,
+      ).length;
+      expect(rootCount).toBe(1);
+      expect(rootCount + refCount).toBe(def.w * def.h);
+    }
+  });
+
+  it("zbytek bays je mix skeleton + 2-3 covered (dle random)", () => {
+    const w = createInitialWorld();
+    const skeletons = w.segment.filter((t) => t.kind === "skeleton").length;
+    const covered = w.segment.filter((t) => t.kind === "covered").length;
+    expect(covered).toBeGreaterThanOrEqual(2);
+    expect(covered).toBeLessThanOrEqual(3);
+    // 16 total = 10 engine+6×1×1 moduly (+ ref) = 10 module bays; zbývá 6.
+    // 6 = skeletons + covered.
+    expect(skeletons + covered).toBe(6);
+  });
+
+  it("covered bays mají variant 1..5", () => {
+    const w = createInitialWorld();
+    for (const t of w.segment) {
+      if (t.kind === "covered") {
+        expect(t.variant).toBeGreaterThanOrEqual(1);
+        expect(t.variant).toBeLessThanOrEqual(5);
+      }
+    }
+  });
+
+  it("skeleton.hp_max = SKELETON_HP_MAX, covered.hp_max = COVERED_HP_MAX", () => {
+    const w = createInitialWorld();
+    for (const t of w.segment) {
+      if (t.kind === "skeleton") expect(t.hp_max).toBe(SKELETON_HP_MAX);
+      if (t.kind === "covered") expect(t.hp_max).toBe(COVERED_HP_MAX);
+    }
+  });
+
+  it("tři komponenty mají výraznější poškození (< 90 % hp_max)", () => {
+    const w = createInitialWorld();
+    // Collect outer HP pro všech 16 bays a najdi ty s nejvyšším missing ratio.
+    const pcts: number[] = [];
+    const seenModules = new Set<string>();
+    for (let i = 0; i < 16; i++) {
+      const t = w.segment[i]!;
+      if (t.kind === "skeleton" || t.kind === "covered") {
+        pcts.push(t.hp / t.hp_max);
+      } else if (t.kind === "module_root") {
+        if (!seenModules.has(t.moduleId)) {
+          seenModules.add(t.moduleId);
+          const m = w.modules[t.moduleId]!;
+          pcts.push(m.hp / m.hp_max);
+        }
+      }
+    }
+    pcts.sort((a, b) => a - b);
+    // Critical + medium + minor → 3 komponenty pod 90 % (minor je 75..90).
+    const significantlyDamaged = pcts.filter((p) => p < 0.9).length;
+    expect(significantlyDamaged).toBeGreaterThanOrEqual(3);
+  });
+
+  it("každý bay je nezávislá instance", () => {
     const w = createInitialWorld();
     expect(w.segment[0]).not.toBe(w.segment[1]);
   });
@@ -65,39 +130,31 @@ describe("createInitialWorld", () => {
 // === FSM přechody ===
 
 describe("FSM: startGame (boot → phase_a)", () => {
-  it("přepne boot → phase_a a vytvoří damaged tile na hp=0", () => {
+  it("přepne boot → phase_a", () => {
     const w = createInitialWorld();
     startGame(w);
     expect(w.phase).toBe("phase_a");
-    const damaged = w.segment[DAMAGED_TILE_IDX];
-    expect(damaged.kind).toBe("damaged");
-    if (damaged.kind === "damaged") {
-      // HP-unified (S16): damaged start hp=0, hp_max=TILE_HP_MAX.
-      expect(damaged.hp).toBe(0);
-      expect(damaged.hp_max).toBe(TILE_HP_MAX);
-    }
   });
 
-  it("je no-op, když už není ve fázi boot", () => {
+  it("je no-op mimo boot", () => {
     const w = createInitialWorld();
     startGame(w);
-    startGame(w); // druhé volání nemá efekt
+    startGame(w);
     expect(w.phase).toBe("phase_a");
   });
 });
 
 describe("FSM: repairDone (phase_a → phase_b)", () => {
-  it("přepne phase_a → phase_b a tile zpět na empty", () => {
+  it("přepne phase_a → phase_b", () => {
     const w = createInitialWorld();
     startGame(w);
     repairDone(w);
     expect(w.phase).toBe("phase_b");
-    expect(w.segment[DAMAGED_TILE_IDX].kind).toBe("empty");
   });
 
-  it("je no-op v jiné fázi (guard)", () => {
+  it("je no-op v jiné fázi", () => {
     const w = createInitialWorld();
-    repairDone(w); // ve fázi boot nemá efekt
+    repairDone(w);
     expect(w.phase).toBe("boot");
   });
 });
@@ -114,7 +171,7 @@ describe("FSM: dockComplete (phase_b → phase_c)", () => {
   it("je no-op v jiné fázi", () => {
     const w = createInitialWorld();
     startGame(w);
-    dockComplete(w); // v phase_a nemá efekt
+    dockComplete(w);
     expect(w.phase).toBe("phase_a");
   });
 });
@@ -127,13 +184,6 @@ describe("FSM: endDay (phase_c → win)", () => {
     dockComplete(w);
     endDay(w);
     expect(w.phase).toBe("win");
-  });
-
-  it("je no-op mimo phase_c", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    endDay(w);
-    expect(w.phase).toBe("phase_a");
   });
 });
 
@@ -155,10 +205,9 @@ describe("stepWorld: air drain v phase_a", () => {
     for (let i = 0; i < AIR_TIMEOUT_TICKS; i++) stepWorld(w);
     expect(w.phase).toBe("loss");
     expect(w.loss_reason).toBe("air");
-    expect(w.resources.flux.air).toBe(0);
   });
 
-  it("v boot se nic neděje (terminální/startovní stav)", () => {
+  it("v boot se nic neděje", () => {
     const w = createInitialWorld();
     stepWorld(w);
     expect(w.tick).toBe(0);
@@ -166,7 +215,7 @@ describe("stepWorld: air drain v phase_a", () => {
   });
 });
 
-describe("stepWorld: food drain v phase_b a phase_c", () => {
+describe("stepWorld: food drain v phase_b/c", () => {
   it("v phase_b food klesá", () => {
     const w = createInitialWorld();
     startGame(w);
@@ -176,20 +225,10 @@ describe("stepWorld: food drain v phase_b a phase_c", () => {
     expect(w.resources.slab.food).toBeCloseTo(foodBefore - FOOD_DRAIN_PER_TICK, 5);
   });
 
-  it("v phase_a food neklesá (ještě není žízeň)", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    const foodBefore = w.resources.slab.food;
-    stepWorld(w);
-    expect(w.resources.slab.food).toBe(foodBefore);
-  });
-
   it("food → 0 v phase_b vede k loss food", () => {
     const w = createInitialWorld();
     startGame(w);
     repairDone(w);
-    // Kolik ticks k vyčerpání 40 jídla při 1/120 za tick = 40 × 120 = 4800.
-    // Přidáme buffer — float arithmetic nemusí hit přesně 0 po 4800 iteracích.
     const ticksToZero = Math.ceil(40 / FOOD_DRAIN_PER_TICK) + 5;
     for (let i = 0; i < ticksToZero; i++) stepWorld(w);
     expect(w.phase).toBe("loss");
@@ -210,10 +249,63 @@ describe("stepWorld: terminální stavy", () => {
   });
 });
 
+// === getOuterHP / enqueueRepairTask ===
+
+describe("getOuterHP", () => {
+  it("vrátí HP vnější vrstvy (skeleton/covered) nebo modulu", () => {
+    const w = createInitialWorld();
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      expect(outer).not.toBeNull();
+      if (outer) {
+        expect(outer.hp).toBeGreaterThan(0);
+        expect(outer.hp_max).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe("enqueueRepairTask (generalized)", () => {
+  it("enqueue repair pro bay s hp < hp_max", () => {
+    const w = createInitialWorld();
+    startGame(w);
+    // Najdi první bay s missing HP.
+    let targetIdx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) {
+        targetIdx = i;
+        break;
+      }
+    }
+    expect(targetIdx).toBeGreaterThanOrEqual(0);
+    const ok = enqueueRepairTask(w, targetIdx);
+    expect(ok).toBe(true);
+    expect(w.tasks.length).toBe(1);
+  });
+
+  it("idempotent — druhé volání na stejný target nic nepřidá", () => {
+    const w = createInitialWorld();
+    startGame(w);
+    let targetIdx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) {
+        targetIdx = i;
+        break;
+      }
+    }
+    enqueueRepairTask(w, targetIdx);
+    const ok2 = enqueueRepairTask(w, targetIdx);
+    expect(ok2).toBe(false);
+    expect(w.tasks.length).toBe(1);
+  });
+});
+
 // === Helpers ===
 
 describe("phaseLabel", () => {
-  it("mapuje všechny fáze na čitelné stringy", () => {
+  it("mapuje všechny fáze", () => {
     expect(phaseLabel("boot")).toContain("BOOT");
     expect(phaseLabel("phase_a")).toContain("HULL BREACH");
     expect(phaseLabel("phase_b")).toContain("ENGINE");

@@ -1,227 +1,262 @@
-// SegmentPanel — střední plocha, 8×2 tile grid.
-// Rect per tile (hit-area), sprite per tile (floor / floor_damaged / modul), selection overlay.
-// Owns `selectedTileIdx` — InspectorPanel ho čte přes getter.
-// Klik na damaged tile = enqueue repair (idempotent).
+// SegmentPanel — střední plocha, 8×2 bay grid (S18 layered axiom).
+// Render dispatch podle bay.kind: void = nic, skeleton = skeleton.png,
+// covered = coverN.png, module_root = modul sprite (multi-bay span),
+// module_ref = skryto (root pokryl span).
+//
+// Damage overlay (S18 orange trajectory axiom):
+//   - alpha = (1 - hp/hp_max) × ALPHA_MAX (missing HP = síla barvy)
+//   - barva závisí na trajektorii:
+//       rising  (repair/build task běží)  → oranžová pulsuje → zelená
+//       falling (demolish task běží)       → oranžová pulsuje → červená
+//       static  (žádný task)               → čistá oranžová
+//
+// Klik na poškozený outer layer = enqueue repair (idempotent).
 
 import Phaser from "phaser";
 import type { World } from "../model";
 import { MODULE_DEFS } from "../model";
-import { enqueueRepairTask } from "../world";
+import { enqueueRepairTask, getOuterHP, getBayTrajectory } from "../world";
 import { TooltipManager } from "../tooltip";
 import {
   SEGMENT_X,
   SEGMENT_Y,
-  TILE_PX,
-  TILE_SCALE,
-  COL_TILE_SELECTED,
+  BAY_PX,
+  BAY_SCALE,
+  COL_BAY_SELECTED,
 } from "./layout";
 
-// HP-unified damage axiom (S16): každý tile s hp<hp_max dostane červený fill
-// overlay (alpha 0.6). 0xcc3333 = tmavě červená, dobře viditelná na šedém floor.
-const DAMAGE_OVERLAY_COLOR = 0xcc3333;
-const DAMAGE_OVERLAY_ALPHA_MAX = 0.6;
+// Oranžová overlay axiom (S18).
+const OVERLAY_ORANGE = 0xff8800;
+const OVERLAY_GREEN = 0x00ff00;
+const OVERLAY_RED = 0xff0000;
+const OVERLAY_ALPHA_MAX = 0.6;
+// Pulse frekvence — sin vlna, perioda ≈ 5 s.
+const PULSE_RAD_PER_MS = 0.00125;
+
+// Phaser Color objekty pro interpolaci (ColorWithColor vrací {r,g,b}).
+const COLOR_ORANGE = Phaser.Display.Color.ValueToColor(OVERLAY_ORANGE);
+const COLOR_GREEN = Phaser.Display.Color.ValueToColor(OVERLAY_GREEN);
+const COLOR_RED = Phaser.Display.Color.ValueToColor(OVERLAY_RED);
 
 export class SegmentPanel {
-  private tileRects: Phaser.GameObjects.Rectangle[] = [];
-  private tileSprites: (Phaser.GameObjects.Image | undefined)[] = [];
+  private bayRects: Phaser.GameObjects.Rectangle[] = [];
+  private baySprites: (Phaser.GameObjects.Image | undefined)[] = [];
   private damageOverlays: Phaser.GameObjects.Rectangle[] = [];
   private selectionOverlay: Phaser.GameObjects.Rectangle;
-  // Startovní fokus na tile [0,0] (S16) — kurzor je vždy viditelný, žádný nullable
-  // „nic nevybráno" stav. Zjednodušuje INSPECTOR (vždy má co zobrazit).
-  private selectedTileIdx: number | null = 0;
+  private selectedBayIdx: number | null = 0;
 
   constructor(
     private scene: Phaser.Scene,
     private getWorld: () => World,
   ) {
-    // Žádný rámeček kolem segmentu ani kolem tile — ať je vidět jen obsah (sprity).
-    // Tile rect je plně průhledný, slouží už jen jako hit-area pro klik.
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 8; col++) {
         const idx = row * 8 + col;
-        const x = SEGMENT_X + col * TILE_PX;
-        const y = SEGMENT_Y + row * TILE_PX;
+        const x = SEGMENT_X + col * BAY_PX;
+        const y = SEGMENT_Y + row * BAY_PX;
 
         const rect = scene.add
-          .rectangle(x, y, TILE_PX, TILE_PX, 0x000000, 0)
+          .rectangle(x, y, BAY_PX, BAY_PX, 0x000000, 0)
           .setOrigin(0, 0)
           .setInteractive({ useHandCursor: true });
-        rect.on("pointerdown", () => this.selectTile(idx));
-        this.tileRects[idx] = rect;
+        rect.on("pointerdown", () => this.selectBay(idx));
+        this.bayRects[idx] = rect;
 
-        // Damage overlay — per-tile červený fill, default skrytý, depth 10
-        // (nad spritem=5, pod selection=20). Pointer events off — klikání jde přes rect.
         const overlay = scene.add
-          .rectangle(x, y, TILE_PX, TILE_PX, DAMAGE_OVERLAY_COLOR, 0)
+          .rectangle(x, y, BAY_PX, BAY_PX, OVERLAY_ORANGE, 0)
           .setOrigin(0, 0)
           .setDepth(10);
         this.damageOverlays[idx] = overlay;
       }
     }
 
-    // Selection overlay — zatím skrytý, pozicuje se v render().
     this.selectionOverlay = scene.add
-      .rectangle(0, 0, TILE_PX, TILE_PX, 0x000000, 0)
+      .rectangle(0, 0, BAY_PX, BAY_PX, 0x000000, 0)
       .setOrigin(0, 0)
-      .setStrokeStyle(2, COL_TILE_SELECTED)
+      .setStrokeStyle(2, COL_BAY_SELECTED)
       .setDepth(20)
       .setVisible(false);
   }
 
   attachTooltips(tooltips: TooltipManager): void {
-    for (let i = 0; i < this.tileRects.length; i++) {
-      const rect = this.tileRects[i];
+    for (let i = 0; i < this.bayRects.length; i++) {
+      const rect = this.bayRects[i];
       if (!rect) continue;
-      tooltips.attach(rect, () => this.tileTooltipText(i));
+      tooltips.attach(rect, () => this.bayTooltipText(i));
     }
   }
 
-  getSelectedTileIdx(): number | null {
-    return this.selectedTileIdx;
+  getSelectedBayIdx(): number | null {
+    return this.selectedBayIdx;
   }
 
-  // WASD pohyb selection (S16). dx/dy v tile-jednotkách.
-  // - Pokud není nic vybráno, prvním stiskem se selectne idx 0 (top-left).
-  // - Na okraji clampuje (bez wrap). Segment = 8 sloupců × 2 řady.
-  // - Nepouští repair task — to zůstává výhradně na klik (izomorfismus break-free).
   moveSelection(dx: number, dy: number): void {
-    if (this.selectedTileIdx === null) {
-      this.selectedTileIdx = 0;
+    if (this.selectedBayIdx === null) {
+      this.selectedBayIdx = 0;
       return;
     }
-    const row = Math.floor(this.selectedTileIdx / 8);
-    const col = this.selectedTileIdx % 8;
+    const row = Math.floor(this.selectedBayIdx / 8);
+    const col = this.selectedBayIdx % 8;
     const newRow = Math.max(0, Math.min(1, row + dy));
     const newCol = Math.max(0, Math.min(7, col + dx));
-    this.selectedTileIdx = newRow * 8 + newCol;
+    this.selectedBayIdx = newRow * 8 + newCol;
   }
 
-  private selectTile(idx: number): void {
-    this.selectedTileIdx = idx;
-    // Damaged tile = klik je zároveň enqueue repair task. Idempotent —
-    // druhý klik na ten samý damaged nic nepřidá.
-    const tile = this.getWorld().segment[idx];
-    if (tile?.kind === "damaged") {
-      enqueueRepairTask(this.getWorld(), idx);
+  private selectBay(idx: number): void {
+    this.selectedBayIdx = idx;
+    // Klik na bay s poškozenou vnější vrstvou → enqueue repair.
+    // Funguje pro skeleton / covered / module (přes module_root i ref).
+    const w = this.getWorld();
+    const outer = getOuterHP(w, idx);
+    if (outer && outer.hp < outer.hp_max) {
+      enqueueRepairTask(w, idx);
     }
   }
 
-  private tileTooltipText(idx: number): string | null {
+  private bayTooltipText(idx: number): string | null {
     const w = this.getWorld();
-    const tile = w.segment[idx];
-    if (!tile) return null;
+    const bay = w.segment[idx];
+    if (!bay) return null;
     const row = Math.floor(idx / 8);
     const col = idx % 8;
-    const pos = `Tile [${row},${col}] idx ${idx}`;
-    if (tile.kind === "empty") {
-      return `${pos}\n\nEmpty hull\nBuild menu přijde v §15 rozšíření.`;
+    const pos = `Bay [${row},${col}] idx ${idx}`;
+
+    if (bay.kind === "void") {
+      return `${pos}\n\nVoid — otevřený prostor.`;
     }
-    if (tile.kind === "damaged") {
-      const missing = tile.hp_max - tile.hp;
+    if (bay.kind === "skeleton") {
+      const missing = bay.hp_max - bay.hp;
       return (
-        `${pos}\n\nDamaged hull\n` +
-        `HP: ${tile.hp.toFixed(1)} / ${tile.hp_max}\n` +
-        `WD to repair: ${missing.toFixed(1)}\n` +
-        `Click = enqueue repair task`
+        `${pos}\n\nSkeleton (kostra)\n` +
+        `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
+        (missing > 0 ? `Klik = enqueue repair task` : `(bez poškození)`)
       );
     }
-    // module_ref
-    const mod = w.modules[tile.moduleId];
+    if (bay.kind === "covered") {
+      const missing = bay.hp_max - bay.hp;
+      return (
+        `${pos}\n\nCovered v${bay.variant} (plášť)\n` +
+        `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
+        (missing > 0 ? `Klik = enqueue repair task` : `(vzduchotěsné, bez poškození)`)
+      );
+    }
+    // module_root / module_ref
+    const mod = w.modules[bay.moduleId];
     const modName = mod?.kind ?? "?";
-    return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}`;
+    const hp = mod ? `${mod.hp.toFixed(0)} / ${mod.hp_max}` : "?";
+    return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}\nHP: ${hp}`;
   }
 
   render(): void {
     const w = this.getWorld();
-    for (let i = 0; i < 16; i++) {
-      const tile = w.segment[i];
-      const rect = this.tileRects[i];
-      const overlay = this.damageOverlays[i];
-      if (!rect || !tile) continue;
+    const now = this.scene.time.now;
+    // Pulse koeficient 0..1 — stejný pro všechny bays v téhle snímku.
+    const pulse01 = (Math.sin(now * PULSE_RAD_PER_MS) + 1) / 2;
 
-      // Sprite: floor pro empty i damaged (damaged už nemá vlastní texturu —
-      // červený overlay nese vizuální informaci o poškození).
-      if (tile.kind === "damaged" || tile.kind === "empty") {
-        rect.setFillStyle(0x000000, 0);
-        this.drawTileSprite(i, "tile_floor", 1, 1);
-      } else if (tile.kind === "module_ref") {
-        rect.setFillStyle(0x000000, 0);
-        // Multi-tile rendering (S17): root tile (rootOffset 0,0) kreslí sprite
-        // přes celý span def.w × def.h. Ref tiles skryjí svůj sprite — root
-        // už pokryl jejich oblast jednou texturou.
-        if (tile.rootOffset.dx === 0 && tile.rootOffset.dy === 0) {
-          const mod = w.modules[tile.moduleId];
-          const def = mod ? MODULE_DEFS[mod.kind] : undefined;
-          this.drawTileSprite(i, mod?.kind ?? "", def?.w ?? 1, def?.h ?? 1);
-        } else {
+    for (let i = 0; i < 16; i++) {
+      const bay = w.segment[i];
+      const rect = this.bayRects[i];
+      const overlay = this.damageOverlays[i];
+      if (!rect || !bay) continue;
+
+      // Sprite dispatch podle kind.
+      rect.setFillStyle(0x000000, 0);
+      switch (bay.kind) {
+        case "void":
           this.removeSprite(i);
+          break;
+        case "skeleton":
+          this.drawBaySprite(i, "bay_skeleton", 1, 1);
+          break;
+        case "covered":
+          this.drawBaySprite(i, `bay_cover${bay.variant}`, 1, 1);
+          break;
+        case "module_root": {
+          const mod = w.modules[bay.moduleId];
+          const def = mod ? MODULE_DEFS[mod.kind] : undefined;
+          this.drawBaySprite(i, mod?.kind ?? "", def?.w ?? 1, def?.h ?? 1);
+          break;
         }
+        case "module_ref":
+          this.removeSprite(i);
+          break;
       }
 
-      // Damage overlay — aktivní, pokud hp<hp_max. Intenzita úměrná missing HP
-      // (lineárně): plně zdravý = alpha 0, fully damaged (hp=0) = alpha_max.
+      // Overlay — damage + trajectory.
       if (overlay) {
-        let missingPct = 0;
-        if (tile.kind === "damaged" || tile.kind === "empty") {
-          missingPct = 1 - tile.hp / tile.hp_max;
-        } else if (tile.kind === "module_ref") {
-          const mod = w.modules[tile.moduleId];
-          if (mod) missingPct = 1 - mod.hp / mod.hp_max;
+        const outer = getOuterHP(w, i);
+        if (!outer) {
+          overlay.setFillStyle(OVERLAY_ORANGE, 0);
+          continue;
         }
-        overlay.setFillStyle(DAMAGE_OVERLAY_COLOR, missingPct * DAMAGE_OVERLAY_ALPHA_MAX);
+        const missingPct = 1 - outer.hp / outer.hp_max;
+        if (missingPct <= 0) {
+          overlay.setFillStyle(OVERLAY_ORANGE, 0);
+          continue;
+        }
+        const traj = getBayTrajectory(w, i);
+        let colorHex = OVERLAY_ORANGE;
+        if (traj === "rising") {
+          const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+            COLOR_ORANGE,
+            COLOR_GREEN,
+            100,
+            Math.floor(pulse01 * 100),
+          );
+          colorHex = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+        } else if (traj === "falling") {
+          const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+            COLOR_ORANGE,
+            COLOR_RED,
+            100,
+            Math.floor(pulse01 * 100),
+          );
+          colorHex = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+        }
+        overlay.setFillStyle(colorHex, missingPct * OVERLAY_ALPHA_MAX);
       }
     }
 
-    // Selection overlay pozice nebo skrytí.
-    const idx = this.selectedTileIdx;
+    const idx = this.selectedBayIdx;
     if (idx === null) {
       this.selectionOverlay.setVisible(false);
     } else {
       const row = Math.floor(idx / 8);
       const col = idx % 8;
       this.selectionOverlay
-        .setPosition(SEGMENT_X + col * TILE_PX, SEGMENT_Y + row * TILE_PX)
+        .setPosition(SEGMENT_X + col * BAY_PX, SEGMENT_Y + row * BAY_PX)
         .setVisible(true);
     }
   }
 
-  // Vykreslí nebo aktualizuje sprite na tile pozici. Pokud textura neexistuje
-  // nebo je key prázdný, použije fallback `tile_construction` (černo-žluté pruhy).
-  // Až teprve když chybí i fallback (čeho by se nemělo stát), sprite skryje.
-  //
-  // spanW/spanH = velikost modulu v tile jednotkách (1×1 pro tile nebo single
-  // modul, 2×2 pro Engine atd.). Sprite se centruje přes `spanW × spanH` oblast
-  // počínaje tileIdx (= root). Nativní asset musí být `spanW * TILE_NATIVE` ×
-  // `spanH * TILE_NATIVE` — při TILE_SCALE 2 pak vyplní celý span displeje.
-  private drawTileSprite(tileIdx: number, textureKey: string, spanW: number, spanH: number): void {
+  // Vykreslí sprite na bay pozici. Fallback `bay_construction` pro chybějící
+  // textury. spanW/spanH = velikost v bay jednotkách (multi-bay moduly).
+  private drawBaySprite(bayIdx: number, textureKey: string, spanW: number, spanH: number): void {
     let key = textureKey;
     if (!key || !this.scene.textures.exists(key)) {
-      key = "tile_construction";
+      key = "bay_construction";
     }
     if (!this.scene.textures.exists(key)) {
-      this.removeSprite(tileIdx);
+      this.removeSprite(bayIdx);
       return;
     }
 
-    const row = Math.floor(tileIdx / 8);
-    const col = tileIdx % 8;
-    // Střed spanu — pro 1×1 stejný jako dřív, pro 2×2 posune o TILE_PX.
-    const x = SEGMENT_X + col * TILE_PX + (spanW * TILE_PX) / 2;
-    const y = SEGMENT_Y + row * TILE_PX + (spanH * TILE_PX) / 2;
+    const row = Math.floor(bayIdx / 8);
+    const col = bayIdx % 8;
+    const x = SEGMENT_X + col * BAY_PX + (spanW * BAY_PX) / 2;
+    const y = SEGMENT_Y + row * BAY_PX + (spanH * BAY_PX) / 2;
 
-    let sprite = this.tileSprites[tileIdx];
+    let sprite = this.baySprites[bayIdx];
     if (!sprite) {
-      // Sprite vytvoříme jednou a recyklujeme. TILE_SCALE 2 aplikovaný na nativní
-      // asset (40 × spanW × 40 × spanH) vrátí displej (80 × spanW × 80 × spanH).
-      sprite = this.scene.add.image(x, y, key).setScale(TILE_SCALE).setDepth(5);
-      this.tileSprites[tileIdx] = sprite;
+      sprite = this.scene.add.image(x, y, key).setScale(BAY_SCALE).setDepth(5);
+      this.baySprites[bayIdx] = sprite;
     } else {
       sprite.setTexture(key).setPosition(x, y).setVisible(true);
     }
   }
 
-  private removeSprite(tileIdx: number): void {
-    const sprite = this.tileSprites[tileIdx];
+  private removeSprite(bayIdx: number): void {
+    const sprite = this.baySprites[bayIdx];
     if (sprite) sprite.setVisible(false);
   }
 }

@@ -2,6 +2,10 @@
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
+## Konsolidace global tuning (S18)
+
+- [ ] **Vytvořit `apps/client/src/game/tuning.ts`** — sjednotit všechny laditelné parametry (CAL-*, prahy, ranges, seed values) na jednom místě. Přesunout z `world.ts`: `WEAR_MIN/MAX`, `CRITICAL_RANGE`, `MEDIUM_RANGE`, `MINOR_RANGE`, `START_DAMAGES_COUNT` (hardcoded `3` v `applyRandomDamages`), seed resources (food=40, air=100, coin=20 nyní hardcoded v `createInitialWorld`), `ENERGY_SEED/MAX`. Z `palette.ts` přesunout `THRESHOLD_CRIT_PCT/WARN_PCT`. Katalogy (`MODULE_DEFS`, `ACTOR_DEFS`) zůstávají v `model.ts`. Cíl: jeden zdroj pravdy pro playtest kalibraci.
+
 ## Revize S4 — k zapracování do dokumentů
 
 - [ ] **R1 Multi-colony:** přepsat `GLOSSARY.md` (Belt → síť beltů), `SCENARIO.md` §4.4 (frakce mezikolonijní), aktualizovat World Browser v IDEAS (active competition view).
@@ -46,7 +50,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 - [ ] **Q-Day-Length:** potvrzení 16 h herního dne vs. 8 h (ladit s rytmem session).
 - [ ] **Q-Time-Compression:** finální poměr wall/herní čas (provisional 16×, tj. 1 h wall ≈ 1 herní den).
 - [ ] **Q-Capsule-Timeout:** timeout pro auto-recyklaci (hodiny / 1–2 dny). Závisí na aktivitě kolonie.
-- [ ] **Q-Greenhouse-Size:** rozměr Greenhouse modulu (kolik tiles = kolik jídla / den pro kolik lidí).
+- [ ] **Q-Greenhouse-Size:** rozměr Greenhouse modulu (kolik bays = kolik jídla / den pro kolik lidí).
 - [ ] **Q-Observatory-Trigger:** konkrétní práh výzkumu pro spuštění Observatory Event.
 
 ## Kalibrační otázky P1 (CAL-*)
@@ -65,7 +69,7 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 
 - [~] **P1 POC — Single-player puzzle** (S6): SHIP Wake-up, krize + Engine→Dock, WIN/LOSS. Zadání: `POC_P1.md`. Data model + FSM v kódu (S9). Čeká: UI kostra §16, task engine §15, kalibrace.
 - [ ] **Fix POC_P1 §13 indexace** — spec říká `y*2+x`, správně `row*8+col` (S9 kompenzuje komentářem, spec zůstala chybná).
-- [ ] **Art sezení P1** — definovat asset pipeline dle `POC_P1.md` §9 (tile sprites, aktéři, VFX, UI, optional audio).
+- [ ] **Art sezení P1** — definovat asset pipeline dle `POC_P1.md` §9 (bay sprites, aktéři, VFX, UI, optional audio).
 - [ ] **P2 POC — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
 - [ ] **P3 POC — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?
 - [ ] **P4 POC — Orbital Shift UX:** flow hlasování + dopad na globální parametry. Otestovat: je rozhodnutí srozumitelné? motivuje koordinaci?
@@ -108,12 +112,12 @@ Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodn
 
 Sjednocení konstrukce / dekonstrukce / opravy / poškození do jedné osy HP. Detail: `IDEAS.md` → „HP-unified damage axiom". **Repair branch implementován v S16, build/demolish/asteroid otevřené.**
 
-- [x] **Model refactor — Tile:** Tile.empty/damaged mají hp+hp_max (S16).
+- [x] **Model refactor — Bay:** Bay.empty/damaged mají hp+hp_max (S16).
 - [x] **Model refactor — Module instance:** hp_max na instanci, kopie z MODULE_DEFS při create (S16).
 - [x] **Damaged overlay vizuál:** červený fill alpha úměrná 1-hp/hp_max (S16).
 - [ ] **Task engine — build/demolish nad HP:** repair hotov, build/demolish tasky pořád nemají HP sync. Aktivovat při implementaci §15 stavebního UX.
 - [ ] **Asteroid damage vzorec** — rozpracovat (viz IDEAS). Zatím placeholder: hit → `-5 hp`.
-- [x] **Multi-tile sprite rendering (S17b):** Engine 2×2 — `drawTileSprite` přes spanW/spanH, root kreslí celou texturu, ref skryjí sprite.
+- [x] **Multi-bay sprite rendering (S17b):** Engine 2×2 — `drawBaySprite` přes spanW/spanH, root kreslí celou texturu, ref skryjí sprite.
 
 ## Player mode (P2+)
 

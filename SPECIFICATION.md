@@ -60,7 +60,7 @@ Cílem tohoto dokumentu je poskytnout **úplný a sebe-nosný zdroj** pro progra
 
 ### 3.1 Žánr a forma
 
-Text strategy, multiplayer, team competition, social experiment (spolupráce/zrada). **Obsah > forma.** Forma: 8-bit, 1D tiles, Dune II look.
+Text strategy, multiplayer, team competition, social experiment (spolupráce/zrada). **Obsah > forma.** Forma: 8-bit, 1D bays, Dune II look.
 
 ### 3.2 Narrative tenets — **kandidáti** (viz `IDEAS.md`)
 
@@ -276,7 +276,7 @@ Potenciálně později: buymeacoffee nebo podobný **volitelný** model. Hra **n
 
 ### 9.3 Art pipeline
 
-- 8-bit pixel art, 1D tiles, Dune II reference.
+- 8-bit pixel art, 1D bays, Dune II reference.
 - Phaser `pixelArt: true`, `setRoundPixels: true`.
 - Assety v `art/` složce, generované (arena.ai/Gemini) + ručně retušované.
 - Mockup UI **v Phaseru**, ne z diffusion modelů.
