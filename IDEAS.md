@@ -155,7 +155,7 @@ První nástřely palet akcí pro kombinaci STATUS × CELL. Neúplné, kanonizov
   - Podat žalobu / obhajobu
 
 **Principy tvorby palety:**
-- **Action = STATUS × CELL_TYPE.** Každá kombinace má jinou paletu.
+- **Action = STATUS × MODULE_TYPE.** Každá kombinace má jinou paletu.
 - **Pohyb je akce**, ne teleport. Čas + šance na setkání.
 - **Paleta je konečná a zobrazitelná** v UI (text buttons, jako DUNE II menu).
 

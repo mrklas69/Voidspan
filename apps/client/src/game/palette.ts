@@ -79,6 +79,18 @@ export const UI_SELECT_STROKE  = COL_AMBER_BRIGHT;      // klik výběr
 export const UI_BAY_DAMAGED   = COL_ALERT_RED;         // damaged bay fill (alpha < 1)
 export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // ⊙ ikona AppName — křiklavá oranžová
 
+// Overlay axiom (S19) — modální dim + bay trajectory overlay.
+// Černá zatmívací vrstva pod modalem/dialogem (alpha se nastavuje v modal.ts).
+// Cíl: jediný zdroj pro jakýkoliv full-screen dim, bez ad-hoc 0x000000 v kódu.
+export const UI_OVERLAY_BLACK  = 0x000000;              // modal/dialog dim — vždy s alpha < 1
+
+// Bay trajectory overlay barvy (S18 orange trajectory axiom, segment.ts).
+// Oranžová = static missing HP, zelená = rising (repair/build), červená = falling (demolish).
+// Vychází ze status akcentů palety — žádné duplicitní saturace.
+export const UI_TRAJ_STATIC    = COL_WARN_ORANGE;       // static missing HP (čistě oranžová pulsuje)
+export const UI_TRAJ_RISING    = COL_OK_GREEN;          // repair/build → HP roste
+export const UI_TRAJ_FALLING   = COL_ALERT_RED;         // demolish → HP klesá
+
 // Status dot palette — barevné kuličky v seznamech (Kolonisté, úkoly, události).
 // Sémantika: (online/ok/busy/warn/alert/idle). Viz GLOSSARY → UI Layout → status dots.
 export const UI_DOT_ONLINE     = HEX_OK_GREEN;          // online hráč, ready

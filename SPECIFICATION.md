@@ -83,12 +83,14 @@ Text strategy, multiplayer, team competition, social experiment (spolupráce/zra
 
 ### 4.1 Prostor a čas
 
-- **Belt:** prstenec z cells kolem hvězdy. Obvod `CONST_BELT_LENGTH`. Uzavírá se do kruhu.
-- **Cell:** obdélníková jednotka, stavy `EMPTY → DEVELOPED → UPGRADED → DECAYING → LOST`.
+- **Belt:** prstenec ze segmentů kolem hvězdy. Obvod `CONST_BELT_LENGTH`. Uzavírá se do kruhu.
+- **Segment:** jeden dílek beltu, 8×2 grid bays (16 slotů). Hlavní prostorový kontejner.
+- **Bay:** jeden slot v segmentu (layered axiom S18 — vrstvy `void / skeleton / covered / module_root / module_ref`). Každá vrstva má HP.
+- **Module:** funkční jednotka obsazující 1–N bays (Habitat, SolarArray, MedCore, Engine 2×2 …). Modul má vlastní HP_MAX a stavy (offline/online/decaying).
 - **Hub / Port:** počáteční segment, obsahuje instituce (Katastr, Soud, Banka, Šerif), nedestruktibilní.
-- **Cell Binding Protocol:** hráč je **lokálně vázán na cell**. Naming convention `CELL_TYPE.Name` (např. `DOCK_CELL.The_Threshold`, `PRISON_CELL.Barack2`, `HABITAT_CELL.Luxury_House`).
+- **Module Binding Protocol:** hráč je **lokálně vázán na modul**. Naming convention `MODULE_TYPE.Name` (např. `DOCK.The_Threshold`, `PRISON.Barack2`, `HABITAT.Luxury_House`).
 - **Čas:** real-time, hra běží nepřetržitě. Akce jsou **time-gated** (duration minuty–hodiny).
-- **Entropie:** nepečované cells postupně chátrají (DEVELOPED → DECAYING → LOST).
+- **Entropie:** nepečované bays/moduly postupně chátrají (HP klesá pod prahy → decaying → lost).
 
 <span style="color:red">**GAP:** Přesný tick/tempo entropie, CONST hodnoty, decay rychlost nejsou specifikovány.</span>
 
@@ -111,7 +113,7 @@ Brains je **rule-based agent**, který za hráče provádí akce offline podle n
 
 - **Slidery:** práce ↔ studium, obrana ↔ expanze, komunikace ↔ samota (3–5 os).
 - **Scope T2 (POC):** pouze **materiál & provoz** (oblast 3.3.1). Politika, konflikt, diplomacie čekají na hráče.
-- **Paleta akcí:** určena `STATUS × CELL_TYPE`. Brains vybírá z palety podle sliderů.
+- **Paleta akcí:** určena `STATUS × MODULE_TYPE`. Brains vybírá z palety podle sliderů.
 
 <span style="color:red">**GAP (Q-Brains-Schema):** UX brains — kolik sliderů, granularita, kategorie, vizualizace — nenavrženo. **Toto je blokátor implementace P1.**</span>
 

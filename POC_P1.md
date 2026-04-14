@@ -180,7 +180,7 @@ Konkrétní hodnoty se určují playtestem, ne dopředu.
 **P1-lokální seed hodnoty, ne z GLOSSARY `CONST_*`** (F10 — audit 260413).
 GLOSSARY `CONST_*` jsou univerzální konstanty pro P2+ feature set (např. `CONST_BELT_LENGTH = 256`). POC_P1 §10 hodnoty jsou **jen pro tento puzzle** — ladí se playtestem P1–P4 a do GLOSSARY `CONST_*` se povyšují až po kalibraci.
 
-**Terminologie (Resource Model v0.1):** `Kredo` = `Coin` (◎), `Echo` = `Energy` (E). V P1 kódu (`cost_coin`) i datech (`resources.coin`) se používají nové názvy; v §10 tabulkách níže zůstává „Kredo" pro historickou čitelnost — bude přepsáno na ◎ při kalibraci.
+**Terminologie (Resource Model v0.1, S13):** staré „Kredo → Coin (◎)" a „Echo → Energy (E)" retirovány. V kódu i tabulkách §10 platí jen nové názvy.
 
 Logika: **target total wall ~12–15 min** (crisis ~2 min + Engine→Dock ~8 min + rezerva/bonus ~3 min). Slack factor 2× aplikujeme na timeouty. Všechna čísla jsou **nástřel k playtestu**, ne kánon.
 
@@ -215,7 +215,7 @@ Logika: **target total wall ~12–15 min** (crisis ~2 min + Engine→Dock ~8 min
 
 ### Poznámky k seedům
 
-- **Coin (◎, dříve Kredo):** v P1 stačí **1 zdroj** (◎ ze Storage), Energy (dříve Echo) nepoužíváme (úspora složitosti; Energy přijde s Greenhouse v P2).
+- **Coin (◎):** v P1 stačí **1 zdroj** (◎ ze Storage), Energy nepoužíváme (úspora složitosti; Energy přijde s Greenhouse v P2).
 - **Engine 120 → 60 WD:** S5 hodnotu vědomě revidujeme dolů. P1 je 1 segment, ne 2 — práce se škáluje s objemem.
 - **„Game hour = 15 s wall":** agresivní komprese. Pokud hráči nestíhají číst / reagovat, snižujeme na 180× (20 s / game hour). První tuning páka.
 - **2 volné bays** na SHIPu pro Dock 2×2 — Engine (2×2) se demontuje *tam*, Dock staví *tam*. Jediné místo, kam Dock pasuje.
@@ -298,7 +298,7 @@ type World = {
   resources: {
     slab: { food: number };           // solid materials → food (seed: 40)
     flux: { air: number };            // fluids+gases → air 0..100 %
-    coin: number;                     // měna (seed: 20; dříve „Kredo")
+    coin: number;                     // měna ◎ (seed: 20)
   };
   segment: Bay[];                    // 16 bays (2 řady × 8 sloupců), index = row*8 + col (row-major)
   modules: Record<string, Module>;    // id → modul
@@ -357,7 +357,7 @@ type Task = {
 **Poznámky:**
 - **`Bay.module_ref`** umožňuje 2×2 modulům zabírat 4 bays, ale logika se řeší nad `Module` (root bay). Klik na kterýkoli bay modulu → vybere se modul.
 - **`docked_count`** u Docku drží WIN podmínku (≥ 1).
-- **Energy (dříve Echo)** v P1 nepoužíváme (úspora, viz §10 poznámky).
+- **Energy (E)** v P1 nepoužíváme (úspora, viz §10 poznámky).
 
 ---
 

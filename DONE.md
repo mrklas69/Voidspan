@@ -17,6 +17,15 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 - [x] **Mateřská loď plně osazena** — 8 reálných assetů (habitat/storage/medcore/assembler/command_post/dock/engine/solar_array), všechny whitelisted.
 - [x] **v0.6 bump** — root + apps/client package.json.
 
+## 2026-04-15 (Sezení 20 — @AUDIT:CODE + @AUDIT:DOCS cleanup)
+
+- [x] **Paleta: overlay/trajectory konstanty** — `UI_OVERLAY_BLACK`, `UI_TRAJ_STATIC/RISING/FALLING` sémantické aliasy; odstraněny ad-hoc `0x000000` / `0xff8800` / `0x00ff00` / `0xff0000` z `segment.ts`, `modal.ts`, `welcome.ts` (uzavírá S18 Censure regression riziko).
+- [x] **`apps/client/src/game/tuning.ts`** — centrální zdroj laditelných parametrů (TICK_MS, HP_MAX, WD_PER_HP, seedy resources, wear + damages, energy). `world.ts` importuje + re-exportuje pro zpětnou kompatibilitu.
+- [x] **`header.ts`** — duplicitní string `"Seed 12 Wh"` nahrazen `${ENERGY_SEED}` (DRY).
+- [x] **Docs cleanup** — SPEC §4.1 Cell → BAY/SEGMENT, SCENARIO Echo/Kredo → Energy/Coin (9 výskytů), SCENARIO Appendix B CELL_TYPE → MODULE_TYPE, POC_P1 §10 retirovaná poznámka o Kredo.
+- [x] **MINDMAP sync** — §4.5 Scripted events a §6.5 Moderation & LLM `[○]` → `[◐]`.
+- [x] **Fix POC_P1 §13 indexace** — TODO položka přesunuta; bug byl opraven už v S16 (`row*8+col` v `POC_P1.md` §13 i v kódu).
+
 ## 2026-04-14 (Sezení 16 — HP-unified axiom + HUD live + Mateřská loď)
 
 ### Model & world

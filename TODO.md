@@ -47,7 +47,7 @@ Axiom zapsán v `IDEAS.md` → „UI Layer Stack axiom (S19)". Úkoly:
 - [x] **Q11:** Vítězná podmínka — **žádná vítězná podmínka, peak = pamatovatelný příběh**. Viz SPECIFICATION §2.2 a Endings Spectrum (Colony Arc 2.7). Zavřeno v S1–S4.
 - [x] **Q12 (S5):** Jméno hvězdy = **Teegarden's Star** (SO J025300.5+165258). Soustava = Teegarden System.
 - [x] **Q13 (S5):** `CONST_BELT_LENGTH = 256`.
-- [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Kredo, jaké hlasování, jak dlouho trvá). Rozšíření: v R1 Belt Network = pohyb mezi vertikálními vrstvami.
+- [ ] **Q14:** Cena a mechanismus *Orbital Shift* (kolik Coin ◎, jaké hlasování, jak dlouho trvá). Rozšíření: v R1 Belt Network = pohyb mezi vertikálními vrstvami.
 - [ ] **Q15:** Století Earth reference (může zůstat otevřené, viz T1 prequel tenet).
 - [x] **Q17 (S6):** Rozsah P1 POC — **single-player puzzle**, SHIP = 1 segment, krize Únik vzduchu + Engine→Dock, WIN/LOSS s 1 pokusem. Plný zápis: `POC_P1.md`.
 - [x] **Q-P1-Arch (S7):** Architektura P1 = **pure client, static hosting** (Phaser+TS+Vite, GitHub Pages / Netlify). Žádný server, žádná DB, žádný log. Plný zápis: `POC_P1.md` §12.
@@ -76,7 +76,7 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 
 - [~] **CAL-A1** Únik vzduchu: seed 10 WD, optimum ~3,3 min wall, timeout ~6,5 min.
 - [~] **CAL-B1** Engine demontáž: seed **60 WD** (revize dolů ze 120 z S5).
-- [~] **CAL-B2** Dock 2×2: seed 48 WD + 20 Kredo.
+- [~] **CAL-B2** Dock 2×2: seed 48 WD + 20 ◎.
 - [~] **CAL-B3** Zásoby: seed 40 jídla, 1/osoba/game day, 8 osob → 5 game days = 20 min wall.
 - [~] **CAL-T1** `TIME_COMPRESSION` seed **240×** (1 game hour = 15 s wall).
 - [~] **CAL-D1** Drony: seed **3 Constructor + 2 Hauler**, Constructor 12 W, Hauler 8 W.
@@ -85,7 +85,6 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 ## POC projekty k ověření
 
 - [~] **P1 POC — Single-player puzzle** (S6): SHIP Wake-up, krize + Engine→Dock, WIN/LOSS. Zadání: `POC_P1.md`. Data model + FSM v kódu (S9). Čeká: UI kostra §16, task engine §15, kalibrace.
-- [ ] **Fix POC_P1 §13 indexace** — spec říká `y*2+x`, správně `row*8+col` (S9 kompenzuje komentářem, spec zůstala chybná).
 - [ ] **Art sezení P1** — definovat asset pipeline dle `POC_P1.md` §9 (bay sprites, aktéři, VFX, UI, optional audio).
 - [ ] **P2 POC — Entropie & decay:** simulace chátrání cells. Otestovat: je tempo zábavné? jak často hráči přicházejí o claim?
 - [ ] **P3 POC — Belt closure UX:** jak vypadá finální spojení posledního cell s hubem. Otestovat: je ceremonie uspokojivá?
@@ -106,7 +105,7 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 - [ ] **Citizen tiers** — rozepsat Indenture / Probationary / Full + cesty mezi tiers (čas, quest, patron systém).
 - [ ] **Moderation pipeline** — LLM filter pro motivační dopisy, flagging, policy, provoz náklady.
 - [ ] **World Browser** — designovat prohlížeč více beltů + historických archivů.
-- [ ] **Capsule economy** — kalibrace výnosu recyklace (Echo/Kredo množství).
+- [ ] **Capsule economy** — kalibrace výnosu recyklace (Energy + Coin množství).
 - [ ] **Výzkumný strom** — kdy / jak se odemyká auto-hunting kapslí.
 - [ ] **Forgiveness-rewarded mechaniky** — konkretizovat jak ekonomika/politika/justice realizují Tenet T4.
 

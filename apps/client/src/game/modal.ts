@@ -9,6 +9,7 @@
 import Phaser from "phaser";
 import {
   UI_BORDER_DIM,
+  UI_OVERLAY_BLACK,
   COL_HULL_DARK,
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
@@ -59,7 +60,7 @@ export class ModalManager {
 
     // Overlay — semi-transparent black přes celé plátno, blokuje kliky do hry.
     const overlay = this.scene.add
-      .rectangle(0, 0, cw, ch, 0x000000, OVERLAY_ALPHA)
+      .rectangle(0, 0, cw, ch, UI_OVERLAY_BLACK, OVERLAY_ALPHA)
       .setOrigin(0, 0)
       .setDepth(DEPTH)
       .setInteractive();

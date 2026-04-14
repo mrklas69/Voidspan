@@ -24,19 +24,22 @@ import {
   BAY_SCALE,
   COL_BAY_SELECTED,
 } from "./layout";
+import {
+  UI_OVERLAY_BLACK,
+  UI_TRAJ_STATIC,
+  UI_TRAJ_RISING,
+  UI_TRAJ_FALLING,
+} from "../palette";
 
-// Oranžová overlay axiom (S18).
-const OVERLAY_ORANGE = 0xff8800;
-const OVERLAY_GREEN = 0x00ff00;
-const OVERLAY_RED = 0xff0000;
+// Oranžová overlay axiom (S18). Barvy vychází z palette — STATIC/RISING/FALLING.
 const OVERLAY_ALPHA_MAX = 0.6;
 // Pulse frekvence — sin vlna, perioda ≈ 5 s.
 const PULSE_RAD_PER_MS = 0.00125;
 
 // Phaser Color objekty pro interpolaci (ColorWithColor vrací {r,g,b}).
-const COLOR_ORANGE = Phaser.Display.Color.ValueToColor(OVERLAY_ORANGE);
-const COLOR_GREEN = Phaser.Display.Color.ValueToColor(OVERLAY_GREEN);
-const COLOR_RED = Phaser.Display.Color.ValueToColor(OVERLAY_RED);
+const COLOR_ORANGE = Phaser.Display.Color.ValueToColor(UI_TRAJ_STATIC);
+const COLOR_GREEN = Phaser.Display.Color.ValueToColor(UI_TRAJ_RISING);
+const COLOR_RED = Phaser.Display.Color.ValueToColor(UI_TRAJ_FALLING);
 
 export class SegmentPanel {
   private bayRects: Phaser.GameObjects.Rectangle[] = [];
@@ -55,15 +58,16 @@ export class SegmentPanel {
         const x = SEGMENT_X + col * BAY_PX;
         const y = SEGMENT_Y + row * BAY_PX;
 
+        // Hit-area rect (invisible, alpha=0) — barva nerenderuje, ale paletu držíme čistou.
         const rect = scene.add
-          .rectangle(x, y, BAY_PX, BAY_PX, 0x000000, 0)
+          .rectangle(x, y, BAY_PX, BAY_PX, UI_OVERLAY_BLACK, 0)
           .setOrigin(0, 0)
           .setInteractive({ useHandCursor: true });
         rect.on("pointerdown", () => this.selectBay(idx));
         this.bayRects[idx] = rect;
 
         const overlay = scene.add
-          .rectangle(x, y, BAY_PX, BAY_PX, OVERLAY_ORANGE, 0)
+          .rectangle(x, y, BAY_PX, BAY_PX, UI_TRAJ_STATIC, 0)
           .setOrigin(0, 0)
           .setDepth(10);
         this.damageOverlays[idx] = overlay;
@@ -71,7 +75,7 @@ export class SegmentPanel {
     }
 
     this.selectionOverlay = scene.add
-      .rectangle(0, 0, BAY_PX, BAY_PX, 0x000000, 0)
+      .rectangle(0, 0, BAY_PX, BAY_PX, UI_OVERLAY_BLACK, 0)
       .setOrigin(0, 0)
       .setStrokeStyle(2, COL_BAY_SELECTED)
       .setDepth(20)
@@ -156,7 +160,7 @@ export class SegmentPanel {
       if (!rect || !bay) continue;
 
       // Sprite dispatch podle kind.
-      rect.setFillStyle(0x000000, 0);
+      rect.setFillStyle(UI_OVERLAY_BLACK, 0);
       switch (bay.kind) {
         case "void":
           this.removeSprite(i);
@@ -182,16 +186,16 @@ export class SegmentPanel {
       if (overlay) {
         const outer = getOuterHP(w, i);
         if (!outer) {
-          overlay.setFillStyle(OVERLAY_ORANGE, 0);
+          overlay.setFillStyle(UI_TRAJ_STATIC, 0);
           continue;
         }
         const missingPct = 1 - outer.hp / outer.hp_max;
         if (missingPct <= 0) {
-          overlay.setFillStyle(OVERLAY_ORANGE, 0);
+          overlay.setFillStyle(UI_TRAJ_STATIC, 0);
           continue;
         }
         const traj = getBayTrajectory(w, i);
-        let colorHex = OVERLAY_ORANGE;
+        let colorHex = UI_TRAJ_STATIC;
         if (traj === "rising") {
           const c = Phaser.Display.Color.Interpolate.ColorWithColor(
             COLOR_ORANGE,

@@ -6,7 +6,7 @@ Narativní scénář hry. Hybridní model: **autorská páteř + scripted eventy
 
 Verze: **0.5** (S14: legacy Act -1 → Act V backbone retirován. Detailní obsah bývalých §3/§4 přesunut do Appendix A/B jako detail pro Player Arc 1.0/1.1.)
 
-> **Pozn. k terminologii (S5):** pojem „Cell" byl retirován. V textu níže (Appendix B §4.1, §13 a další) stará zmínka „cell" = **segment** (dílek beltu). Migrace textu postupně.
+> **Pozn. k terminologii (S5+S20):** pojem „Cell" retirován — viz WORLD → BELT → SEGMENT → MODULE → BAY v `GLOSSARY.md`. Resource Model v0.1 (S13) retiroval i „Echo/Kredo" → Energy (E) / Coin (◎).
 
 ---
 
@@ -57,7 +57,7 @@ Detail v **Appendix B** (dříve §4 „Act 0"). Kolonie rozhodne o kapsli → r
 ### 1.2 Active Life — správcovská smyčka
 Jádro hráčského zážitku. **Hráč nastavuje směr, akce běží brains.** Rytmus ~1× denně, viz Session Arc (2D).
 
-**Izomorfismus:** `STATUS × CELL_TYPE → action palette` — paleta **nastavuje brains**, ne klik hráče.
+**Izomorfismus:** `STATUS × MODULE_TYPE → action palette` — paleta **nastavuje brains**, ne klik hráče.
 
 **Schéma postavy (POC):** STATUS + RANK + SKILL. PERK Phase 2+.
 
@@ -89,7 +89,7 @@ Hráč má v ruce, jak svůj oblouk zakončí.
 Jeden login → logout. Default rytmus: **~1× denně, 10–20 minut**. Hráč je **správce, ne pracovník** — akce běží brains, hráč nastavuje směr a komunikuje.
 
 ### D.1 Login — načtení stavu
-- **Character snapshot:** STATUS, RANK, SKILLS, aktuální CELL, inventář (Echo/Kredo).
+- **Character snapshot:** STATUS, RANK, SKILLS, aktuální MODULE, inventář (Energy E, Coin ◎).
 - **Colony dashboard:** populace, ekonomika, highlight z event logu.
 - **Brains report:** co brains dělal během offline, co běží, co čeká na rozhodnutí hráče.
 - **Notifikace:** nové maily, odpovědi institucí, hlasování, pozvánky.
@@ -201,9 +201,9 @@ Pro zakládající posádku platí **odlišný onboarding** od kapslové variant
 |---|---|---|---|
 | (a) Spustit SolarArray #2 | … | … | +48 W |
 | (b) Postavit Greenhouse | … | … | Zastaví pokles zásob |
-| (c) Probudit dalšího kolonistu | Echo | … | +1 hráč online |
+| (c) Probudit dalšího kolonistu | Coin | … | +1 hráč online |
 | (d) Vyslat průzkum sousedního segmentu | … | … | Informace |
-| (g) **Rozebrat modul motorů** | 120 WD → 4 Constructors + 1 hráč = 48W | **~2,5 dne hry (~2,5 h wall)** | **+4 Echo, +80 Kredo, Dock slot** |
+| (g) **Rozebrat modul motorů** | 120 WD → 4 Constructors + 1 hráč = 48W | **~2,5 dne hry (~2,5 h wall)** | **+4 Energy, +80 Coin, Dock slot** |
 
 Tempo záměrně pomalé. *Trpělivý přístup.* Hráč zadá akci → brains ji vykoná → další session (po wall-clock hodinách) vidí výsledek.
 
@@ -217,7 +217,7 @@ Tempo záměrně pomalé. *Trpělivý přístup.* Hráč zadá akci → brains j
 
 Hráčský účet končí v této kolonii. Motivační dopis zůstává v Legacy Letter Archive. Hráč může **napsat novou kapsli** (s poučením z archivu) a zkusit znovu — buď do stejné kolonie s odstupem, nebo do jiné.
 
-Surovinový výnos z recyklace (minimum Echo/Kredo) připadne vládě kolonie.
+Surovinový výnos z recyklace (minimum Energy E / Coin ◎) připadne vládě kolonie.
 
 **Var 2 — Limbo.**
 
@@ -275,7 +275,7 @@ Příklady:
 - (a) Ignorovat (pasivní pozorování).
 - (b) Vyslat diplomatický signál.
 - (c) Posílit vlastní obranu / armaturu.
-- (d) Vyslat průzkumnou loď (Echo/Kredo náklad).
+- (d) Vyslat průzkumnou loď (Energy + Coin náklad).
 
 **Dopad:** přechod z izolovaného Belt1 na **Belt Network (R1)**. Odemyká mezi-kolonijní frakce, obchod, diplomacii a konflikt. Změna default adresy kolonie.
 
@@ -383,7 +383,7 @@ Kdo právě tvoří vládu, ten rozhoduje. Design kompas (sekce 1.1) ale **odmě
 Vláda může:
 - **Schválit revival** konkrétní kapsle → hráč oživen (Var 3).
 - **Ponechat v limbu** → čeká dál (Var 2).
-- **Aktivně recyklovat** kapsli pro minimum Echo/Kredo → Var 1.
+- **Aktivně recyklovat** kapsli pro minimum Energy + Coin → Var 1.
 
 ### 12.3 Automatická „auto-reply" recyklace (timeout)
 
@@ -399,7 +399,7 @@ Kolonie může **výzkumem** odemknout technologii **auto-hunting** — dron / A
 
 ### 12.5 Surovinový výnos recyklace
 
-Každá zrecyklovaná kapsle = malé, ale reálné množství **Echo/Kredo**. Kolonie tak má pobídku recyklovat (surovinová politika) vs. přijímat (populace, pracovní síla, kultura).
+Každá zrecyklovaná kapsle = malé, ale reálné množství **Energy + Coin**. Kolonie tak má pobídku recyklovat (surovinová politika) vs. přijímat (populace, pracovní síla, kultura).
 
 ---
 
@@ -442,5 +442,5 @@ Nově oživený hráč nezačíná automaticky jako plnoprávný. Tři tiers:
 - Délka jedné iterace beltu v reálném čase.
 - Mechanika „Reset" hlasování — kvórum, konsekvence.
 - Přesné mechaniky cest mezi citizen tiers (čas, quest milníky, patron systém).
-- Ekonomická kalibrace výnosu recyklace (kolik Echo/Kredo z kapsle).
+- Ekonomická kalibrace výnosu recyklace (kolik Energy + Coin z kapsle).
 - Výzkumný strom (kdy / jak se odemyká auto-hunting).

@@ -7,6 +7,7 @@ import pkg from "../../../package.json";
 import type { World } from "../model";
 import { formatResource, formatScalar } from "../format";
 import { formatGameTime, computeWork, ENERGY_MAX } from "../world";
+import { ENERGY_SEED } from "../tuning";
 import { TooltipManager } from "../tooltip";
 import {
   FONT_FAMILY,
@@ -71,7 +72,7 @@ export class HeaderPanel {
         return (
           "Energy — baterie pásu [E]\n" +
           `${formatScalar(e)} / ${ENERGY_MAX} Wh\n\n` +
-          "Seed 12 Wh (S16 kalibrace).\n" +
+          `Seed ${ENERGY_SEED} Wh (S16 kalibrace).\n` +
           "V P1 statická — produkce/spotřeba P2+."
         );
       },

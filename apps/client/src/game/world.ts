@@ -4,47 +4,46 @@
 
 import type { World, Bay, Phase, LossReason, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant } from "./model";
 import { ACTOR_DEFS, TASK_DEFS, MODULE_DEFS } from "./model";
+import {
+  TICK_MS,
+  TICKS_PER_SECOND,
+  TICKS_PER_GAME_DAY,
+  TICKS_PER_WALL_MINUTE,
+  AIR_TIMEOUT_TICKS,
+  AIR_DRAIN_PER_TICK,
+  FOOD_DRAIN_PER_TICK,
+  SEED_FOOD,
+  SEED_AIR,
+  SEED_COIN,
+  SKELETON_HP_MAX,
+  COVERED_HP_MAX,
+  WD_PER_HP,
+  WEAR_MIN,
+  WEAR_MAX,
+  START_DAMAGES_COUNT,
+  CRITICAL_RANGE,
+  MEDIUM_RANGE,
+  MINOR_RANGE,
+  ENERGY_SEED,
+  ENERGY_MAX,
+} from "./tuning";
 
-// === Konstanty ===
-
-export const TICK_MS = 250;
-export const TICKS_PER_SECOND = 1000 / TICK_MS;
-
-export const AIR_TIMEOUT_TICKS = 1560;
-export const AIR_DRAIN_PER_TICK = 100 / AIR_TIMEOUT_TICKS;
-
-export const FOOD_DRAIN_PER_TICK = 8 / 960;
-
-export const TICKS_PER_GAME_DAY = 960;
-
-// === HP axiom (S18) ===
-// HP_MAX v řádech stovek — viz model.ts MODULE_DEFS tabulka.
-export const SKELETON_HP_MAX = 380;
-export const COVERED_HP_MAX = 500;
-
-// WD_PER_HP = konverze "kolik WD stojí oprava 1 HP".
-// Hrubá kalibrace pro P1: s hp_max v řádech stovek držíme repair task v řádu
-// desítek WD → jednotky minut wall-time pro 1 Constructor. Playtest doladí.
-export const WD_PER_HP = 0.05;
-
-// Startovní lehké opotřebení — všechny komponenty na hp ∈ [85%, 100%] hp_max.
-const WEAR_MIN = 0.85;
-const WEAR_MAX = 1.0;
-
-// 3 startovní poškození — rozsahy HP jako podíl hp_max.
-const CRITICAL_RANGE: [number, number] = [0.10, 0.20];
-const MEDIUM_RANGE: [number, number] = [0.40, 0.60];
-const MINOR_RANGE: [number, number] = [0.75, 0.90];
-
-export const ENERGY_SEED = 12;
-export const ENERGY_MAX = 48;
-
-// Formát herního času — AXIOM: `T:D.HH:MM`.
-// S18: TIME_COMPRESSION 1× — 1 game minuta = 1 wall minuta. Display tikne
-// jednou za 60 s wall, ne každý tick. Mechaniky (AIR drain, FOOD drain,
-// WD progress) pokračují per-tick — TICKS_PER_GAME_DAY zůstává jako
-// "pace constant" pro gameplay, ne calendar constant pro display.
-export const TICKS_PER_WALL_MINUTE = TICKS_PER_SECOND * 60; // 240
+// Re-export tuning konstant — drží stabilní API pro stávající konzumenty
+// (GameScene, header, testy). Logiku vlastní `tuning.ts`, tady jen průchod.
+export {
+  TICK_MS,
+  TICKS_PER_SECOND,
+  TICKS_PER_GAME_DAY,
+  TICKS_PER_WALL_MINUTE,
+  AIR_TIMEOUT_TICKS,
+  AIR_DRAIN_PER_TICK,
+  FOOD_DRAIN_PER_TICK,
+  SKELETON_HP_MAX,
+  COVERED_HP_MAX,
+  WD_PER_HP,
+  ENERGY_SEED,
+  ENERGY_MAX,
+};
 
 export function formatGameTime(tick: number): string {
   const gameMin = Math.floor(tick / TICKS_PER_WALL_MINUTE);
@@ -183,9 +182,9 @@ export function createInitialWorld(): World {
     phase: "boot",
     resources: {
       energy: ENERGY_SEED,
-      slab: { food: 40 },
-      flux: { air: 100 },
-      coin: 20,
+      slab: { food: SEED_FOOD },
+      flux: { air: SEED_AIR },
+      coin: SEED_COIN,
     },
     segment,
     modules,
@@ -235,8 +234,9 @@ function collectDamageTargets(segment: Bay[]): DamageTarget[] {
 function applyRandomDamages(segment: Bay[], modules: Record<string, Module>): void {
   const pool = collectDamageTargets(segment);
   shuffleInPlace(pool);
-  const picks = pool.slice(0, 3);
-  const ranges: Array<[number, number]> = [CRITICAL_RANGE, MEDIUM_RANGE, MINOR_RANGE];
+  const picks = pool.slice(0, START_DAMAGES_COUNT);
+  // Rozsahy musí mít délku = START_DAMAGES_COUNT (viz tuning.ts §4 komentář).
+  const ranges: ReadonlyArray<readonly [number, number]> = [CRITICAL_RANGE, MEDIUM_RANGE, MINOR_RANGE];
   for (let i = 0; i < picks.length; i++) {
     const t = picks[i]!;
     const [lo, hi] = ranges[i]!;

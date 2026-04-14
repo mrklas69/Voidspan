@@ -44,7 +44,7 @@ Voidspan
 │   ├── 4.3 Network Arc (A) — vertikální síť beltů    [◐]
 │   │    (Teegarden.BeltN, Observatory Event trigger)
 │   ├── 4.4 Session Arc (D) — login → logout          [●]
-│   └── 4.5 Scripted events (katalog)                 [○]
+│   └── 4.5 Scripted events (katalog)                 [◐]
 │
 ├── 5. META vrstva                                     [◐]
 │   ├── 5.1 World Browsers (active competition view)   [◐] R1
@@ -56,7 +56,7 @@ Voidspan
 │   ├── 6.2 Hosting (P1: GH Pages/Netlify; P2+: VPS)   [●]
 │   ├── 6.3 Monorepo (pnpm workspace, apps/client)     [●] S8
 │   ├── 6.4 Art pipeline (pipeline + paleta axiom)      [●] S11 palette + S12 magenta keying
-│   └── 6.5 Moderation & LLM                           [○]
+│   └── 6.5 Moderation & LLM                           [◐]
 │
 └── 7. PROCES — jak pracujeme                          [●]
     ├── 7.1 Dokumentace                                [●]
