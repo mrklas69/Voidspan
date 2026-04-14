@@ -1,5 +1,5 @@
 // Tooltip helper — hover → drobný panel s textem.
-// Axiom (GLOSSARY → UI Layout → Tooltips): 400ms delay, bg #080808 + amber border,
+// Axiom (GLOSSARY → UI Layout → Tooltips): 400ms delay, bg #0a0a10 + amber border,
 // position pod kurzorem s auto-flip, max šířka 280 px.
 //
 // Použití:

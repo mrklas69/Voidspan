@@ -294,7 +294,7 @@ Každá nová kapsle na orbitě = event. Vláda kolonie ji musí posoudit (aktiv
 **Každý interaktivní nebo informativní prvek nese tooltip** (hover → drobný panel s textem). Důvod: odlehčit UI od permanentní nápovědy, nechat prostor pro obsah.
 
 - **Delay:** 400 ms hover → show (žádný flicker).
-- **Vzhled:** pozadí `UI_PANEL_BG` (`#080808`) s 1px `UI_BORDER_DIM` rámečkem, text `UI_TEXT_PRIMARY` (amber bright), font VT323 velikosti `FONT_SIZE_HINT` (16 px).
+- **Vzhled:** pozadí `UI_PANEL_BG` (`#0a0a10`) s 1px `UI_BORDER_DIM` rámečkem, text `UI_TEXT_PRIMARY` (amber bright), font VT323 velikosti `FONT_SIZE_HINT` (16 px).
 - **Pozice:** pod kurzorem s 12px offsetem, auto-flip pokud přečnívá.
 - **Max šířka:** 280 px, word-wrap.
 - **Obsah:** řádek 1 = primární popis. Další řádky volitelně detaily / klávesové zkratky / hodnoty.

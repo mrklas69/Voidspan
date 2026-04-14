@@ -8,13 +8,13 @@ Add-Type -AssemblyName System.Drawing
 
 $PALETTE_HEX = @(
   '#0a0a10','#1a1e28','#2e3440','#4c5462','#6a7080','#8a8e98','#c0c4cc', # world 01-07
-  '#ff4848','#ff8020','#ffc030','#60c060','#4088c8',                     # status 08-12
-  '#080808','#b08030','#ffd060','#ffffff'                                # ui 13-16
+  '#ff4848','#ff8020','#ffc030','#60c060','#4088c8','#40c0c0',           # status 08-13
+  '#b08030','#ffd060','#ffffff'                                          # ui 14-16
 )
 $ROLES = @(
   'void-black','hull-dark','hull-mid','hull-light','metal-gray','metal-light','bright-metal',
-  'alert-red','warn-orange','warn-amber','ok-green','info-blue',
-  'bg-near-black','amber-dim','amber-bright','text-white'
+  'alert-red','warn-orange','warn-amber','ok-green','info-blue','coolant-cyan',
+  'amber-dim','amber-bright','text-white'
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

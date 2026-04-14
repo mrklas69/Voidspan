@@ -14,7 +14,7 @@ FFFF8020   ; 09 warn-orange
 FFFFC030   ; 10 warn-amber
 FF60C060   ; 11 ok-green
 FF4088C8   ; 12 info-blue
-FF080808   ; 13 bg-near-black
+FF40C0C0   ; 13 coolant-cyan
 FFB08030   ; 14 amber-dim
 FFFFD060   ; 15 amber-bright
 FFFFFFFF   ; 16 text-white
