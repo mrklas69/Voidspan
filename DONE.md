@@ -2,6 +2,21 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-15 (Sezení 17 — Paleta 16→15→16, GH Pages live, multi-tile render, AI art pipeline, mateřská loď osazena)
+
+- [x] **Palette: sloučení void-black** — `#080808` → `#0a0a10` (UI_BG/UI_PANEL_BG přesměrovány).
+- [x] **Palette: cyan akcent** — `#40c0c0` coolant-cyan přidán na slot 13.
+- [x] **GitHub Pages deploy workflow** — `.github/workflows/deploy.yml`, artifact-based, auto-deploy on push main.
+- [x] **Repo public** — pro free tier GH Pages.
+- [x] **Live URL P1–P4** — https://mrklas69.github.io/Voidspan/
+- [x] **Multi-tile sprite rendering (S17b)** — `SegmentPanel.drawTileSprite(idx, key, spanW, spanH)`, root/ref detekce přes rootOffset.
+- [x] **AI art pipeline** — `scripts/process-art.ps1` wrapper, `key-transparency.ps1` tolerance + custom KeyR/G/B.
+- [x] **8 sprite kitů clean** — kit-01 až kit-08 v `temp/`.
+- [x] **Art prompts reorganizace** — `art/prompts/` 4 prompty + README s axiomy a katalogem.
+- [x] **V4 chroma-key enforcement** — explicit pravidlo v každém promptu proti pink-magenta cheatování.
+- [x] **Mateřská loď plně osazena** — 8 reálných assetů (habitat/storage/medcore/assembler/command_post/dock/engine/solar_array), všechny whitelisted.
+- [x] **v0.6 bump** — root + apps/client package.json.
+
 ## 2026-04-14 (Sezení 16 — HP-unified axiom + HUD live + Mateřská loď)
 
 ### Model & world

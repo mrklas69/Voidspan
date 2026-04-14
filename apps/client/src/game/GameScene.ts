@@ -53,7 +53,10 @@ export class GameScene extends Phaser.Scene {
     // Module assety: loaduj jen ty, které reálně existují v public/assets/modules/.
     // Whitelist (S16) drží Phaser bez warningů — jakmile přidáš nový PNG, dopiš kind sem.
     // Texture key = ModuleKind (matchuje drawTileSprite v SegmentPanel).
-    const AVAILABLE_MODULE_ASSETS: Array<keyof typeof MODULE_DEFS> = ["SolarArray"];
+    const AVAILABLE_MODULE_ASSETS: Array<keyof typeof MODULE_DEFS> = [
+      "SolarArray", "Engine", "Dock",
+      "Habitat", "Storage", "MedCore", "Assembler", "CommandPost",
+    ];
     for (const kind of AVAILABLE_MODULE_ASSETS) {
       this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
     }

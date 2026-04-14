@@ -5,6 +5,7 @@
 
 import Phaser from "phaser";
 import type { World } from "../model";
+import { MODULE_DEFS } from "../model";
 import { enqueueRepairTask } from "../world";
 import { TooltipManager } from "../tooltip";
 import {
@@ -142,10 +143,19 @@ export class SegmentPanel {
       // červený overlay nese vizuální informaci o poškození).
       if (tile.kind === "damaged" || tile.kind === "empty") {
         rect.setFillStyle(0x000000, 0);
-        this.drawTileSprite(i, "tile_floor");
+        this.drawTileSprite(i, "tile_floor", 1, 1);
       } else if (tile.kind === "module_ref") {
         rect.setFillStyle(0x000000, 0);
-        this.drawTileSprite(i, w.modules[tile.moduleId]?.kind ?? "");
+        // Multi-tile rendering (S17): root tile (rootOffset 0,0) kreslí sprite
+        // přes celý span def.w × def.h. Ref tiles skryjí svůj sprite — root
+        // už pokryl jejich oblast jednou texturou.
+        if (tile.rootOffset.dx === 0 && tile.rootOffset.dy === 0) {
+          const mod = w.modules[tile.moduleId];
+          const def = mod ? MODULE_DEFS[mod.kind] : undefined;
+          this.drawTileSprite(i, mod?.kind ?? "", def?.w ?? 1, def?.h ?? 1);
+        } else {
+          this.removeSprite(i);
+        }
       }
 
       // Damage overlay — aktivní, pokud hp<hp_max. Intenzita úměrná missing HP
@@ -178,7 +188,12 @@ export class SegmentPanel {
   // Vykreslí nebo aktualizuje sprite na tile pozici. Pokud textura neexistuje
   // nebo je key prázdný, použije fallback `tile_construction` (černo-žluté pruhy).
   // Až teprve když chybí i fallback (čeho by se nemělo stát), sprite skryje.
-  private drawTileSprite(tileIdx: number, textureKey: string): void {
+  //
+  // spanW/spanH = velikost modulu v tile jednotkách (1×1 pro tile nebo single
+  // modul, 2×2 pro Engine atd.). Sprite se centruje přes `spanW × spanH` oblast
+  // počínaje tileIdx (= root). Nativní asset musí být `spanW * TILE_NATIVE` ×
+  // `spanH * TILE_NATIVE` — při TILE_SCALE 2 pak vyplní celý span displeje.
+  private drawTileSprite(tileIdx: number, textureKey: string, spanW: number, spanH: number): void {
     let key = textureKey;
     if (!key || !this.scene.textures.exists(key)) {
       key = "tile_construction";
@@ -190,16 +205,18 @@ export class SegmentPanel {
 
     const row = Math.floor(tileIdx / 8);
     const col = tileIdx % 8;
-    const x = SEGMENT_X + col * TILE_PX + TILE_PX / 2;
-    const y = SEGMENT_Y + row * TILE_PX + TILE_PX / 2;
+    // Střed spanu — pro 1×1 stejný jako dřív, pro 2×2 posune o TILE_PX.
+    const x = SEGMENT_X + col * TILE_PX + (spanW * TILE_PX) / 2;
+    const y = SEGMENT_Y + row * TILE_PX + (spanH * TILE_PX) / 2;
 
     let sprite = this.tileSprites[tileIdx];
     if (!sprite) {
-      // Sprite vytvoříme jednou a recyklujeme. Nativní 40×40 × scale 2 = 80×80 px.
+      // Sprite vytvoříme jednou a recyklujeme. TILE_SCALE 2 aplikovaný na nativní
+      // asset (40 × spanW × 40 × spanH) vrátí displej (80 × spanW × 80 × spanH).
       sprite = this.scene.add.image(x, y, key).setScale(TILE_SCALE).setDepth(5);
       this.tileSprites[tileIdx] = sprite;
     } else {
-      sprite.setTexture(key).setVisible(true);
+      sprite.setTexture(key).setPosition(x, y).setVisible(true);
     }
   }
 

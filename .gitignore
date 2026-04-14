@@ -15,3 +15,5 @@ dist/
 # Env
 .env
 .env.local
+.claude/scheduled_tasks.lock
+temp/

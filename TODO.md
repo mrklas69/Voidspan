@@ -100,9 +100,9 @@ Seed hodnoty zapsány v `POC_P1.md` §10 (S7). Finální čísla se doladí play
 Původní plán počítal s Colyseus+WS, pak s Express thin serverem. Po rozhodnutí no-log/no-DB odpadá i backend. Finální re-scope:
 
 - [x] **Lokální skeleton (S8):** pnpm monorepo, `apps/client` (Vite 5 + Phaser 3.87 + TS 5.6 strict), žádný server. Build + dev server běží.
-- [ ] Push na GitHub `mrklas69/Voidspan`.
-- [ ] Deploy na **GitHub Pages** nebo **Netlify** (static bundle).
-- [ ] Ověřit: static build funguje, URL sdílitelná pro P1–P4.
+- [x] **Push na GitHub** `mrklas69/Voidspan` (S17).
+- [x] **Deploy na GitHub Pages** (S17) — auto-deploy workflow, artifact-based.
+- [x] **Sdílitelná URL pro P1–P4** (S17) — https://mrklas69.github.io/Voidspan/
 
 ## HP-unified damage axiom (S16)
 
@@ -113,7 +113,7 @@ Sjednocení konstrukce / dekonstrukce / opravy / poškození do jedné osy HP. D
 - [x] **Damaged overlay vizuál:** červený fill alpha úměrná 1-hp/hp_max (S16).
 - [ ] **Task engine — build/demolish nad HP:** repair hotov, build/demolish tasky pořád nemají HP sync. Aktivovat při implementaci §15 stavebního UX.
 - [ ] **Asteroid damage vzorec** — rozpracovat (viz IDEAS). Zatím placeholder: hit → `-5 hp`.
-- [ ] **Multi-tile sprite rendering:** Engine 2×2 — monolitická 80×80 texture kreslená jen na root tile (`rootOffset === {0,0}`), ref tiles skip. Detail `art/modules/PROMPTS.md`.
+- [x] **Multi-tile sprite rendering (S17b):** Engine 2×2 — `drawTileSprite` přes spanW/spanH, root kreslí celou texturu, ref skryjí sprite.
 
 ## Player mode (P2+)
 
