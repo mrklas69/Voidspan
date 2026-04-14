@@ -8,15 +8,15 @@
 
 import Phaser from "phaser";
 import {
-  UI_PANEL_BG,
   UI_BORDER_DIM,
+  COL_HULL_DARK,
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
   FONT_FAMILY,
   FONT_SIZE_H2,
   FONT_SIZE_BODY,
-  FONT_SIZE_HUD,
+  FONT_SIZE_HINT,
   FONT_SIZE_PANEL_HEADER,
 } from "./palette";
 
@@ -24,7 +24,10 @@ const DEPTH = 2000; // nad tooltipy (1000)
 const PANEL_W = 520;
 const PANEL_MIN_H = 240;
 const PADDING = 24;
-const OVERLAY_ALPHA = 0.6;
+// Overlay jen lehce zatmí svět — hvězdy pod panelem mají prosvítat
+// (axiom: pozadí UI boxů = transparentní, viz memory feedback_dialog_bg_transparent).
+const OVERLAY_ALPHA = 0.25;
+const PANEL_BG_ALPHA = 0.9;
 
 export interface ModalOptions {
   title: string;
@@ -76,26 +79,24 @@ export class ModalManager {
     probeBody.destroy();
 
     const titleH = 36;
-    const closeH = 40;
+    const closeH = 30; // tlačítko −25 %
     const panelH = Math.max(PANEL_MIN_H, PADDING + titleH + 16 + bodyH + 16 + closeH + PADDING);
     const panelX = Math.floor((cw - PANEL_W) / 2);
     const panelY = Math.floor((ch - panelH) / 2);
 
-    // Border rect (outer) + bg rect (inner, 1px inset) — stejný trik jako tooltip.
-    const border = this.scene.add
-      .rectangle(panelX - 1, panelY - 1, PANEL_W + 2, panelH + 2, UI_BORDER_DIM)
-      .setOrigin(0, 0)
-      .setDepth(DEPTH + 1);
+    // Panel: transparentní bg + 1px stroke obrys. Samostatný solid border rect
+    // pod bg by zakryl hvězdy (learned bug — bg alpha pak neprosvítá).
     const bg = this.scene.add
-      .rectangle(panelX, panelY, PANEL_W, panelH, UI_PANEL_BG)
+      .rectangle(panelX, panelY, PANEL_W, panelH, COL_HULL_DARK, PANEL_BG_ALPHA)
       .setOrigin(0, 0)
+      .setStrokeStyle(1, UI_BORDER_DIM)
       .setDepth(DEPTH + 2)
-      .setInteractive(); // ať se proklikem nezavřel overlay
+      .setInteractive();
     bg.on("pointerdown", (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       void pointer;
     });
-    this.layer.push(border, bg);
+    this.layer.push(bg);
 
     // Title + underline (stejný axiom jako boční panely).
     const title = this.scene.add
@@ -119,7 +120,7 @@ export class ModalManager {
     this.layer.push(body);
 
     // Close button — bottom-right v panelu. Bg rect + label, hover highlight.
-    const btnW = 100;
+    const btnW = 75; // tlačítko −25 %
     const btnX = panelX + PANEL_W - PADDING - btnW;
     const btnY = panelY + panelH - PADDING - closeH;
     const btnBg = this.scene.add
@@ -130,7 +131,7 @@ export class ModalManager {
     const btnLabel = this.scene.add
       .text(btnX + btnW / 2, btnY + closeH / 2, "Close", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HUD,
+        fontSize: FONT_SIZE_HINT,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0.5, 0.5)

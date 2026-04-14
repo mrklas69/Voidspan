@@ -32,6 +32,7 @@ Každý `XX-*.md` soubor obsahuje **jen prompt** (čistý text ke zkopírování
 | [02-asset-kit-structural.md](02-asset-kit-structural.md) | Strukturální kit — platformy, nosníky, spoje, potrubí, antigrav, solární, antény, ramena | 512–1024 sq |
 | [03-surface-joints-sampler.md](03-surface-joints-sampler.md) | Vzorník šumu / stínů / odlesků na `#6A7080` base + přechody a spoje | 1024×768 |
 | [04-apertures-vents.md](04-apertures-vents.md) | Apertury, ventilátory, šachty, kryty, portholy | 1024×768 |
+| [05-welcome-hero.md](05-welcome-hero.md) | Hero splash pro Welcome dialog — Inception curl beltu kolem Teegarden's Star | 400×300 native (1× v dialogu) · výstup `art/splash/welcome.png` |
 
 ## Mapping: 01-modules-grid → MODULE_DEFS
 

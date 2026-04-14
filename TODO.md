@@ -2,6 +2,23 @@
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
+## Responzivní canvas výška (S19)
+
+- [ ] **Responzivní výška canvasu** — přejít ze `Scale.FIT` (1280×720 fixní) na `Scale.RESIZE` nebo custom. Cíl: využít plnou výšku viewportu a zobrazit **víc řádků segmentů BELTu**. Vyžaduje: relayout všech UI panelů na `resize` event (Top/Bottom Bar drží výšku, Main Panel expanduje), BELT render variable počet řádků. Spojit s Q-Belt-Topology (vertikální growth). Pozor na mobile Safari viewport tricks (dynamic bar resize při scrollu).
+
+## UI Layer Stack (S19)
+
+Axiom zapsán v `IDEAS.md` → „UI Layer Stack axiom (S19)". Úkoly:
+
+- [ ] **ESC = globální bezpečný odchod** — centralizovat handler v `GameScene` (nebo novém `ModalManager`). Dnes ESC zavírá jen help modal; musí zavírat libovolný otevřený dialog / overlay / floating panel. Pořadí: overlay (4.x) → floating (3.5) → modal (5.x) → nic.
+- [ ] **#hull-dark mid / light varianty** — rozšířit paletu o 2 alpha varianty `#hull-dark` pro gradient overlay 4.1 → 4.2 → 4.3. Přidat konstanty `UI_OVERLAY_DARK / MID / LIGHT` do `palette.ts`.
+- [ ] **Průhledný Top/Bottom panel** — ověřit, zda texty Top/Bottom Baru mají pozadí; pokud ano, odstranit. BELT protáhnout vertikálně pod okraji (když začne scrollovat).
+- [ ] **Q-UI-Chrome-Separator** — rozhodnout vizuální oddělení Bottom Bar / Main bez pozadí (jemný okraj, orbit fade, nebo nic).
+- [ ] **Q-Modal-Stack** — rozhodnout, zda může být 5.x otevřen nad 5.y (např. Chat 5.4 z Politiky 5.2). Implikuje `ModalManager` se stackem.
+- [ ] **Q-WinLoss-Buttons** — P1 Win/Loss obrazovka: Close / Restart / Quit?
+- [ ] **Layer 4 overlays (Infotip / Karta / Popover)** — až bude content (`<link>text</link>` syntax v textech). Dnes máme jen tooltip — ekvivalent 4.1. Rozšířit na 4.2 a 4.3.
+- [ ] **Layer 3.5 Floating workspace (K/U/Z/E/P)** — odloženo, viz spec v `POC_P1.md` §16. Po rozhodnutí Q-Floating-Panels-Home.
+
 ## Konsolidace global tuning (S18)
 
 - [ ] **Vytvořit `apps/client/src/game/tuning.ts`** — sjednotit všechny laditelné parametry (CAL-*, prahy, ranges, seed values) na jednom místě. Přesunout z `world.ts`: `WEAR_MIN/MAX`, `CRITICAL_RANGE`, `MEDIUM_RANGE`, `MINOR_RANGE`, `START_DAMAGES_COUNT` (hardcoded `3` v `applyRandomDamages`), seed resources (food=40, air=100, coin=20 nyní hardcoded v `createInitialWorld`), `ENERGY_SEED/MAX`. Z `palette.ts` přesunout `THRESHOLD_CRIT_PCT/WARN_PCT`. Katalogy (`MODULE_DEFS`, `ACTOR_DEFS`) zůstávají v `model.ts`. Cíl: jeden zdroj pravdy pro playtest kalibraci.

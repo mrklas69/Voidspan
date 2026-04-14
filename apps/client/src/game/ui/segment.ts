@@ -15,7 +15,7 @@
 import Phaser from "phaser";
 import type { World } from "../model";
 import { MODULE_DEFS } from "../model";
-import { enqueueRepairTask, getOuterHP, getBayTrajectory } from "../world";
+import { getOuterHP, getBayTrajectory } from "../world";
 import { TooltipManager } from "../tooltip";
 import {
   SEGMENT_X,
@@ -103,14 +103,10 @@ export class SegmentPanel {
   }
 
   private selectBay(idx: number): void {
+    // Observer mode (P1): klik jen vybere bay pro hover/inspekci. Žádné
+    // hráčské akce — repair / build / demolish jsou Player mode (P2+).
+    // Observer sleduje postupný zánik, nemůže intervenovat.
     this.selectedBayIdx = idx;
-    // Klik na bay s poškozenou vnější vrstvou → enqueue repair.
-    // Funguje pro skeleton / covered / module (přes module_root i ref).
-    const w = this.getWorld();
-    const outer = getOuterHP(w, idx);
-    if (outer && outer.hp < outer.hp_max) {
-      enqueueRepairTask(w, idx);
-    }
   }
 
   private bayTooltipText(idx: number): string | null {

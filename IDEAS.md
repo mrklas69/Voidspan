@@ -327,6 +327,44 @@ Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jed
 
 ---
 
+## UI Layer Stack axiom (S19)
+
+Vrstevnatý z-order od dekorace k nejmodálnějšímu prvku. Izomorfní: výš = interaktivnější a naléhavější. **Vrstvy 4 (overlay texty) nejsou striktně hierarchické** — jsou context-triggered nad vším, kde se vyskytne `<link>text</link>`.
+
+### Vrstvy
+
+- **0. Hvězdné pozadí** — automatický denní cyklus driftu (7 px / 240 s wall = game day). WASD shift budoucnost, pokud bude třeba.
+- **1. Kosmické sprity** — asteroidy, kapsle kolonistů, obchodní a dopravní prostředky, možná animovaný roj constructor/logistic/agent dronů.
+- **2. BELT** — epicentrum dění. Řada většinou sousedních segmentů, rozrůstá se vertikálně (nahoru/dolů). Sub-ordering uvnitř: base sprite → HP overlay → selection → labels. *Vyžaduje samostatnou kapitolu (Q-Belt-Topology).*
+- **3. Ukotvené panely Top / Main / Bottom** — texty **bez pozadí**. Zvažuje se **průhledný panel** pro Top/Bottom + BELT protáhnout pod nimi (vertikální scroll nebude zastaven okrajem).
+- **3.5 Floating workspace** (parkoviště, implementace odložena) — panely K/U/Z/E/P, toggle hotkey, persist dokud hráč nezavře. Ne modální, nad Mainem, pod overlay texty.
+- **4. Link-triggered overlays** — všechny texty v boxu na průhledném `#hull-dark`. Kontextově vyvolané linkem; nestojí v pevné hierarchii, umí být nad modálem (5.x). Gradient průhlednosti: dark / mid / light podle hustoty obsahu.
+  - **4.1 Infotip** — nejtenčí rámeček, monochromatický plaintext, autoclose (hover pryč / click-out / časovač). Např. tooltip nad časomírou.
+  - **4.2 Karta** — širší rámeček, ASCII + text, barvy, autoclose.
+  - **4.3 Popover** — 8-bitový styl wikipedia popoverů (barvy + grafika), autoclose.
+- **5. Modální okna** — vyžadovaná volba (Close button + ESC globálně). **Nezastavují čas.** Hra pokračuje, hráč čte pod tlakem efektivity — respektuje real-time design + TIME_COMPRESSION.
+  - **5.1** Jednoduché info + Zavřít: Help, Info, Win, Loss, Mapa.
+  - **5.2** Velké přehledy s ovládacími prvky: Výzkum, Obchod, Ekonomika, Zdroje, Politika.
+  - **5.3** Nastavení.
+  - **5.4** Chat s hráči, hlasování, komunikace.
+
+### Globální axiomy
+
+- **ESC = bezpečný odchod** z jakéhokoli dialogu (4.x i 5.x). Druhé stisknutí toggle hotkey panelu = zavřít.
+- **#hull-dark** je jediné povolené pozadí overlay textů. Mid / light varianty povoleny pro gradient dle vrstvy 4.1 → 4.3.
+- **Texty ukotvených panelů (3) bez pozadí** — vizuální oddělení od BELTu řeší buď průhledný panel s jemným okrajem, nebo zúžení orbit dekoru. Detail otevřený (Q-UI-Chrome-Separator).
+- **Modální nezastavují čas** — žádná pauza přes modál. Jediný legitimní pause = explicitní Pause feature (P2+).
+
+### Otevřené otázky
+
+- **Q-Belt-Topology:** vertikální growth BELTu + kolize s Top/Bottom Bar — průhledný panel s protaženým BELTem pod ním? Alternativa: fade overlap, clip na okraji.
+- **Q-UI-Chrome-Separator:** jak vizuálně oddělit Bottom Bar od Main bez pozadí textu.
+- **Q-Modal-Stack:** může být 5.x nad 5.y (např. Chat 5.4 otevřený z Politiky 5.2)? Nebo max 1 modál naráz?
+- **Q-WinLoss-Buttons:** P1 Win/Loss screen — Close / Restart / Quit?
+- **Q-Floating-Panels-Home:** K/U/Z/E/P — parkoviště dokud neřešíme (A2). Až přijde řada, rozhodnout: layer 3.5 vs. promo do layer 3 (ukotvené)?
+
+---
+
 ## Parkoviště — zrušené / odložené koncepty
 
 ### Binární strom jako topologie

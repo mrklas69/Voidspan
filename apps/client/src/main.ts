@@ -7,10 +7,18 @@ import { GameScene } from "./game/GameScene";
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: "game",
-  backgroundColor: "#0a0a0a",
+  // Canvas bg = HEX_VOID_BLACK (slot 01, #0a0a10) — "vnitřek" = hvězdné pole
+  // (BackgroundSystem na něm kreslí řídké hvězdy). Letterbox kolem canvasu drží
+  // CSS body na HEX_HULL_DARK (slot 02) — "chrom kolem". Izomorfní rozlišení
+  // venku/uvnitř herní plochy.
+  backgroundColor: "#0a0a10",
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // CENTER_HORIZONTALLY (ne CENTER_BOTH): když je viewport užší než 1280/720 ratio,
+    // FIT zmenší canvas → vznikne vertical slack. CENTER_BOTH by hru nechal plavat
+    // uprostřed (viz mobile landscape). Horizontálně centrujeme, vertikálně drží top
+    // (spolu s align-items: flex-start v CSS).
+    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
     width: 1280,
     height: 720,
   },

@@ -24,7 +24,9 @@
       "Bash(gh:*)",
       "Bash(kill:*)",
       "Bash(exit:*)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(pwd -W)",
+      "Bash(diff:*)"
     ]
   }
 }

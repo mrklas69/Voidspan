@@ -6,6 +6,7 @@
 import Phaser from "phaser";
 import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
+import { WelcomeDialog, shouldShowWelcome } from "./welcome";
 import { BackgroundSystem } from "./background";
 import { createAsteroidOrbit, launchRandomAsteroid } from "./orbit";
 const INITIAL_ASTEROID_COUNT = 10;
@@ -26,22 +27,24 @@ import {
   COL_TEXT_DIM,
 } from "./ui/layout";
 import { HeaderPanel } from "./ui/header";
-import { ActorsPanel } from "./ui/actors";
 import { SegmentPanel } from "./ui/segment";
-import { SideRightPanel } from "./ui/side_right";
+// S19: ActorsPanel (vlevo) a SideRightPanel (Task Queue + Inspector vpravo)
+// dočasně skryté. Detail bay/modulu se zobrazuje jen v hover-kartě (tooltipu).
+// Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panely [K]/[U]/[P].
+// Zdrojové soubory (ui/actors.ts, ui/side_right.ts) zachovány pro budoucí oživení.
 
 export class GameScene extends Phaser.Scene {
   private world!: World;
   private accumulator = 0;
+  // S19 test: camera scroll po ose Y přes šipky — manuální test průhlednosti pozadí.
+  private cameraY = 0;
 
   private tooltips!: TooltipManager;
   private modal!: ModalManager;
   private background!: BackgroundSystem;
 
   private header!: HeaderPanel;
-  private actors!: ActorsPanel;
   private segment!: SegmentPanel;
-  private sideRight!: SideRightPanel;
 
   constructor() {
     super({ key: "game" });
@@ -66,11 +69,14 @@ export class GameScene extends Phaser.Scene {
     for (let v = 1; v <= 5; v++) {
       this.load.image(`bay_cover${v}`, `assets/bays/cover${v}.png`);
     }
-    // Construction texture — fallback sprite pro chybějící moduly/assety.
-    this.load.image("bay_construction", "assets/bays/construction.png");
+    // Construction texture fallback byl odstraněn při rename tiles→bays (S18).
+    // segment.ts má guard přes textures.exists — chybějící klíč schová sprite bezpečně.
 
     // Orbitální dekor.
     this.load.image("asteroid2", "assets/sprites/asteroid2.png");
+
+    // Hero splash pro Welcome dialog (400×300 indexed PNG, 16-color paleta).
+    this.load.image("welcome_hero", "assets/splash/welcome.png");
 
     // Potlač chyby při chybějícím souboru.
     this.load.on("loaderror", () => {
@@ -107,18 +113,21 @@ export class GameScene extends Phaser.Scene {
     // --- Panely ---
     const getWorld = () => this.world;
     this.header = new HeaderPanel(this, getWorld);
-    this.actors = new ActorsPanel(this, getWorld);
     this.segment = new SegmentPanel(this, getWorld);
-    this.sideRight = new SideRightPanel(this, getWorld, () => this.segment.getSelectedBayIdx());
 
     this.createLog();
     this.bindDebugKeys();
 
     // Tooltips — každý panel si attach sám po vytvoření všech elementů.
     this.header.attachTooltips(this.tooltips);
-    this.actors.attachTooltips(this.tooltips);
     this.segment.attachTooltips(this.tooltips);
-    this.sideRight.attachTooltips(this.tooltips);
+
+    // Welcome dialog — jen pro prvního návštěvníka (nebo dokud nezaškrtne
+    // "Již nezobrazovat"). Otevírá se po vytvoření všech panelů, aby dialog
+    // překryl už rozeběhnutou scénu (nezastavuje čas — axiom S19).
+    if (shouldShowWelcome()) {
+      new WelcomeDialog(this).open();
+    }
   }
 
   // === Help modal trigger (Top Bar) ========================================
@@ -133,7 +142,8 @@ export class GameScene extends Phaser.Scene {
         "[WASD]   move bay selection (yellow cursor)\n" +
         "[ESC]    zavřít tento dialog\n" +
         "\n" +
-        "Klik na damaged bay = enqueue repair task.\n" +
+        "Observer mode — bez akcí.\n" +
+        "Sleduj postupný zánik kolonie.\n" +
         "Hover kdekoli = tooltip s detailem.",
     });
   }
@@ -183,6 +193,15 @@ export class GameScene extends Phaser.Scene {
         case "h":
           this.openHelpModal();
           break;
+        // Šipky nahoru/dolů — scroll hvězdného pozadí (test průhlednosti).
+        case "arrowup":
+          this.cameraY -= 40;
+          this.background.update(this.cameraY);
+          break;
+        case "arrowdown":
+          this.cameraY += 40;
+          this.background.update(this.cameraY);
+          break;
       }
     });
   }
@@ -201,7 +220,5 @@ export class GameScene extends Phaser.Scene {
 
     this.header.render();
     this.segment.render();
-    this.actors.render();
-    this.sideRight.render();
   }
 }
