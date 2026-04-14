@@ -22,7 +22,8 @@
       "Bash(head:*)",
       "Bash(git:*)",
       "Bash(kill:*)",
-      "Bash(exit:*)"
+      "Bash(exit:*)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
