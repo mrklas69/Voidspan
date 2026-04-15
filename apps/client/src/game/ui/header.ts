@@ -59,11 +59,11 @@ export class HeaderPanel {
   }
 
   attachTooltips(tooltips: TooltipManager): void {
-    const leftProvider = () =>
-      `Identita / adresa / herní čas\n\nVersion: v${pkg.version}\nBelt day = 16 game hours\nTick = 1 game minute\nLOSS triggers highlight inline`;
-    tooltips.attach(this.iconText, leftProvider);
-    tooltips.attach(this.appText, leftProvider);
-    tooltips.attach(this.metaText, leftProvider);
+    const identityProvider = () =>
+      `Server: local (standalone)\nVersion: v${pkg.version}\nWorld: Teegarden.Belt1.Seg042`;
+    tooltips.attach(this.iconText, identityProvider);
+    tooltips.attach(this.appText, identityProvider);
+    tooltips.attach(this.metaText, identityProvider);
 
     // Resource bars tooltips — live z `getWorld()`.
     const resourceTooltips: Array<() => string> = [
@@ -135,7 +135,7 @@ export class HeaderPanel {
     this.iconText.setText("⊙");
     this.appText.setText("VOIDSPAN");
     this.metaText.setText(
-      `v${pkg.version} Teegarden.Belt1.Seg042 ${time}${w.loss_reason ? ` // LOSS (${w.loss_reason})` : ""}`,
+      `v${pkg.version} Teegarden.Belt1.Seg042 ${time}`,
     );
 
     // Resource bary — Energy skalár + Work derivovaný + Slab/Flux/Coin z modelu.

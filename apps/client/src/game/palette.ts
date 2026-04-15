@@ -116,8 +116,9 @@ export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / št
 //
 // Kompoziční pravidlo: parent metric color = nejhorší child (red > orange > green).
 
-export const THRESHOLD_CRIT_PCT = 15;  // pod = red
-export const THRESHOLD_WARN_PCT = 40;  // pod = orange, nad = green
+// Re-export z tuning.ts (single source of truth).
+import { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT } from "./tuning";
+export { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT };
 
 // Helper: podle pct (0..100) vrátí HEX barvu pro Phaser Text.
 // `inverted` = true pro utilizační metriky (Work) — vysoké pct = červeně.
@@ -144,5 +145,5 @@ export const FONT_SIZE_HUD     = "22px"; // HUD lišta, primární hodnoty
 export const FONT_SIZE_BODY    = "20px"; // běžný text, task list
 export const FONT_SIZE_LABEL   = "18px"; // popisky, caption, dim text
 export const FONT_SIZE_HINT    = "16px"; // nejmenší čitelný — hotkeys, legenda
-export const FONT_SIZE_CMD     = "12px"; // Bottom Bar commands — o 1/4 menší než HINT (axiom S20, user request)
+export const FONT_SIZE_CMD     = "18px"; // Bottom Bar commands
 export const FONT_SIZE_PANEL_HEADER = "22px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)

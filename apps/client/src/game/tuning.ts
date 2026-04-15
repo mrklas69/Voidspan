@@ -85,3 +85,38 @@ export const MINOR_RANGE: readonly [number, number]    = [0.75, 0.90];
 // Seed drží přeshraniční hru: 12 Wh ≈ 1 hodina provozu minimal crew.
 export const ENERGY_SEED = 12;
 export const ENERGY_MAX = 48;
+
+// ============================================================================
+// §6 Decay — entropie (S21)
+// ============================================================================
+
+// HP drain per game day jako podíl hp_max. Všechny vrstvy (skeleton, covered, module).
+// 0.01 = 1% hp_max per game day → SolarArray (500 HP) ztrácí 5 HP/den → 0 za ~100 dní.
+export const DECAY_RATE_PER_GAME_DAY = 0.01;
+
+// ============================================================================
+// §7 Aktéři (S21)
+// ============================================================================
+
+// HP aktéra — baseline. 100 = plné zdraví.
+export const ACTOR_HP_MAX = 100;
+
+// HP drain per tick při nedostatku (air=0 nebo food=0).
+// 100 HP / (1 game hour = 240 ticků) ≈ smrt za 1 herní hodinu bez zdrojů.
+export const ACTOR_HP_DRAIN_PER_TICK = ACTOR_HP_MAX / (TICKS_PER_GAME_DAY / 16);
+
+// ============================================================================
+// §7 Status tree prahy (S20/S21)
+// ============================================================================
+
+// Dashboard semafor: pod CRIT = red, pod WARN = orange, nad = green.
+// Sdíleno mezi Status tree (world.ts) a UI barvami (palette.ts).
+export const THRESHOLD_CRIT_PCT = 15;
+export const THRESHOLD_WARN_PCT = 40;
+
+// ============================================================================
+// §8 Event Log (S20)
+// ============================================================================
+
+// Ring buffer kapacita — max počet událostí v paměti. Přetečení = shift nejstarší.
+export const EVENT_LOG_CAPACITY = 500;

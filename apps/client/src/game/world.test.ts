@@ -7,7 +7,6 @@ import {
   startGame,
   repairDone,
   dockComplete,
-  endDay,
   stepWorld,
   phaseLabel,
   enqueueRepairTask,
@@ -176,14 +175,14 @@ describe("FSM: dockComplete (phase_b → phase_c)", () => {
   });
 });
 
-describe("FSM: endDay (phase_c → win)", () => {
-  it("přepne phase_c → win", () => {
+describe("FSM: win/loss retirováno (S21 Perpetual Observer)", () => {
+  it("Phase nemá win ani loss", () => {
     const w = createInitialWorld();
     startGame(w);
     repairDone(w);
     dockComplete(w);
-    endDay(w);
-    expect(w.phase).toBe("win");
+    // phase_c je poslední — žádný win stav.
+    expect(w.phase).toBe("phase_c");
   });
 });
 
@@ -199,12 +198,18 @@ describe("stepWorld: air drain v phase_a", () => {
     expect(w.resources.flux.air).toBeCloseTo(airBefore - AIR_DRAIN_PER_TICK, 5);
   });
 
-  it("air klesne na 0 za AIR_TIMEOUT_TICKS → loss air", () => {
+  it("air klesne na 0 za AIR_TIMEOUT_TICKS — simulace pokračuje (Perpetual Observer)", () => {
     const w = createInitialWorld();
     startGame(w);
     for (let i = 0; i < AIR_TIMEOUT_TICKS; i++) stepWorld(w);
-    expect(w.phase).toBe("loss");
-    expect(w.loss_reason).toBe("air");
+    expect(w.resources.flux.air).toBe(0);
+    // Simulace nekončí — tick roste dál.
+    const tickBefore = w.tick;
+    stepWorld(w);
+    expect(w.tick).toBe(tickBefore + 1);
+    // DRN:CRIT event emitován.
+    const drnCrit = w.events.find((e) => e.verb === "DRN" && e.csq === "CRIT" && e.item === "air");
+    expect(drnCrit).toBeDefined();
   });
 
   it("v boot se nic neděje", () => {
@@ -225,27 +230,28 @@ describe("stepWorld: food drain v phase_b/c", () => {
     expect(w.resources.slab.food).toBeCloseTo(foodBefore - FOOD_DRAIN_PER_TICK, 5);
   });
 
-  it("food → 0 v phase_b vede k loss food", () => {
+  it("food → 0 v phase_b — simulace pokračuje (Perpetual Observer)", () => {
     const w = createInitialWorld();
     startGame(w);
     repairDone(w);
     const ticksToZero = Math.ceil(40 / FOOD_DRAIN_PER_TICK) + 5;
     for (let i = 0; i < ticksToZero; i++) stepWorld(w);
-    expect(w.phase).toBe("loss");
-    expect(w.loss_reason).toBe("food");
+    expect(w.resources.slab.food).toBe(0);
+    // Simulace nekončí.
+    const tickBefore = w.tick;
+    stepWorld(w);
+    expect(w.tick).toBe(tickBefore + 1);
+    // DRN:CRIT event emitován.
+    const drnCrit = w.events.find((e) => e.verb === "DRN" && e.csq === "CRIT" && e.item === "food");
+    expect(drnCrit).toBeDefined();
   });
 });
 
-describe("stepWorld: terminální stavy", () => {
-  it("win neprogresuje ticky", () => {
+describe("stepWorld: boot neprogresuje", () => {
+  it("boot neprogresuje ticky", () => {
     const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    dockComplete(w);
-    endDay(w);
-    const tickBefore = w.tick;
     stepWorld(w);
-    expect(w.tick).toBe(tickBefore);
+    expect(w.tick).toBe(0);
   });
 });
 
@@ -310,7 +316,6 @@ describe("phaseLabel", () => {
     expect(phaseLabel("phase_a")).toContain("HULL BREACH");
     expect(phaseLabel("phase_b")).toContain("ENGINE");
     expect(phaseLabel("phase_c")).toContain("BONUS");
-    expect(phaseLabel("win")).toBe("WIN");
-    expect(phaseLabel("loss")).toBe("LOSS");
+    // win/loss retirováno (S21).
   });
 });

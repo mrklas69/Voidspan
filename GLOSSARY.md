@@ -106,6 +106,18 @@ Prahy semaforu jsou jednotné (S18 dashboard axiom): `THRESHOLD_CRIT_PCT = 15`, 
 - **II.2:** net HP trajectory per game-day (repair rate − decay rate).
 - **III, IV:** FVP placeholder all-green, „bla bla" text.
 
+### Jednoslovné hodnocení stavu pásu (S21)
+
+| Úroveň | Čeština | Angličtina | Rozsah |
+|---|---|---|---|
+| 5 | Vynikající | Excellent | 80–100 % |
+| 4 | Dobrá | Good | 60–80 % |
+| 3 | Dostačující | Fair | 40–60 % |
+| 2 | Slabá | Poor | 15–40 % |
+| 1 | Selhání | Failure | 0–15 % |
+
+Mapování na semafor: 5–4 = green, 3 = green (spodní), 2 = orange (warn), 1 = red (crit). Prahy konzistentní s `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`.
+
 Detail metrik (konkrétní formule, kalibrace) — viz otevřené otázky v `IDEAS.md` („Status tree Q2–Q10").
 
 ---

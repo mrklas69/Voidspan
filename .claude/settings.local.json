@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:support.forpsi.com)",
-      "WebFetch(domain:www.forpsi.com)",
       "Bash(pnpm:*)",
       "Bash(npm:*)",
       "Bash(corepack:*)",
@@ -24,9 +22,12 @@
       "Bash(gh:*)",
       "Bash(kill:*)",
       "Bash(exit:*)",
-      "Bash(echo \"exit: $?\")",
-      "Bash(pwd -W)",
-      "Bash(diff:*)"
+      "Bash(diff:*)",
+      "Bash(node:*)",
+      "Bash(where.exe:*)",
+      "Bash(sleep:*)",
+      "WebFetch(domain:support.forpsi.com)",
+      "WebFetch(domain:www.forpsi.com)"
     ]
   }
 }

@@ -2,6 +2,28 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-15 (Sezení 21 — Event Log + Perpetual Observer + Pyramida vitality)
+
+- [x] **Event Log datový model** — `Event`, `EventVerb` (24+SIGN), `EventCsq`, `EventSeverity` v `model.ts`. `World.events: Event[]`.
+- [x] **Verb katalog + severity lookup** — `events.ts` s `VERB_CATALOG`, `severity()`, `appendEvent()`.
+- [x] **Ring buffer push** — `appendEvent()` + `EVENT_LOG_CAPACITY = 500` v `tuning.ts`.
+- [x] **Pipeline napojení** — BOOT, CMPL, ASSN, DRN:CRIT, DECY:CRIT, DEAD, SIGN emity na klíčových místech.
+- [x] **EventLogPanel UI** — `event_log.ts`, [E] toggle, scroll, severity color, copy 📋, localStorage.
+- [x] **Hotkey `[E]` toggle** — case-insensitive v `GameScene.bindDebugKeys`.
+- [x] **Auto-scroll** — bottom lock, manuální scroll pauzuje, scroll dolů = resume.
+- [x] **Font axiom** — Jersey 25, `FONT_SIZE_HINT` 16px pro event log řádky.
+- [x] **Commands hint** — `FONT_SIZE_CMD` = 18px, Bottom Bar aktualizován.
+- [x] **Phase win/loss retirement** — odstraněno z `Phase`, `LossReason`, `toLoss`, `endDay`. Testy přepsány.
+- [x] **Actor HP + cryo + dead** — `Actor.state` += `"cryo"`, `hp`, `hp_max`. `actorLifeTick` drain. Posádka v kryu.
+- [x] **Energy model** — `productionTick` s HP ratio axiomem. Moduly startují online.
+- [x] **Decay model** — `decayTick` 1% hp_max/game day. HP=0 → offline + DECY:CRIT.
+- [x] **Status tree pyramida vitality** — I×8 + II×4 + III×2 + IV×1 / 15. `recomputeStatus` naplněn.
+- [x] **SIGN verb** — ⚑ event při změně ratingu na libovolné ose (nahrazuje STAT).
+- [x] **InfoPanel [I]** — `info_panel.ts`, rating barvený (5 barev z palety), tooltip pyramida, live refresh.
+- [x] **Tooltip z-order** — depth 1000 → 1800.
+- [x] **Sdílená memory přes git** — `.claude/memory/` s 9 feedback soubory.
+- [x] **GLOSSARY** — tabulka 5 úrovní hodnocení stavu pásu.
+
 ## 2026-04-15 (Sezení 17 — Paleta 16→15→16, GH Pages live, multi-tile render, AI art pipeline, mateřská loď osazena)
 
 - [x] **Palette: sloučení void-black** — `#080808` → `#0a0a10` (UI_BG/UI_PANEL_BG přesměrovány).

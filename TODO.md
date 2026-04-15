@@ -2,39 +2,25 @@
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
-## Event Log System (S20 — akutní)
+## Event Log System (S20/S21)
 
-FVP priorita. Plná spec v `GLOSSARY.md` → §Event Log System. Hotkey `[E]` už zapsán do Commands stringu v Bottom Baru (dnes no-op, implementace ↓).
+Většina implementována v S21. Zbývající úkoly:
 
-- [ ] **Datový model v `model.ts`** — typ `Event`, `EventVerb` (4char string literal union), `EventCsq`, severity. Přidat `events: Event[]` do `World`. Seed `[]` v `createInitialWorld`.
-- [ ] **Verb katalog + severity lookup** — nový soubor `apps/client/src/game/events.ts` s `VERB_CATALOG` (icon + popis) a pure `severity(verb, csq)` function. Jediný zdroj pravdy.
-- [ ] **Ring buffer push** — `appendEvent(w, ev)` helper; kapacita 500 (konstanta do `tuning.ts`), přetečení = shift nejstarší.
-- [ ] **`appendEventLog` slot naplnit** — dnes no-op stub v `world.ts` pipeline (slot 11). Emit events na klíčová místa: `progressTasks` → `CMPL`, `toLoss` → `DEAD`/`DRN:CRIT` (dokud Phase žije), `createInitialWorld` → `BOOT`. Postupně rozšiřovat s implementací dalších slotů.
-- [ ] **EventLogPanel (layer 3.5 floating)** — nový soubor `apps/client/src/game/event_log.ts`. Pravý okraj, margin 12 px, šířka ~420, alpha 0.9, `COL_HULL_DARK`, stroke border. Header (title + chips + close), scrollable body, footer (count + clear). Per-row render s severity color.
-- [ ] **Hotkey `[E]` toggle** — v `GameScene.bindDebugKeys`, case-insensitive. ESC zavře (napojit na `ModalManager` / `FloatingManager` — viz S19 TODO globální ESC).
-- [ ] **Lazy filter chips** — chip pro verb se objeví až při prvním výskytu v sezení. Toggle visibility per `verb:csq` key. `TICK` default off.
-- [ ] **Auto-scroll** — bottom lock při novém eventu; manuální scroll pauzuje, resume na bottom tlačítko.
-- [ ] **Font axiom dodržet** — Jersey 25, `FONT_SIZE_HINT` (16 px), monospace rytmus.
-- [ ] **Commands hint refaktor** — Bottom Bar hint používá `FONT_SIZE_CMD` (12 px, S20). `FONT_SIZE_HINT` zůstává pro tooltip a event log řádky.
+- [ ] **Lazy filter chips** — chip pro verb se objeví až při prvním výskytu v sezení. Toggle visibility per `verb:csq` key. `TICK` default off. (Data tracking hotový — `seenVerbs` set.)
 - [ ] **IDEAS — click-through navigation** — klik na event s `loc` = camera jump + bay select. P2+ (odloženo, IDEAS banka).
 
 ---
 
-## Perpetual Observer Simulation (S20 axiom kandidát, IDEAS)
+## Perpetual Observer Simulation (S20/S21)
 
-Plná implementace axiomu. Dnes v `world.ts` je pipeline scaffold se sloty 1–11, většina slotů je no-op. Postupně naplnit + retirovat legacy phase/win/loss.
+Pipeline sloty 1, 6, 7, 10 naplněny v S21. Phase win/loss retirováno. Zbývající:
 
-- [ ] **Retire Phase `win` / `loss`** — odebrat z `model.ts` `Phase` unionu + `LossReason` typu. Smazat `toLoss()`, `loss_reason` field, early-return v `stepWorld`. Přepsat world.test.ts (dnes 6+ testů na `toLoss`/`phase==loss`). Top Bar cleanup (pryč `PHASE A — HULL BREACH` + `LOSS (air)` text).
-- [ ] **Actor HP + `dead` state wiring** — `Actor` dostane `hp`, `hp_max` (už přidáno `state: "dead"` v S20 scaffold, nepoužito). `actorLifeTick` dělá HP drain per nedostatek (homeless / starving / suffocating / injured). HP=0 → `state="dead"`, aktér zůstává jako záznam, simulace pokračuje.
-- [ ] **`decayTick` — entropy model** — per game-day: nerepaired vrstvy ztrácejí HP malým dripem. Parametr `DECAY_PER_GAME_DAY` do `tuning.ts`. Propojit s Status tree II.2 metrika.
-- [ ] **`resourceDrain` per-capita** — dnes wrapuje legacy phase drain (paušál). Přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Odstranit phase gate. Po zrušení phase win/loss.
-- [ ] **`autoEnqueueTasks` — priority queue** — Observer-driven: critical HP (< 30 %) → auto repair task; chybějící zásoba (runway < 1 game-day) → produce task. Bez hráčského kliku. Pravidla hardcoded v P1, brains-config v P2+.
-- [ ] **`productionTick`** — SolarArray → Energy, Greenhouse → food, MedCore → heal aktérům. Input/output přes Storage. Podmíněno `module.status=online` + connected power.
-- [ ] **`arrivalsTick`** — trigger spawning kapsle (interval scheduled / Network Arc signál / populace=0 rescue). Kde se kolonista probudí, když není Habitat? (Q3 z IDEAS diskuse — otevřené.)
-- [ ] **`scheduledEvents`** — napojení na events bank (SCENARIO §5). Per tick lookup: který event má trigger match. Formální schéma eventu ještě neexistuje.
-- [ ] **`recomputeStatus` — Status tree agregace** — I–IV osy × kvantita/kvalita. Parent = worst child. Výstup: `w.status` pro Observer UI. Metriky per uzel — viz IDEAS Q2–Q9 otevřené.
-- [ ] **`appendEventLog`** — in-memory ring buffer (posledních N) vs. plný append-only (MINDMAP §5.3 — 10M events). Rozhodnout v implementaci. V P1 Observer UI bude číst posledních ~20 do Bottom Bar tickeru.
-- [ ] **POC_P1 §18 WIN/LOSS dialogy** — retirovat jako modaly, přepsat na **events v Event logu** (entry-level signature + narrative text). Onboarding tutorial (SHIP Wake-up) může zůstat jako scripted event bank položka.
+- [ ] **`resourceDrain` per-capita** — přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Odstranit phase gate.
+- [ ] **`autoEnqueueTasks` — priority queue** — Observer-driven: critical HP (< 30 %) → auto repair task. Bez hráčského kliku.
+- [ ] **`arrivalsTick`** — trigger spawning kapsle. Kde se kolonista probudí, když není Habitat?
+- [ ] **`scheduledEvents`** — napojení na events bank (SCENARIO §5). Formální schéma eventu neexistuje.
+- [ ] **Cryo failure trigger** — energie=0 → nucené probuzení posádky (WAKE event). Řetěz: decay → energy 0 → cryo fail → wake → drain → dead.
+- [ ] **POC_P1 §18 WIN/LOSS dialogy** — retirovat modaly. Onboarding tutorial jako scripted event.
 
 ## Responzivní canvas výška (S19)
 

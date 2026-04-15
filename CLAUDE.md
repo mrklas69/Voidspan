@@ -6,11 +6,12 @@ Projektové instrukce. Rozšiřují globální `~/.claude/CLAUDE.md`.
 
 ### `@BEGIN` — začátek sezení
 1. `git pull` (pokud existuje remote)
-2. Připomeň si feedback systém **Kudos!/Censure!** a kritickou úroveň **8/10** (memory: `feedback_kudos_censure.md`)
+2. Přečti `.claude/memory/MEMORY.md` — sdílené feedback soubory (přenášejí se přes git mezi stroji)
 3. Přečti poslední záznam v `.claude/sessions/` pro kontext předchozího sezení
 4. Zkontroluj `TODO.md` a `IDEAS.md` (pokud existují)
 5. Přečti `MINDMAP.md` — aktuální mapa projektu s vyznačeným fokusem
 6. Stručně shrň aktuální stav projektu a navrhni, kde navázat
+7. Spusť `pnpm dev` na pozadí (dev server pro lokální vývoj)
 
 ### `@END` — konec sezení
 1. Zapiš shrnutí sezení do `.claude/sessions/YYYY-MM-DD.md`

@@ -2,8 +2,9 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně.
 
-import type { World, Bay, Phase, LossReason, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant } from "./model";
-import { ACTOR_DEFS, TASK_DEFS, MODULE_DEFS } from "./model";
+import type { World, Bay, Phase, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode } from "./model";
+import { ACTOR_DEFS, TASK_DEFS, MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
+import { appendEvent } from "./events";
 import {
   TICK_MS,
   TICKS_PER_SECOND,
@@ -26,6 +27,11 @@ import {
   MINOR_RANGE,
   ENERGY_SEED,
   ENERGY_MAX,
+  DECAY_RATE_PER_GAME_DAY,
+  ACTOR_HP_MAX,
+  ACTOR_HP_DRAIN_PER_TICK,
+  THRESHOLD_CRIT_PCT,
+  THRESHOLD_WARN_PCT,
 } from "./tuning";
 
 // Re-export tuning konstant — drží stabilní API pro stávající konzumenty
@@ -101,11 +107,13 @@ export function createInitialWorld(): World {
   // náhodnou cover variantu (pamatuje si cover pod modulem pro demolish reveal).
   const placeModule = (id: string, kind: ModuleKind, rootIdx: number) => {
     const def = MODULE_DEFS[kind];
+    // Engine startuje offline (nefunkční, k demontáži). Ostatní online.
+    const status = kind === "Engine" ? "offline" : "online";
     modules[id] = {
       id,
       kind,
       rootIdx,
-      status: "offline",
+      status,
       hp: def.max_hp,
       hp_max: def.max_hp,
       progress_wd: 0,
@@ -169,15 +177,15 @@ export function createInitialWorld(): World {
   applyRandomDamages(segment, modules);
 
   const actors: Actor[] = [
-    { id: "player", kind: "player", state: "idle" },
-    { id: "c1", kind: "constructor", state: "idle" },
-    { id: "c2", kind: "constructor", state: "idle" },
-    { id: "c3", kind: "constructor", state: "idle" },
-    { id: "h1", kind: "hauler", state: "idle" },
-    { id: "h2", kind: "hauler", state: "idle" },
+    { id: "player", kind: "player", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "c1", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "c2", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "c3", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "h1", kind: "hauler", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "h2", kind: "hauler", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
   ];
 
-  return {
+  const world: World = {
     tick: 0,
     phase: "boot",
     resources: {
@@ -190,8 +198,22 @@ export function createInitialWorld(): World {
     modules,
     actors,
     tasks: [],
+    events: [],
+    status: {
+      overall: { pct: 100, level: "ok" },
+      tier1: { pct: 100, level: "ok" },
+      tier2: { pct: 100, level: "ok" },
+      crew: { pct: 100, level: "ok" },
+      base: { pct: 100, level: "ok" },
+      supplies: { pct: 100, level: "ok" },
+      entropy: { pct: 100, level: "ok" },
+    },
     next_task_id: 1,
   };
+
+  recomputeStatus(world); // seed reálný status, aby první tick neemitoval falešný STAT
+  appendEvent(world, "BOOT", { text: "Simulation started" });
+  return world;
 }
 
 // Aplikuje random wear na všechny komponenty s HP.
@@ -331,6 +353,7 @@ function assignIdleActors(w: World): void {
     actor.state = "working";
     actor.taskId = task.id;
     task.assigned.push(actor.id);
+    appendEvent(w, "ASSN", { actor: actor.id, item: task.kind, target: task.id });
   }
 }
 
@@ -381,6 +404,10 @@ function completeTask(w: World, task: Task): void {
       if (mod) mod.hp = mod.hp_max;
     }
   }
+
+  const loc = task.target.moduleId ?? (task.target.bayIdx !== undefined ? `bay${task.target.bayIdx}` : undefined);
+  appendEvent(w, "CMPL", { csq: "OK", loc, item: task.kind, text: `${task.kind} ${task.id} done` });
+
   for (const aid of task.assigned) {
     const a = w.actors.find((x) => x.id === aid);
     if (a) {
@@ -392,7 +419,7 @@ function completeTask(w: World, task: Task): void {
 
 // === FSM přechody ===
 
-// boot → phase_a. Damages jsou už v segmentu z createInitialWorld.
+// boot → running. Posádka zůstává v kryu — probuzení až při první pozvánce hráče.
 export function startGame(w: World): void {
   if (w.phase !== "boot") return;
   w.resources.flux.air = 100;
@@ -408,17 +435,6 @@ export function repairDone(w: World): void {
 export function dockComplete(w: World): void {
   if (w.phase !== "phase_b") return;
   w.phase = "phase_c";
-}
-
-export function endDay(w: World): void {
-  if (w.phase !== "phase_c") return;
-  w.phase = "win";
-}
-
-function toLoss(w: World, reason: LossReason): void {
-  w.phase = "loss";
-  w.loss_reason = reason;
-  for (const a of w.actors) if (a.state === "working") a.state = "idle";
 }
 
 // === Simulation loop — Perpetual Observer Simulation axiom (kandidát, IDEAS S20) ===
@@ -442,12 +458,10 @@ function toLoss(w: World, reason: LossReason): void {
 //  10) recomputeStatus     — agregace Status tree (I–IV) pro Observer UI
 //  11) appendEventLog      — telemetrie (deaths, births, arrivals, milestones)
 //
-// Phase/win/loss model z P1 POC tu pořád **žije jako legacy** (onboarding puzzle,
-// testy). Retirement → samostatný úkol v TODO.
+// win/loss retirováno (S21). phase_a/b/c zůstává jako legacy onboarding puzzle.
 
 export function stepWorld(w: World): void {
-  // Legacy early-return: dokud je FSM win/loss aktivní. V plném Observer axiomu zmizí.
-  if (w.phase === "win" || w.phase === "loss" || w.phase === "boot") return;
+  if (w.phase === "boot") return;
 
   w.tick += 1;
 
@@ -466,35 +480,182 @@ export function stepWorld(w: World): void {
 
 // === Pipeline sloty (stuby + legacy wrap) ===
 
-// Slot 2 — dnes drží legacy phase_a/b/c mechaniku (air/food drain → toLoss).
-// V plném Observer axiomu: per-capita drain bez phase gate, žádný toLoss.
+// Slot 2 — Perpetual Observer: drain bez phase gate, simulace pokračuje při 0.
+// phase_a air crisis zachována jako legacy mechanika (breach = zrychlený drain).
+// DRN:CRIT event se emituje jednorázově při dosažení 0.
 function resourceDrain(w: World): void {
   if (w.phase === "phase_a") {
+    const airBefore = w.resources.flux.air;
     w.resources.flux.air = Math.max(0, w.resources.flux.air - AIR_DRAIN_PER_TICK);
-    if (w.resources.flux.air <= 0) {
-      toLoss(w, "air");
-      return;
+    if (airBefore > 0 && w.resources.flux.air <= 0) {
+      appendEvent(w, "DRN", { csq: "CRIT", item: "air", text: "air depleted" });
     }
   }
   if (w.phase === "phase_b" || w.phase === "phase_c") {
+    const foodBefore = w.resources.slab.food;
     w.resources.slab.food = Math.max(0, w.resources.slab.food - FOOD_DRAIN_PER_TICK);
-    if (w.resources.slab.food <= 0) {
-      toLoss(w, "food");
-      return;
+    if (foodBefore > 0 && w.resources.slab.food <= 0) {
+      appendEvent(w, "DRN", { csq: "CRIT", item: "food", text: "food depleted" });
     }
   }
 }
 
 // Sloty 1, 3, 6–11 — no-op stuby. Pořadí a podpis zafixované axiomem, těla
 // postupně naplníme. Podpis `(w: World): void` drží uniformitu pipeline.
-function decayTick(_w: World): void { /* TODO: HP drain na nerepaired vrstvy */ }
+// Slot 1 — entropie. Všechny vrstvy ztrácejí HP konstantním dripem.
+// Rate = DECAY_RATE_PER_GAME_DAY * hp_max / TICKS_PER_GAME_DAY per tick.
+// Modul s HP=0 přechází na offline. DECY event při přechodu na offline.
+function decayTick(w: World): void {
+  // Bay vrstvy (skeleton, covered).
+  for (const bay of w.segment) {
+    if (bay.kind === "skeleton" || bay.kind === "covered") {
+      const drain = (bay.hp_max * DECAY_RATE_PER_GAME_DAY) / TICKS_PER_GAME_DAY;
+      bay.hp = Math.max(0, bay.hp - drain);
+    }
+  }
+  // Moduly.
+  for (const mod of Object.values(w.modules)) {
+    if (mod.hp <= 0) continue;
+    const drain = (mod.hp_max * DECAY_RATE_PER_GAME_DAY) / TICKS_PER_GAME_DAY;
+    mod.hp = Math.max(0, mod.hp - drain);
+    if (mod.hp <= 0 && mod.status === "online") {
+      mod.status = "offline";
+      appendEvent(w, "DECY", { csq: "CRIT", loc: mod.id, item: mod.kind, text: `${mod.kind} destroyed by decay` });
+    }
+  }
+}
 function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue */ }
-function actorLifeTick(_w: World): void { /* TODO: actor HP drain + dead state */ }
-function productionTick(_w: World): void { /* TODO: modul-specific produkce */ }
+function actorLifeTick(w: World): void {
+  const airZero = w.resources.flux.air <= 0;
+  const foodZero = w.resources.slab.food <= 0;
+  if (!airZero && !foodZero) return;
+
+  for (const a of w.actors) {
+    if (a.state === "cryo" || a.state === "dead") continue;
+    a.hp = Math.max(0, a.hp - ACTOR_HP_DRAIN_PER_TICK);
+    if (a.hp <= 0) {
+      a.state = "dead";
+      if (a.taskId) {
+        const task = w.tasks.find((t) => t.id === a.taskId);
+        if (task) task.assigned = task.assigned.filter((id) => id !== a.id);
+        a.taskId = undefined;
+      }
+      appendEvent(w, "DEAD", { actor: a.id, text: airZero ? "suffocated" : "starved" });
+    }
+  }
+}
+// Slot 7 — energy bilance per tick.
+// Online moduly: power_w > 0 = produkce, power_w < 0 = spotřeba.
+// Axiom: výkon je násoben koeficientem HP/HP_MAX (100% jen bezvadný modul).
+// Energie se akumuluje do w.resources.energy, clamp [0, ENERGY_MAX].
+// Při dosažení 0 se emituje DRN:CRIT jednorázově.
+function productionTick(w: World): void {
+  let netPower = 0;
+  for (const mod of Object.values(w.modules)) {
+    if (mod.status !== "online") continue;
+    const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
+    netPower += MODULE_DEFS[mod.kind].power_w * hpRatio;
+  }
+  // W → Wh per tick: energy_delta = netPower / ticks_per_game_hour.
+  // 1 game hour = TICKS_PER_GAME_DAY / 16 ticků.
+  const ticksPerHour = TICKS_PER_GAME_DAY / 16;
+  const delta = netPower / ticksPerHour;
+  const before = w.resources.energy;
+  w.resources.energy = Math.max(0, Math.min(ENERGY_MAX, w.resources.energy + delta));
+  if (before > 0 && w.resources.energy <= 0) {
+    appendEvent(w, "DRN", { csq: "CRIT", item: "energy", text: "energy depleted" });
+  }
+}
 function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
 function scheduledEvents(_w: World): void { /* TODO: events bank trigger */ }
-function recomputeStatus(_w: World): void { /* TODO: Status tree agregace I–IV */ }
-function appendEventLog(_w: World): void { /* TODO: telemetrie ring buffer */ }
+// Slot 10 — Pyramida vitality (Maslow axiom S20, S21).
+//   I.  Aktuální stav    ×8   crew=I.1, base=I.2
+//   II. Udržitelnost     ×4   supplies=II.1, entropy=II.2
+//   III. Rozvoj          ×2   [P2+ pahýl = 100%]
+//   IV. Společenský kap. ×1   [P2+ pahýl = 100%]
+// Patro = min(children). Overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15.
+function recomputeStatus(w: World): void {
+  const toLevel = (pct: number): StatusLevel =>
+    pct < THRESHOLD_CRIT_PCT ? "crit" : pct < THRESHOLD_WARN_PCT ? "warn" : "ok";
+
+  // I.1 Crew — alive (cryo + idle + working) / total.
+  const totalActors = w.actors.length;
+  const aliveActors = w.actors.filter((a) => a.state !== "dead").length;
+  const crewPct = totalActors > 0 ? (aliveActors / totalActors) * 100 : 0;
+
+  // I.2 Base — avg HP% modulů.
+  const mods = Object.values(w.modules);
+  let baseSum = 0;
+  let baseCount = 0;
+  for (const mod of mods) {
+    if (mod.hp_max <= 0) continue;
+    baseSum += (mod.hp / mod.hp_max) * 100;
+    baseCount++;
+  }
+  const basePct = baseCount > 0 ? baseSum / baseCount : 0;
+
+  // II.1 Supplies — min(food%, air%).
+  const foodPct = w.resources.slab.food;
+  const airPct = w.resources.flux.air;
+  const suppliesPct = Math.min(foodPct, airPct);
+
+  // II.2 Entropy — avg HP% všech vrstev (bays + moduly) + energy bilance.
+  // Energie je provozní metrika základny: energy/ENERGY_MAX váží 50% s HP avg.
+  let hpSum = 0;
+  let hpCount = 0;
+  for (const bay of w.segment) {
+    if (bay.kind === "skeleton" || bay.kind === "covered") {
+      hpSum += (bay.hp / bay.hp_max) * 100;
+      hpCount++;
+    }
+  }
+  for (const mod of mods) {
+    if (mod.hp_max <= 0) continue;
+    hpSum += (mod.hp / mod.hp_max) * 100;
+    hpCount++;
+  }
+  const hpAvgPct = hpCount > 0 ? hpSum / hpCount : 0;
+  const energyPct = (w.resources.energy / ENERGY_MAX) * 100;
+  const entropyPct = (hpAvgPct + energyPct) / 2;
+
+  // Patra — worst child uvnitř patra.
+  const tier1Pct = Math.min(crewPct, basePct);
+  const tier2Pct = Math.min(suppliesPct, entropyPct);
+  const tier3Pct = 100; // P2+ pahýl
+  const tier4Pct = 100; // P2+ pahýl
+
+  // Overall — vážený průměr pyramid.
+  const overallPct = (tier1Pct * 8 + tier2Pct * 4 + tier3Pct * 2 + tier4Pct * 1) / 15;
+
+  // Detekce změn level — SIGN event pro každou osu, která změní rating.
+  // Skip v boot phase (init, startGame — stav se ustaluje).
+  const emitSign = (name: string, prev: StatusNode, pct: number) => {
+    const newLevel = toLevel(pct);
+    if (w.phase !== "boot" && prev.level !== newLevel) {
+      const prevR = statusRating(prev.pct);
+      const newR = statusRating(pct);
+      const prevLabel = STATUS_LABELS[prevR].en;
+      const newLabel = STATUS_LABELS[newR].en;
+      const dir = pct > prev.pct ? "↑" : "↓";
+      appendEvent(w, "SIGN", { item: name, text: `${dir} ${prevLabel} → ${newLabel} (${Math.round(pct)}%)` });
+    }
+  };
+
+  emitSign("crew", w.status.crew, crewPct);
+  emitSign("base", w.status.base, basePct);
+  emitSign("supplies", w.status.supplies, suppliesPct);
+  emitSign("entropy", w.status.entropy, entropyPct);
+  emitSign("overall", w.status.overall, overallPct);
+
+  w.status.crew = { pct: crewPct, level: toLevel(crewPct) };
+  w.status.base = { pct: basePct, level: toLevel(basePct) };
+  w.status.supplies = { pct: suppliesPct, level: toLevel(suppliesPct) };
+  w.status.entropy = { pct: entropyPct, level: toLevel(entropyPct) };
+  w.status.tier1 = { pct: tier1Pct, level: toLevel(tier1Pct) };
+  w.status.tier2 = { pct: tier2Pct, level: toLevel(tier2Pct) };
+  w.status.overall = { pct: overallPct, level: toLevel(overallPct) };
+}
+function appendEventLog(_w: World): void { /* Events se emitují in-place přes appendEvent(). Slot zachován pro axiom pipeline pořadí. */ }
 
 // === Derived: Work (W) ===
 
@@ -502,6 +663,7 @@ export function computeWork(w: World): { current: number; max: number } {
   let current = 0;
   let max = 0;
   for (const a of w.actors) {
+    if (a.state === "dead" || a.state === "cryo") continue;
     const pw = ACTOR_DEFS[a.kind].power_w;
     max += pw;
     if (a.state === "working") current += pw;
@@ -515,8 +677,6 @@ export function phaseLabel(phase: Phase): string {
     phase_a: "PHASE A — HULL BREACH",
     phase_b: "PHASE B — ENGINE→DOCK",
     phase_c: "PHASE C — BONUS",
-    win: "WIN",
-    loss: "LOSS",
   };
   return map[phase];
 }

@@ -18,6 +18,8 @@ import {
 } from "./world";
 import type { World } from "./model";
 import { MODULE_DEFS } from "./model";
+import { EventLogPanel } from "./event_log";
+import { InfoPanel } from "./info_panel";
 import { FONT_FAMILY, FONT_SIZE_CMD } from "./palette";
 import {
   CANVAS_W,
@@ -45,6 +47,8 @@ export class GameScene extends Phaser.Scene {
 
   private header!: HeaderPanel;
   private segment!: SegmentPanel;
+  private eventLog!: EventLogPanel;
+  private infoPanel!: InfoPanel;
 
   constructor() {
     super({ key: "game" });
@@ -114,6 +118,8 @@ export class GameScene extends Phaser.Scene {
     const getWorld = () => this.world;
     this.header = new HeaderPanel(this, getWorld);
     this.segment = new SegmentPanel(this, getWorld);
+    this.eventLog = new EventLogPanel(this, getWorld);
+    this.infoPanel = new InfoPanel(this, getWorld);
 
     this.createLog();
     this.bindDebugKeys();
@@ -121,6 +127,7 @@ export class GameScene extends Phaser.Scene {
     // Tooltips — každý panel si attach sám po vytvoření všech elementů.
     this.header.attachTooltips(this.tooltips);
     this.segment.attachTooltips(this.tooltips);
+    this.infoPanel.attachTooltips(this.tooltips);
 
     // Welcome dialog — jen pro prvního návštěvníka (nebo dokud nezaškrtne
     // "Již nezobrazovat"). Otevírá se po vytvoření všech panelů, aby dialog
@@ -158,7 +165,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         logY + LOG_H / 2,
-        "[E] event log  [H] help  [WASD] select bay",
+        "[I] info  [E] event log  [H] help  [WASD] select bay",
         {
           fontFamily: FONT_FAMILY,
           fontSize: FONT_SIZE_CMD,
@@ -190,6 +197,12 @@ export class GameScene extends Phaser.Scene {
         case "d":
           this.segment.moveSelection(1, 0);
           break;
+        case "e":
+          this.eventLog.toggle();
+          break;
+        case "i":
+          this.infoPanel.toggle();
+          break;
         case "h":
           this.openHelpModal();
           break;
@@ -220,5 +233,7 @@ export class GameScene extends Phaser.Scene {
 
     this.header.render();
     this.segment.render();
+    this.eventLog.render();
+    this.infoPanel.render();
   }
 }

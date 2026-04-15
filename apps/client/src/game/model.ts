@@ -11,11 +11,37 @@
 //
 // Indexace segmentu: 2 řady × 8 sloupců, row-major → idx = row*8 + col.
 
+// === Event Log System (S20 kánon, GLOSSARY §Event Log System) ===
+
+export type EventVerb =
+  | "BOOT" | "SPWN" | "DEAD" | "ARRV" | "DPRT"
+  | "REPR" | "BLD"  | "DEMO" | "DMG"  | "DECY"
+  | "DRN"  | "PROD" | "HAUL" | "ASSN" | "CMPL"
+  | "FAIL" | "IDLE" | "WAKE" | "DOCK" | "TICK"
+  | "SIGN" | "EVNT" | "SAY"  | "RPRT";
+
+export type EventCsq = "OK" | "FAIL" | "PARTIAL" | "CRIT" | "START";
+
+export type EventSeverity = "crit" | "warn" | "pos" | "neutral";
+
+export type Event = {
+  tick: number;
+  verb: EventVerb;
+  csq?: EventCsq;
+  loc?: string;
+  actor?: string;
+  item?: string;
+  amount?: number;
+  target?: string;
+  text?: string;
+  severity: EventSeverity;
+};
+
 // === Fáze a LOSS důvody ===
 
-export type Phase = "boot" | "phase_a" | "phase_b" | "phase_c" | "win" | "loss";
-
-export type LossReason = "air" | "food" | "session_closed";
+// Perpetual Observer axiom (S20→S21): win/loss retirováno. Simulace běží perpetuálně.
+// phase_a/b/c = legacy onboarding puzzle (P1 POC). Retirement celého Phase → TODO.
+export type Phase = "boot" | "phase_a" | "phase_b" | "phase_c";
 
 // === Cover variant ===
 // Plášť má 5 vizuálních variant (cover1.png – cover5.png). Uloženo na bay
@@ -91,13 +117,17 @@ export type ActorDef = {
   role: string;
 };
 
-// `dead` = legitimní terminální stav aktéra (Perpetual Observer Simulation axiom,
-// IDEAS S20). Když aktér umře, svět běží dál — aktér zůstane jako záznam,
-// simulace nekončí. Plně wired (HP drain, dead trigger) v navazujícím TODO.
+// Perpetual Observer Simulation axiom (S20/S21):
+//   cryo → idle → working → dead
+// cryo = kryospánek, bezpečný stav, žádná spotřeba. Probuzení (WAKE) přes
+// cryo failure (energie=0) nebo manuální trigger.
+// dead = terminální, aktér zůstává jako záznam, simulace pokračuje.
 export type Actor = {
   id: string;
   kind: ActorKind;
-  state: "idle" | "working" | "dead";
+  state: "cryo" | "idle" | "working" | "dead";
+  hp: number;
+  hp_max: number;
   taskId?: string;
 };
 
@@ -126,6 +156,55 @@ export type Task = {
   cost_coin?: number;
 };
 
+// === Status tree (S20/S21) ===
+// Agregace zdraví kolonie. parent = worst child (fraktální semafor).
+// Prahy: < 15% = crit, < 40% = warn, ≥ 40% = ok.
+
+export type StatusLevel = "ok" | "warn" | "crit";
+
+// Jednoslovné hodnocení stavu pásu (S21, GLOSSARY).
+export type StatusRating = 1 | 2 | 3 | 4 | 5;
+export const STATUS_LABELS: Record<StatusRating, { cs: string; en: string }> = {
+  5: { cs: "Vynikající", en: "Excellent" },
+  4: { cs: "Dobrá", en: "Good" },
+  3: { cs: "Dostačující", en: "Fair" },
+  2: { cs: "Slabá", en: "Poor" },
+  1: { cs: "Selhání", en: "Failure" },
+};
+
+export function statusRating(pct: number): StatusRating {
+  if (pct >= 80) return 5;
+  if (pct >= 60) return 4;
+  if (pct >= 40) return 3;
+  if (pct >= 15) return 2;
+  return 1;
+}
+
+// Pyramida vitality (Maslow axiom S20):
+//   I.  Aktuální stav    ×8   (crew + base)
+//   II. Udržitelnost     ×4   (supplies + entropy)
+//   III. Rozvoj          ×2   [P2+ pahýl = 100%]
+//   IV. Společenský kap. ×1   [P2+ pahýl = 100%]
+// overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15
+// Patro = min(children) — worst child uvnitř patra.
+
+export type StatusNode = {
+  pct: number;        // 0..100
+  level: StatusLevel;
+};
+
+export type Status = {
+  overall: StatusNode;
+  // Patra pyramidy:
+  tier1: StatusNode;       // I.  Aktuální stav = min(crew, base)
+  tier2: StatusNode;       // II. Udržitelnost = min(supplies, entropy)
+  // Listy:
+  crew: StatusNode;        // I.1 — posádka (alive / total)
+  base: StatusNode;        // I.2 — základna (avg HP modulů)
+  supplies: StatusNode;    // II.1 — zásoby (runway)
+  entropy: StatusNode;     // II.2 — entropie (avg HP + energy bilance)
+};
+
 // === Root state ===
 
 export type World = {
@@ -141,8 +220,9 @@ export type World = {
   modules: Record<string, Module>;
   actors: Actor[];
   tasks: Task[];
+  events: Event[]; // ring buffer, max EVENT_LOG_CAPACITY (tuning.ts)
+  status: Status;
   next_task_id: number;
-  loss_reason?: LossReason;
 };
 
 // ============================================================================

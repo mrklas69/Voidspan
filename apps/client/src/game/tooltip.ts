@@ -25,7 +25,7 @@ const MAX_WIDTH = 280;
 const PAD_X = 8;
 const PAD_Y = 4;
 const OFFSET = 12;
-const DEPTH = 1000;
+const DEPTH = 1800; // nad floating panely (1500), pod modaly (2000)
 
 export class TooltipManager {
   private scene: Phaser.Scene;
