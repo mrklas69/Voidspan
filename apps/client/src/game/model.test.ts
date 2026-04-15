@@ -58,13 +58,11 @@ describe("ACTOR_DEFS catalog invariants", () => {
     }
   });
 
-  it("má přesně 3 role: constructor, hauler, player", () => {
-    expect(Object.keys(ACTOR_DEFS).sort()).toEqual(["constructor", "hauler", "player"]);
+  it("má přesně 1 roli: player", () => {
+    expect(Object.keys(ACTOR_DEFS).sort()).toEqual(["player"]);
   });
 
-  it("power_w hodnoty odpovídají §10 seed kalibraci", () => {
-    expect(ACTOR_DEFS.constructor.power_w).toBe(12);
-    expect(ACTOR_DEFS.hauler.power_w).toBe(8);
+  it("power_w hodnoty odpovídají seed kalibraci", () => {
     expect(ACTOR_DEFS.player.power_w).toBe(8);
   });
 });
@@ -82,7 +80,4 @@ describe("TASK_DEFS catalog invariants", () => {
     }
   });
 
-  it("haul je výhradně pro Hauler", () => {
-    expect(TASK_DEFS.haul.allowed_actors).toEqual(["hauler"]);
-  });
 });

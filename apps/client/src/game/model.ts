@@ -37,11 +37,11 @@ export type Event = {
   severity: EventSeverity;
 };
 
-// === Fáze a LOSS důvody ===
+// === Fáze ===
 
 // Perpetual Observer axiom (S20→S21): win/loss retirováno. Simulace běží perpetuálně.
-// phase_a/b/c = legacy onboarding puzzle (P1 POC). Retirement celého Phase → TODO.
-export type Phase = "boot" | "phase_a" | "phase_b" | "phase_c";
+// boot = inicializace (jeden tick), running = perpetuální simulace.
+export type Phase = "boot" | "running";
 
 // === Cover variant ===
 // Plášť má 5 vizuálních variant (cover1.png – cover5.png). Uloženo na bay
@@ -86,6 +86,7 @@ export type ModuleDef = {
   h: number;
   asset: string;
   power_w: number;
+  capacity_wh?: number; // energetická kapacita modulu (baterie). Výchozí 0.
   wd_to_build: number;
   wd_to_demolish: number;
   cost_coin: number;
@@ -106,8 +107,10 @@ export type Module = {
 };
 
 // === Aktér ===
+// Player = hráčův avatar. Pracuje → HP klesá, jí → HP roste.
+// Drony nejsou aktéři — jsou číslo na World (viz World.drones).
 
-export type ActorKind = "constructor" | "hauler" | "player";
+export type ActorKind = "player";
 
 export type ActorDef = {
   kind: ActorKind;
@@ -128,12 +131,13 @@ export type Actor = {
   state: "cryo" | "idle" | "working" | "dead";
   hp: number;
   hp_max: number;
+  work: number; // pracovní výkon (W) — jak rychle pracuje, ne kolik vydrží
   taskId?: string;
 };
 
 // === Task ===
 
-export type TaskKind = "repair" | "demolish" | "build" | "haul";
+export type TaskKind = "repair" | "demolish" | "build";
 
 export type TaskDef = {
   kind: TaskKind;
@@ -222,6 +226,8 @@ export type World = {
   tasks: Task[];
   events: Event[]; // ring buffer, max EVENT_LOG_CAPACITY (tuning.ts)
   status: Status;
+  energyMax: number; // Σ capacity_wh online modulů — dynamická kapacita baterie
+  drones: number;    // počet pracovních dronů — převodník E→WD, žádný HP
   next_task_id: number;
 };
 
@@ -250,11 +256,12 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "solar_array.png",
     power_w: 24,
+    capacity_wh: 80,
     wd_to_build: 20,
     wd_to_demolish: 10,
     cost_coin: 8,
     max_hp: 500,
-    description: "Solární panel. Hlavní zdroj energie v P1.",
+    description: "Solární panel s integrovaným akumulátorem 80 Wh.",
   },
   Engine: {
     kind: "Engine",
@@ -263,6 +270,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 2,
     asset: "engine.png",
     power_w: 0,
+
     wd_to_build: 80,
     wd_to_demolish: 60,
     cost_coin: 30,
@@ -276,6 +284,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 2,
     asset: "dock.png",
     power_w: -6,
+
     wd_to_build: 48,
     wd_to_demolish: 20,
     cost_coin: 20,
@@ -289,6 +298,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "habitat.png",
     power_w: -2,
+
     wd_to_build: 15,
     wd_to_demolish: 8,
     cost_coin: 10,
@@ -302,6 +312,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "storage.png",
     power_w: -1,
+
     wd_to_build: 12,
     wd_to_demolish: 6,
     cost_coin: 8,
@@ -315,6 +326,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "medcore.png",
     power_w: -3,
+
     wd_to_build: 18,
     wd_to_demolish: 9,
     cost_coin: 12,
@@ -328,6 +340,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "assembler.png",
     power_w: -4,
+
     wd_to_build: 22,
     wd_to_demolish: 10,
     cost_coin: 15,
@@ -341,6 +354,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     h: 1,
     asset: "command_post.png",
     power_w: -2,
+
     wd_to_build: 20,
     wd_to_demolish: 10,
     cost_coin: 14,
@@ -350,32 +364,17 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 };
 
 export const ACTOR_DEFS: Record<ActorKind, ActorDef> = {
-  constructor: {
-    kind: "constructor",
-    label: "Constructor",
-    power_w: 12,
-    asset: "actor_constructor.png",
-    role: "Staví, opravuje, demontuje moduly. 3× v poolu.",
-  },
-  hauler: {
-    kind: "hauler",
-    label: "Hauler",
-    power_w: 8,
-    asset: "actor_hauler.png",
-    role: "Přepravuje materiál a moduly flotily. 2× v poolu.",
-  },
   player: {
     kind: "player",
     label: "Player",
     power_w: 8,
     asset: "actor_player.png",
-    role: "Hráč-aktér. V P1 vždy working, prohrává s kolonií.",
+    role: "Hráčův avatar — Founding Colonist #1. Pracuje → HP klesá, jí → HP roste.",
   },
 };
 
 export const TASK_DEFS: Record<TaskKind, TaskDef> = {
-  repair: { kind: "repair", label: "Repair", allowed_actors: ["constructor", "player"] },
-  demolish: { kind: "demolish", label: "Demolish", allowed_actors: ["constructor", "player"] },
-  build: { kind: "build", label: "Build", allowed_actors: ["constructor", "player"] },
-  haul: { kind: "haul", label: "Haul", allowed_actors: ["hauler"] },
+  repair: { kind: "repair", label: "Repair", allowed_actors: ["player"] },
+  demolish: { kind: "demolish", label: "Demolish", allowed_actors: ["player"] },
+  build: { kind: "build", label: "Build", allowed_actors: ["player"] },
 };

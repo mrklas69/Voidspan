@@ -7,9 +7,8 @@
 import Phaser from "phaser";
 import type { World } from "./model";
 import { MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
-import { VERB_CATALOG } from "./events";
 import type { TooltipManager } from "./tooltip";
-import type { StatusRating } from "./model";
+
 import {
   COL_HULL_DARK,
   COL_HULL_MID,
@@ -19,14 +18,9 @@ import {
   UI_TEXT_PRIMARY,
   FONT_FAMILY,
   FONT_SIZE_LABEL,
-  HEX_ALERT_RED,
-  HEX_WARN_AMBER,
-  HEX_OK_GREEN,
-  HEX_COOLANT_CYAN,
-  HEX_WARN_ORANGE,
+  RATING_COLOR,
 } from "./palette";
 import { CANVAS_H, HUD_H, LOG_H } from "./ui/layout";
-import { ENERGY_MAX } from "./tuning";
 
 const DEPTH = 1500;
 const PANEL_W = 420;
@@ -53,14 +47,6 @@ function loadVisiblePref(): boolean {
 function saveVisiblePref(v: boolean): void {
   try { localStorage.setItem(LS_KEY, v ? "1" : "0"); } catch { /* incognito */ }
 }
-
-const RATING_COLOR: Record<StatusRating, string> = {
-  5: HEX_OK_GREEN,       // Excellent — zelená
-  4: HEX_COOLANT_CYAN,   // Good — cyan
-  3: HEX_WARN_AMBER,     // Fair — amber
-  2: HEX_WARN_ORANGE,    // Poor — oranžová
-  1: HEX_ALERT_RED,      // Failure — červená
-};
 
 export class InfoPanel {
   private scene: Phaser.Scene;
@@ -363,18 +349,6 @@ export class InfoPanel {
     }
     const hpAvg = hpCount > 0 ? Math.round(hpSum / hpCount) : 0;
 
-    // Úkoly.
-    const active = w.tasks.filter((t) => t.assigned.length > 0).length;
-    const queued = w.tasks.length - active;
-
-    // Události — posledních 5.
-    const recentEvents = w.events.slice(-5);
-    const evLines = recentEvents.map((ev) => {
-      const entry = VERB_CATALOG[ev.verb];
-      const csq = ev.csq ? `:${ev.csq}` : "";
-      return `  ${entry.icon} ${ev.verb}${csq} ${ev.actor ?? ev.loc ?? ""} ${ev.item ?? ""}`.trimEnd();
-    });
-
     // Rating — label neutral, hodnota barvená.
     const rating = statusRating(w.status.overall.pct);
     const label = STATUS_LABELS[rating];
@@ -394,16 +368,8 @@ export class InfoPanel {
     // II. Udržitelnost
     icons.push("≡"); lines.push(`Zásoby:   ${w.resources.slab.food.toFixed(0)} food / ${w.resources.flux.air.toFixed(0)} air`);
     icons.push(" "); lines.push(`          runway: ${runway}`);
-    icons.push("↯"); lines.push(`Energie:  ${w.resources.energy.toFixed(1)} / ${ENERGY_MAX} Wh`);
+    icons.push("↯"); lines.push(`Energie:  ${w.resources.energy.toFixed(1)} / ${w.energyMax} Wh`);
     icons.push(" "); lines.push(`          +${production.toFixed(0)} prod / ${consumption.toFixed(0)} spotř = ${netSign}${net.toFixed(0)}`);
-    icons.push(" "); lines.push(``);
-    // Ostatní
-    icons.push("▲"); lines.push(`Úkoly:    ${active} active / ${queued} queued`);
-    icons.push(" "); lines.push(``);
-    icons.push("◆"); lines.push(`Události:`);
-    for (const evLine of evLines) {
-      icons.push(" "); lines.push(evLine);
-    }
 
     this.iconText.setText(icons.join("\n"));
     this.bodyText.setText(lines.join("\n"));

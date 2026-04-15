@@ -19,6 +19,12 @@ import {
   FONT_SIZE_HINT,
 } from "./palette";
 
+export type TooltipContent = {
+  header: string;
+  headerColor?: string;
+  body: string;
+};
+
 const DELAY_MS = 400;
 const REFRESH_MS = 100; // interval pro re-volání provideru → živý text při držení myši
 const PAD_X = 8;
@@ -31,9 +37,10 @@ export class TooltipManager {
   private bg: Phaser.GameObjects.Rectangle;
   private border: Phaser.GameObjects.Rectangle;
   private text: Phaser.GameObjects.Text;
+  private headerText: Phaser.GameObjects.Text;
   private timer?: Phaser.Time.TimerEvent;
   private refreshTimer?: Phaser.Time.TimerEvent;
-  private activeProvider?: () => string | null;
+  private activeProvider?: () => string | TooltipContent | null;
   private lastPointer = { x: 0, y: 0 };
   private visible = false;
 
@@ -63,6 +70,17 @@ export class TooltipManager {
       .setOrigin(0, 0)
       .setDepth(DEPTH + 2)
       .setVisible(false);
+    this.headerText = scene.add
+      .text(0, 0, "", {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_HINT,
+        color: UI_TEXT_PRIMARY,
+        wordWrap: { width: wrapMax },
+        lineSpacing: 2,
+      })
+      .setOrigin(0, 0)
+      .setDepth(DEPTH + 3)
+      .setVisible(false);
 
     // Cleanup při shutdown scény (F5 / restart) — ať timer nezůstane viset.
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
@@ -72,7 +90,7 @@ export class TooltipManager {
   // Target musí být interactive (jinak Phaser hover eventy neposílá).
   attach(
     target: Phaser.GameObjects.GameObject & { input?: unknown },
-    provider: () => string | null,
+    provider: () => string | TooltipContent | null,
   ): void {
     // Ensure interactive — pro Text/Image/Rectangle je to bezpečné.
     const anyTarget = target as unknown as {
@@ -89,9 +107,9 @@ export class TooltipManager {
       hovering = true;
       this.activeProvider = provider;
       this.lastPointer = { x: pointer.x, y: pointer.y };
-      const text = provider();
-      if (!text) return;
-      this.schedule(pointer.x, pointer.y, text);
+      const content = provider();
+      if (!content) return;
+      this.schedule(pointer.x, pointer.y, content);
     });
 
     // HP-unified axiom (S16): tooltip musí reflektovat živá data (např. hp/hp_max
@@ -113,48 +131,61 @@ export class TooltipManager {
     });
   }
 
-  private schedule(x: number, y: number, text: string): void {
+  private schedule(x: number, y: number, content: string | TooltipContent): void {
     this.cancelTimer();
     this.timer = this.scene.time.delayedCall(DELAY_MS, () => {
-      this.show(x, y, text);
+      this.show(x, y, content);
     });
   }
 
-  private show(x: number, y: number, text: string): void {
-    // Obarvi řádky: první amber bright, další dim. Použijeme RichText přes styl —
-    // Phaser Text nepodporuje per-line barvu bez BBCode pluginu, takže primární
-    // barva + dim aplikujeme via text color tag workaround. Pro KISS: všechno
-    // primární, druhé+ řádky prefixujeme mezerou a nižším kontrastem přes alpha.
-    // Jednodušší řešení: dvě Text instance by bylo over-engineered. Pro P1 stačí
-    // jediná barva — pokud bude potřeba multi-tone, přidáme později.
-    this.text.setText(text);
+  private show(x: number, y: number, content: string | TooltipContent): void {
+    let headerStr: string | undefined;
+    let headerColor: string | undefined;
+    let bodyStr: string;
+
+    if (typeof content === "string") {
+      bodyStr = content;
+    } else {
+      headerStr = content.header;
+      headerColor = content.headerColor;
+      bodyStr = content.body;
+    }
+
+    // Barevný header (S23) — volitelný první řádek se sémantickou barvou.
+    if (headerStr) {
+      this.headerText.setText(headerStr);
+      this.headerText.setColor(headerColor ?? UI_TEXT_PRIMARY);
+      this.headerText.setVisible(true);
+    } else {
+      this.headerText.setText("");
+      this.headerText.setVisible(false);
+    }
+
+    this.text.setText(bodyStr);
     this.text.setColor(UI_TEXT_PRIMARY);
 
-    const tw = this.text.width;
-    const th = this.text.height;
+    const headerH = headerStr ? this.headerText.height : 0;
+    const gap = headerStr ? 4 : 0;
+    const tw = Math.max(headerStr ? this.headerText.width : 0, this.text.width);
+    const th = headerH + gap + this.text.height;
     const w = tw + 2 * PAD_X;
     const h = th + 2 * PAD_Y;
 
-    // Border rect = outer, bg rect = inset 1px.
     this.border.setSize(w + 2, h + 2);
     this.bg.setSize(w, h);
 
-    this.position(x, y, w, h);
+    this.position(x, y, w, h, headerH, gap);
 
     this.border.setVisible(true);
     this.bg.setVisible(true);
     this.text.setVisible(true);
     this.visible = true;
 
-    // Refresh timer — periodicky přepisuje text z activeProvider, aby tooltip
-    // reflektoval živá data (hp spojitě roste, task progress, resources…).
     this.startRefreshTimer();
-
-    // Quiet the unused warning — kept for future multi-line tone.
     void UI_TEXT_DIM;
   }
 
-  private position(px: number, py: number, w?: number, h?: number): void {
+  private position(px: number, py: number, w?: number, h?: number, headerH = 0, gap = 0): void {
     const tw = w ?? this.bg.width;
     const th = h ?? this.bg.height;
     const canvasW = this.scene.scale.width;
@@ -170,7 +201,12 @@ export class TooltipManager {
 
     this.border.setPosition(x - 1, y - 1);
     this.bg.setPosition(x, y);
-    this.text.setPosition(x + PAD_X, y + PAD_Y);
+    if (headerH > 0) {
+      this.headerText.setPosition(x + PAD_X, y + PAD_Y);
+      this.text.setPosition(x + PAD_X, y + PAD_Y + headerH + gap);
+    } else {
+      this.text.setPosition(x + PAD_X, y + PAD_Y);
+    }
   }
 
   private hide(): void {
@@ -181,6 +217,7 @@ export class TooltipManager {
     this.border.setVisible(false);
     this.bg.setVisible(false);
     this.text.setVisible(false);
+    this.headerText.setVisible(false);
     this.visible = false;
   }
 
@@ -223,5 +260,6 @@ export class TooltipManager {
     this.border.destroy();
     this.bg.destroy();
     this.text.destroy();
+    this.headerText.destroy();
   }
 }

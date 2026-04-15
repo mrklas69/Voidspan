@@ -4,6 +4,7 @@
 
 import Phaser from "phaser";
 import type { World, Event, EventVerb } from "./model";
+import { statusRating } from "./model";
 import { VERB_CATALOG } from "./events";
 import { formatGameTime } from "./world";
 import {
@@ -20,6 +21,7 @@ import {
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
   HEX_OK_GREEN,
+  RATING_COLOR,
 } from "./palette";
 import { CANVAS_W, CANVAS_H, HUD_H, LOG_H } from "./ui/layout";
 
@@ -306,7 +308,12 @@ export class EventLogPanel {
       if (evIdx < events.length) {
         const ev = events[evIdx]!;
         t.setText(formatEventRow(ev));
-        t.setColor(SEVERITY_COLOR[ev.severity] ?? UI_TEXT_DIM);
+        // SIGN eventy: barva dle 5stavového semaforu (rating z amount = nový pct).
+        if (ev.verb === "SIGN" && ev.amount != null) {
+          t.setColor(RATING_COLOR[statusRating(ev.amount)] ?? UI_TEXT_DIM);
+        } else {
+          t.setColor(SEVERITY_COLOR[ev.severity] ?? UI_TEXT_DIM);
+        }
         t.setVisible(true);
       } else {
         t.setVisible(false);

@@ -15,12 +15,12 @@ Většina implementována v S21. Zbývající úkoly:
 
 Pipeline sloty 1, 6, 7, 10 naplněny v S21. Phase win/loss retirováno. Zbývající:
 
-- [ ] **`resourceDrain` per-capita** — přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Odstranit phase gate.
+- [ ] **`resourceDrain` per-capita** — přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Phase gate odstraněn (S23), stub no-op.
 - [ ] **`autoEnqueueTasks` — priority queue** — Observer-driven: critical HP (< 30 %) → auto repair task. Bez hráčského kliku.
 - [ ] **`arrivalsTick`** — trigger spawning kapsle. Kde se kolonista probudí, když není Habitat?
 - [ ] **`scheduledEvents`** — napojení na events bank (SCENARIO §5). Formální schéma eventu neexistuje.
 - [ ] **Cryo failure trigger** — energie=0 → nucené probuzení posádky (WAKE event). Řetěz: decay → energy 0 → cryo fail → wake → drain → dead.
-- [ ] **POC_P1 §18 WIN/LOSS dialogy** — retirovat modaly. Onboarding tutorial jako scripted event.
+- [x] **POC_P1 §18 WIN/LOSS dialogy** — retirováno (S23, phase retirement). Modaly smazány s phase_a/b/c.
 
 ## Responzivní canvas výška (S19)
 

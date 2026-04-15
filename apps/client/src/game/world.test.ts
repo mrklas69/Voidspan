@@ -4,16 +4,9 @@
 import { describe, it, expect } from "vitest";
 import {
   createInitialWorld,
-  startGame,
-  repairDone,
-  dockComplete,
   stepWorld,
-  phaseLabel,
   enqueueRepairTask,
   getOuterHP,
-  AIR_DRAIN_PER_TICK,
-  AIR_TIMEOUT_TICKS,
-  FOOD_DRAIN_PER_TICK,
   SKELETON_HP_MAX,
   COVERED_HP_MAX,
 } from "./world";
@@ -22,9 +15,9 @@ import { MODULE_DEFS } from "./model";
 // === Factory ===
 
 describe("createInitialWorld", () => {
-  it("startuje v boot fázi s resources na seed hodnotách", () => {
+  it("startuje v running fázi s resources na seed hodnotách", () => {
     const w = createInitialWorld();
-    expect(w.phase).toBe("boot");
+    expect(w.phase).toBe("running");
     expect(w.tick).toBe(0);
     expect(w.resources.flux.air).toBe(100);
     expect(w.resources.slab.food).toBe(40);
@@ -126,132 +119,16 @@ describe("createInitialWorld", () => {
   });
 });
 
-// === FSM přechody ===
+// === Perpetual Observer — stepWorld ===
 
-describe("FSM: startGame (boot → phase_a)", () => {
-  it("přepne boot → phase_a", () => {
+describe("stepWorld: tick progresuje", () => {
+  it("tick roste o 1 každým krokem", () => {
     const w = createInitialWorld();
-    startGame(w);
-    expect(w.phase).toBe("phase_a");
-  });
-
-  it("je no-op mimo boot", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    startGame(w);
-    expect(w.phase).toBe("phase_a");
-  });
-});
-
-describe("FSM: repairDone (phase_a → phase_b)", () => {
-  it("přepne phase_a → phase_b", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    expect(w.phase).toBe("phase_b");
-  });
-
-  it("je no-op v jiné fázi", () => {
-    const w = createInitialWorld();
-    repairDone(w);
-    expect(w.phase).toBe("boot");
-  });
-});
-
-describe("FSM: dockComplete (phase_b → phase_c)", () => {
-  it("přepne phase_b → phase_c", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    dockComplete(w);
-    expect(w.phase).toBe("phase_c");
-  });
-
-  it("je no-op v jiné fázi", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    dockComplete(w);
-    expect(w.phase).toBe("phase_a");
-  });
-});
-
-describe("FSM: win/loss retirováno (S21 Perpetual Observer)", () => {
-  it("Phase nemá win ani loss", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    dockComplete(w);
-    // phase_c je poslední — žádný win stav.
-    expect(w.phase).toBe("phase_c");
-  });
-});
-
-// === Tick step — resource drain ===
-
-describe("stepWorld: air drain v phase_a", () => {
-  it("tick zvyšuje counter a snižuje air", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    const airBefore = w.resources.flux.air;
+    expect(w.phase).toBe("running");
     stepWorld(w);
     expect(w.tick).toBe(1);
-    expect(w.resources.flux.air).toBeCloseTo(airBefore - AIR_DRAIN_PER_TICK, 5);
-  });
-
-  it("air klesne na 0 za AIR_TIMEOUT_TICKS — simulace pokračuje (Perpetual Observer)", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    for (let i = 0; i < AIR_TIMEOUT_TICKS; i++) stepWorld(w);
-    expect(w.resources.flux.air).toBe(0);
-    // Simulace nekončí — tick roste dál.
-    const tickBefore = w.tick;
     stepWorld(w);
-    expect(w.tick).toBe(tickBefore + 1);
-    // DRN:CRIT event emitován.
-    const drnCrit = w.events.find((e) => e.verb === "DRN" && e.csq === "CRIT" && e.item === "air");
-    expect(drnCrit).toBeDefined();
-  });
-
-  it("v boot se nic neděje", () => {
-    const w = createInitialWorld();
-    stepWorld(w);
-    expect(w.tick).toBe(0);
-    expect(w.resources.flux.air).toBe(100);
-  });
-});
-
-describe("stepWorld: food drain v phase_b/c", () => {
-  it("v phase_b food klesá", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    const foodBefore = w.resources.slab.food;
-    stepWorld(w);
-    expect(w.resources.slab.food).toBeCloseTo(foodBefore - FOOD_DRAIN_PER_TICK, 5);
-  });
-
-  it("food → 0 v phase_b — simulace pokračuje (Perpetual Observer)", () => {
-    const w = createInitialWorld();
-    startGame(w);
-    repairDone(w);
-    const ticksToZero = Math.ceil(40 / FOOD_DRAIN_PER_TICK) + 5;
-    for (let i = 0; i < ticksToZero; i++) stepWorld(w);
-    expect(w.resources.slab.food).toBe(0);
-    // Simulace nekončí.
-    const tickBefore = w.tick;
-    stepWorld(w);
-    expect(w.tick).toBe(tickBefore + 1);
-    // DRN:CRIT event emitován.
-    const drnCrit = w.events.find((e) => e.verb === "DRN" && e.csq === "CRIT" && e.item === "food");
-    expect(drnCrit).toBeDefined();
-  });
-});
-
-describe("stepWorld: boot neprogresuje", () => {
-  it("boot neprogresuje ticky", () => {
-    const w = createInitialWorld();
-    stepWorld(w);
-    expect(w.tick).toBe(0);
+    expect(w.tick).toBe(2);
   });
 });
 
@@ -274,7 +151,6 @@ describe("getOuterHP", () => {
 describe("enqueueRepairTask (generalized)", () => {
   it("enqueue repair pro bay s hp < hp_max", () => {
     const w = createInitialWorld();
-    startGame(w);
     // Najdi první bay s missing HP.
     let targetIdx = -1;
     for (let i = 0; i < 16; i++) {
@@ -292,7 +168,6 @@ describe("enqueueRepairTask (generalized)", () => {
 
   it("idempotent — druhé volání na stejný target nic nepřidá", () => {
     const w = createInitialWorld();
-    startGame(w);
     let targetIdx = -1;
     for (let i = 0; i < 16; i++) {
       const outer = getOuterHP(w, i);
@@ -308,14 +183,3 @@ describe("enqueueRepairTask (generalized)", () => {
   });
 });
 
-// === Helpers ===
-
-describe("phaseLabel", () => {
-  it("mapuje všechny fáze", () => {
-    expect(phaseLabel("boot")).toContain("BOOT");
-    expect(phaseLabel("phase_a")).toContain("HULL BREACH");
-    expect(phaseLabel("phase_b")).toContain("ENGINE");
-    expect(phaseLabel("phase_c")).toContain("BONUS");
-    // win/loss retirováno (S21).
-  });
-});

@@ -34,16 +34,8 @@ export const TICKS_PER_WALL_MINUTE = TICKS_PER_SECOND * 60;
 
 // Startovní zdroje kolonie (Q-P1 CAL-B3).
 export const SEED_FOOD = 40;        // slab.food — 8 osob × 5 game days
-export const SEED_AIR = 100;        // flux.air — 100 % při startu phase_a
+export const SEED_AIR = 100;        // flux.air — 100 % při startu
 export const SEED_COIN = 20;        // Kredo — CAL-B2 dock cost budget
-
-// Air drain — phase_a crisis. AIR_TIMEOUT_TICKS = kolik ticků trvá od 100 % na 0.
-// Seed 1560 ticků = 6,5 min wall při 4 tick/s (CAL-A1 timeout).
-export const AIR_TIMEOUT_TICKS = 1560;
-export const AIR_DRAIN_PER_TICK = 100 / AIR_TIMEOUT_TICKS;
-
-// Food drain — phase_b+. 8 osob × 1 jídlo/game day → 8 jednotek per TICKS_PER_GAME_DAY.
-export const FOOD_DRAIN_PER_TICK = 8 / TICKS_PER_GAME_DAY;
 
 // ============================================================================
 // §3 HP axiom (S18) — layered bay vrstvy a WD konverze
@@ -81,10 +73,10 @@ export const MINOR_RANGE: readonly [number, number]    = [0.75, 0.90];
 // §5 Energy (W/WD)
 // ============================================================================
 
-// Startovní energie (Wh) + kapacita baterie. Solar Array dobíjí při světlu.
+// Startovní energie (Wh). Solar Array dobíjí při světlu.
 // Seed drží přeshraniční hru: 12 Wh ≈ 1 hodina provozu minimal crew.
+// Kapacita baterie je dynamická — Σ capacity_wh online modulů (viz World.energyMax).
 export const ENERGY_SEED = 12;
-export const ENERGY_MAX = 48;
 
 // ============================================================================
 // §6 Decay — entropie (S21)

@@ -129,6 +129,16 @@ export function metricColor(pct: number, inverted = false): string {
   return HEX_OK_GREEN;
 }
 
+// 5stavový semafor hodnocení (S23). Izomorfní s StatusRating z model.ts.
+// Sdíleno mezi InfoPanel, Tooltips a dalšími UI komponentami.
+export const RATING_COLOR: Record<number, string> = {
+  5: HEX_OK_GREEN,       // Excellent — zelená
+  4: HEX_COOLANT_CYAN,   // Good — cyan
+  3: HEX_WARN_AMBER,     // Fair — amber
+  2: HEX_WARN_ORANGE,    // Poor — oranžová
+  1: HEX_ALERT_RED,      // Failure — červená
+};
+
 // ============================================================================
 // 3. Typografie — Jersey 25 size scale (style-guide §2)
 // ============================================================================

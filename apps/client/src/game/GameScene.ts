@@ -13,7 +13,6 @@ const INITIAL_ASTEROID_COUNT = 10;
 import {
   createInitialWorld,
   stepWorld,
-  startGame,
   TICK_MS,
 } from "./world";
 import type { World } from "./model";
@@ -90,8 +89,6 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.world = createInitialWorld();
-    // Start ihned — žádná "press SPACE to start" obrazovka (S16).
-    startGame(this.world);
 
     // Dev-only: vystav world do window, ať jde debugovat v DevTools (Console: __world).
     // Vite `import.meta.env.DEV` je true jen při `pnpm dev`, v prod buildu se blok odstraní (tree-shake).

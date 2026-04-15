@@ -71,6 +71,23 @@ Raw zápis diskuse ze sezení 20. Uzavře se **jiným přístupem** (user TBD); 
 
 ---
 
+## Drone capacity types (S23)
+
+Drony = nakoupená kapacita, přeměňující E (energii) na specifický typ výkonu. Player není dron — je to hráčův avatar (kolonista).
+
+FVP: jen **pracovní drony** (Constructor → W). Budoucí typy:
+
+- **a) Pracovní kapacita (W)** — Constructor dron. Staví, opravuje, demontuje. Implementováno.
+- **b) Přepravní kapacita** — Transport dron. Přesouvá moduly, zásoby, kapsle. Nahrazuje retirovaný Hauler.
+- **c) Pořádková kapacita** — Patrol dron. Bezpečnost, vymáhání pravidel, vězeňský dozor.
+- **d) Vojenská kapacita** — Combat dron. Obrana proti asteroidům, pirátům, sabotáži.
+
+Drony se v FVP neprezentují jednotlivě — jsou agregátní kapacita. Vizualizace: celkový W bar v Top Baru, breakdown v infotipu.
+
+Ekonomika dronů: nákup za ◎, provoz stojí E/tick. Poškozený dron (HP < 100%) produkuje méně W (HP ratio axiom).
+
+---
+
 ## Koncept & téma
 
 - **Vesmírná kolonie**, gold rush / Minecraft server vibe. Belt jako domov, frontier jako divočina před uzavřením prstence.

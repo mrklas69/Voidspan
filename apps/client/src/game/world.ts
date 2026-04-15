@@ -2,17 +2,14 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně.
 
-import type { World, Bay, Phase, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode } from "./model";
-import { ACTOR_DEFS, TASK_DEFS, MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
+import type { World, Bay, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode } from "./model";
+import { TASK_DEFS, MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
 import { appendEvent } from "./events";
 import {
   TICK_MS,
   TICKS_PER_SECOND,
   TICKS_PER_GAME_DAY,
   TICKS_PER_WALL_MINUTE,
-  AIR_TIMEOUT_TICKS,
-  AIR_DRAIN_PER_TICK,
-  FOOD_DRAIN_PER_TICK,
   SEED_FOOD,
   SEED_AIR,
   SEED_COIN,
@@ -26,7 +23,6 @@ import {
   MEDIUM_RANGE,
   MINOR_RANGE,
   ENERGY_SEED,
-  ENERGY_MAX,
   DECAY_RATE_PER_GAME_DAY,
   ACTOR_HP_MAX,
   ACTOR_HP_DRAIN_PER_TICK,
@@ -41,14 +37,10 @@ export {
   TICKS_PER_SECOND,
   TICKS_PER_GAME_DAY,
   TICKS_PER_WALL_MINUTE,
-  AIR_TIMEOUT_TICKS,
-  AIR_DRAIN_PER_TICK,
-  FOOD_DRAIN_PER_TICK,
   SKELETON_HP_MAX,
   COVERED_HP_MAX,
   WD_PER_HP,
   ENERGY_SEED,
-  ENERGY_MAX,
 };
 
 export function formatGameTime(tick: number): string {
@@ -177,17 +169,12 @@ export function createInitialWorld(): World {
   applyRandomDamages(segment, modules);
 
   const actors: Actor[] = [
-    { id: "player", kind: "player", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
-    { id: "c1", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
-    { id: "c2", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
-    { id: "c3", kind: "constructor", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
-    { id: "h1", kind: "hauler", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
-    { id: "h2", kind: "hauler", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX },
+    { id: "player", kind: "player", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX, work: 8 },
   ];
 
   const world: World = {
     tick: 0,
-    phase: "boot",
+    phase: "running",
     resources: {
       energy: ENERGY_SEED,
       slab: { food: SEED_FOOD },
@@ -208,9 +195,12 @@ export function createInitialWorld(): World {
       supplies: { pct: 100, level: "ok" },
       entropy: { pct: 100, level: "ok" },
     },
+    energyMax: 0, // přepočte se v recomputeStatus níže
+    drones: 23,   // počet pracovních dronů — převodník E→WD
     next_task_id: 1,
   };
 
+  world.energyMax = computeEnergyMax(world);
   recomputeStatus(world); // seed reálný status, aby první tick neemitoval falešný STAT
   appendEvent(world, "BOOT", { text: "Simulace spuštěna" });
   return world;
@@ -358,16 +348,21 @@ function assignIdleActors(w: World): void {
 }
 
 // Posun progresu tasků + spojitá HP synchronizace vnější vrstvy.
+// Hráči spotřebovávají HP prací. Drony spotřebovávají E.
 function progressTasks(w: World): void {
   for (let i = w.tasks.length - 1; i >= 0; i--) {
     const task = w.tasks[i]!;
-    if (task.assigned.length === 0) continue;
+    if (task.assigned.length === 0 && w.drones === 0) continue;
 
-    let powerSum = 0;
+    // Hráčský příspěvek — work = výkon ve W.
+    let playerPower = 0;
     for (const aid of task.assigned) {
       const a = w.actors.find((x) => x.id === aid);
-      if (a && a.state === "working") powerSum += ACTOR_DEFS[a.kind].power_w;
+      if (a && a.state === "working") playerPower += a.work;
     }
+    // Dronový příspěvek — 1 dron = 1 W, převodník E→WD, jen pokud je E.
+    const dronePower = w.resources.energy > 0 ? w.drones : 0;
+    const powerSum = playerPower + dronePower;
     const wd_delta = powerSum / TICKS_PER_GAME_DAY;
     task.wd_done += wd_delta;
 
@@ -417,25 +412,6 @@ function completeTask(w: World, task: Task): void {
   }
 }
 
-// === FSM přechody ===
-
-// boot → running. Posádka zůstává v kryu — probuzení až při první pozvánce hráče.
-export function startGame(w: World): void {
-  if (w.phase !== "boot") return;
-  w.resources.flux.air = 100;
-  w.phase = "phase_a";
-}
-
-// phase_a → phase_b (debug/manual přechod, build UX přijde později).
-export function repairDone(w: World): void {
-  if (w.phase !== "phase_a") return;
-  w.phase = "phase_b";
-}
-
-export function dockComplete(w: World): void {
-  if (w.phase !== "phase_b") return;
-  w.phase = "phase_c";
-}
 
 // === Simulation loop — Perpetual Observer Simulation axiom (kandidát, IDEAS S20) ===
 //
@@ -447,7 +423,7 @@ export function dockComplete(w: World): void {
 // i když těla funkcí budou prázdná do implementace jednotlivých kusů:
 //
 //   1) decayTick           — entropie snižuje HP nerepaired vrstev (per game-day)
-//   2) resourceDrain       — spotřeba vzduchu/jídla/vody; aktuálně drží starou phase_a/b/c mechaniku
+//   2) resourceDrain       — spotřeba per-capita (TODO: n_alive × per_actor_rate)
 //   3) autoEnqueueTasks    — priority queue (critical HP → repair, chybějící zásoba → produce)
 //   4) assignIdleActors    — volné drony → task dle allowed_actors + priority
 //   5) progressTasks       — WD delta, HP/resource sync, completion
@@ -458,15 +434,13 @@ export function dockComplete(w: World): void {
 //  10) recomputeStatus     — agregace Status tree (I–IV) pro Observer UI
 //  11) appendEventLog      — telemetrie (deaths, births, arrivals, milestones)
 //
-// win/loss retirováno (S21). phase_a/b/c zůstává jako legacy onboarding puzzle.
+// win/loss retirováno (S21). Phase scénář retirován (S23).
 
 export function stepWorld(w: World): void {
-  if (w.phase === "boot") return;
-
   w.tick += 1;
 
-  decayTick(w);           // slot 1 — no-op do implementace decay modelu
-  resourceDrain(w);       // slot 2 — wrap legacy phase_a/b/c logiky
+  decayTick(w);           // slot 1
+  resourceDrain(w);       // slot 2 — TODO: per-capita drain
   autoEnqueueTasks(w);    // slot 3 — no-op; dnes enqueuje hráč klikem
   assignIdleActors(w);    // slot 4
   progressTasks(w);       // slot 5
@@ -480,25 +454,9 @@ export function stepWorld(w: World): void {
 
 // === Pipeline sloty (stuby + legacy wrap) ===
 
-// Slot 2 — Perpetual Observer: drain bez phase gate, simulace pokračuje při 0.
-// phase_a air crisis zachována jako legacy mechanika (breach = zrychlený drain).
-// DRN:CRIT event se emituje jednorázově při dosažení 0.
-function resourceDrain(w: World): void {
-  if (w.phase === "phase_a") {
-    const airBefore = w.resources.flux.air;
-    w.resources.flux.air = Math.max(0, w.resources.flux.air - AIR_DRAIN_PER_TICK);
-    if (airBefore > 0 && w.resources.flux.air <= 0) {
-      appendEvent(w, "DRN", { csq: "CRIT", item: "air", text: "Air vyčerpán — hull breach" });
-    }
-  }
-  if (w.phase === "phase_b" || w.phase === "phase_c") {
-    const foodBefore = w.resources.slab.food;
-    w.resources.slab.food = Math.max(0, w.resources.slab.food - FOOD_DRAIN_PER_TICK);
-    if (foodBefore > 0 && w.resources.slab.food <= 0) {
-      appendEvent(w, "DRN", { csq: "CRIT", item: "food", text: "Jídlo vyčerpáno" });
-    }
-  }
-}
+// Slot 2 — per-capita resource drain (TODO: n_alive × per_actor_rate).
+// Zatím no-op — retirovaná phase_a/b/c mechanika odstraněna v S23.
+function resourceDrain(_w: World): void { /* TODO: per-capita drain */ }
 
 // Sloty 1, 3, 6–11 — no-op stuby. Pořadí a podpis zafixované axiomem, těla
 // postupně naplníme. Podpis `(w: World): void` drží uniformitu pipeline.
@@ -544,12 +502,28 @@ function actorLifeTick(w: World): void {
     }
   }
 }
+// Dynamická kapacita baterie — Σ capacity_wh online modulů.
+// Exportováno pro UI (header, info_panel).
+// HP ratio axiom: kapacita × HP/HP_MAX (poškozená baterie drží míň).
+export function computeEnergyMax(w: World): number {
+  let cap = 0;
+  for (const mod of Object.values(w.modules)) {
+    if (mod.status !== "online") continue;
+    const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
+    cap += (MODULE_DEFS[mod.kind].capacity_wh ?? 0) * hpRatio;
+  }
+  return Math.round(cap);
+}
+
 // Slot 7 — energy bilance per tick.
 // Online moduly: power_w > 0 = produkce, power_w < 0 = spotřeba.
 // Axiom: výkon je násoben koeficientem HP/HP_MAX (100% jen bezvadný modul).
-// Energie se akumuluje do w.resources.energy, clamp [0, ENERGY_MAX].
+// Energie se akumuluje do w.resources.energy, clamp [0, energyMax].
 // Při dosažení 0 se emituje DRN:CRIT jednorázově.
 function productionTick(w: World): void {
+  // Přepočítej kapacitu (modul může jít offline decay → kapacita klesne).
+  w.energyMax = computeEnergyMax(w);
+
   let netPower = 0;
   for (const mod of Object.values(w.modules)) {
     if (mod.status !== "online") continue;
@@ -561,7 +535,7 @@ function productionTick(w: World): void {
   const ticksPerHour = TICKS_PER_GAME_DAY / 16;
   const delta = netPower / ticksPerHour;
   const before = w.resources.energy;
-  w.resources.energy = Math.max(0, Math.min(ENERGY_MAX, w.resources.energy + delta));
+  w.resources.energy = Math.max(0, Math.min(w.energyMax, w.resources.energy + delta));
   if (before > 0 && w.resources.energy <= 0) {
     appendEvent(w, "DRN", { csq: "CRIT", item: "energy", text: "Energie vyčerpána" });
   }
@@ -600,7 +574,7 @@ function recomputeStatus(w: World): void {
   const suppliesPct = Math.min(foodPct, airPct);
 
   // II.2 Entropy — avg HP% všech vrstev (bays + moduly) + energy bilance.
-  // Energie je provozní metrika základny: energy/ENERGY_MAX váží 50% s HP avg.
+  // Energie je provozní metrika základny: energy/energyMax váží 50% s HP avg.
   let hpSum = 0;
   let hpCount = 0;
   for (const bay of w.segment) {
@@ -615,7 +589,7 @@ function recomputeStatus(w: World): void {
     hpCount++;
   }
   const hpAvgPct = hpCount > 0 ? hpSum / hpCount : 0;
-  const energyPct = (w.resources.energy / ENERGY_MAX) * 100;
+  const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
   const entropyPct = (hpAvgPct + energyPct) / 2;
 
   // Patra — worst child uvnitř patra.
@@ -636,7 +610,7 @@ function recomputeStatus(w: World): void {
   };
   const emitSign = (name: string, prev: StatusNode, pct: number, detail?: string, displayName?: string) => {
     const newLevel = toLevel(pct);
-    if (w.phase !== "boot" && prev.level !== newLevel) {
+    if (w.tick > 0 && prev.level !== newLevel) {
       const prevR = statusRating(prev.pct);
       const newR = statusRating(pct);
       const prevLabel = STATUS_LABELS[prevR].cs;
@@ -673,27 +647,33 @@ function appendEventLog(_w: World): void { /* Events se emitují in-place přes 
 
 // === Derived: Work (W) ===
 
-export function computeWork(w: World): { current: number; max: number } {
-  let current = 0;
-  let max = 0;
+// Work: dvě osy — kapacita (Wh, jak dlouho vydržíme) a výkon (W, jak rychle).
+// Hráči: kapacita = HP, výkon = actor.work.
+// Drony: kapacita = E základny, výkon = 1 W/dron. Funkční jen pokud E > 0.
+export function computeWork(w: World): {
+  capMax: number; capPlayer: number; capDrone: number;
+  powerMax: number; powerPlayer: number; powerDrone: number;
+} {
+  let capPlayer = 0;
+  let powerPlayer = 0;
   for (const a of w.actors) {
     if (a.state === "dead" || a.state === "cryo") continue;
-    const pw = ACTOR_DEFS[a.kind].power_w;
-    max += pw;
-    if (a.state === "working") current += pw;
+    capPlayer += a.hp;
+    powerPlayer += a.work;
   }
-  return { current, max };
+  const droneOnline = w.resources.energy > 0;
+  const capDrone = droneOnline ? w.drones : 0;
+  const powerDrone = droneOnline ? w.drones : 0;
+  return {
+    capMax: Math.round(capPlayer + capDrone),
+    capPlayer: Math.round(capPlayer),
+    capDrone,
+    powerMax: Math.round(powerPlayer + powerDrone),
+    powerPlayer: Math.round(powerPlayer),
+    powerDrone,
+  };
 }
 
-export function phaseLabel(phase: Phase): string {
-  const map: Record<Phase, string> = {
-    boot: "BOOT",
-    phase_a: "PHASE A — HULL BREACH",
-    phase_b: "PHASE B — ENGINE→DOCK",
-    phase_c: "PHASE C — BONUS",
-  };
-  return map[phase];
-}
 
 // === Task trajectory helpers — pro render (orange/green/red overlay) ===
 

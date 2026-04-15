@@ -2,6 +2,19 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-16 (Sezení 23 — Kvintet infotipy + Phase retirement + Work model)
+
+- [x] **Tooltip barevný header** — `TooltipContent` typ, `headerText` objekt, 5stavový semafor v tooltipech.
+- [x] **SIGN eventy barevné** — Event Log řádky SIGN verb barvené dle cílového ratingu.
+- [x] **RATING_COLOR sdílený** — přesunut z info_panel do palette.ts.
+- [x] **Phase retirement** — phase_a/b/c smazáno, startGame/repairDone/dockComplete/phaseLabel smazáno, hull breach odstraněn.
+- [x] **ENERGY_MAX dynamický** — World.energyMax = Σ capacity_wh × HP/HP_MAX online modulů. ModuleDef.capacity_wh optional.
+- [x] **Kvintet infotipy** — E/W/S/F/C s barevným headerem, strukturou Kapacita/Příjmy/Výdaje/Bilance.
+- [x] **Hauler retirement** — ActorKind = jen player, TASK_DEFS.haul smazán.
+- [x] **Drony = číslo** — World.drones = 23, žádná Actor entita, převodník E→WD.
+- [x] **Work model** — Actor.work = výkon (W), HP = kapacita (Wh), dvě osy v computeWork.
+- [x] **InfoPanel zjednodušení** — sekce Úkoly a Události odstraněny.
+
 ## 2026-04-15 (Sezení 22 — Mobile touch + Event format + InfoPanel UX + Energy infotip)
 
 - [x] **Touch ovládání** — bottom bar touch buttony [I][E][H], touch drag scroll EventLog, viewport meta, orientationchange handler.
