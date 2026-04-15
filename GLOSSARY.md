@@ -27,6 +27,89 @@ TBD. Volně upřesnitelné později bez konfliktu s existujícím kánonem.
 
 ---
 
+## Simulation Axioms (S20)
+
+### Colony Goal (axiom)
+
+**Jediný GOAL hry/simulace:** trvale udržitelný život a rozvoj člověka.
+
+**Směrový kompas:** hodně živých (a později šťastných) lidí s dobrou perspektivou.
+
+Goal **≠ win condition** — je to **kompas** (směr), ne cílová čára (stav). Simulace konverguje k různě kvalitním projekcím téhož goalu; `Endings Spectrum` (Colony Arc) = různé stopy po cestě, nikoli finál.
+
+### Perpetual Observer Simulation (axiom)
+
+Svět žije nepřetržitě — bez hráčů, bez NPC, i když všechny entity mají HP=0. Přidání hráče je **resume**, ne restart. Simulaci ukončí **jen vypnutí serveru**, nikdy herní událost.
+
+- Žádný `Phase.win` / `Phase.loss` jako terminální stav světa.
+- `air = 0` neznamená konec simulace; znamená že aktéři ztrácejí HP (dusí se).
+- `populace = 0` neznamená konec; kapsle z orbitu může přivést nové kolonisty do rozbité základny.
+
+### Two Perspectives (axiom)
+
+Dvě perspektivy téže simulace — **oddělené axiomy, oddělené modely**:
+
+| Perspektiva | GAME_OVER | Scope |
+|---|---|---|
+| **Observer** | **neexistuje** | vidí svět, nemůže intervenovat. FVP default. |
+| **Player** | ANO — per hráč | vtělení do aktéra, P2+. |
+
+WIN/LOSS puzzle v P1 POC (SHIP Wake-up s HULL BREACH → ENGINE→DOCK → BONUS) byl **onboarding test**, ne kánon simulace — bude retirován.
+
+### Maslow axiom
+
+Osy Status tree (I–IV) jsou **nezávislé dimenze** — kolonie má hodnotu na každé zvlášť.
+
+Ale **strategie investic je hierarchická:** vrstvu N lze efektivně budovat jen na **pevné N-1**. Inspirace: Maslowova pyramida potřeb. Operacionalizace: nenavrhuje se cesta „skočit rovnou do Rozvoje" (III), dokud Udržitelnost (II) není v zelené. Brains (P2+) respektují hierarchii.
+
+### FVP — First Viable Product
+
+Minimální **observable simulation sandbox**, který ukážeme playtestrům P1–P4. Není to P1 POC (ten byl puzzle s WIN/LOSS). FVP = perpetual observer svět bez hráčů, s automatikou dronů, výroby, obchodu; NPC přidat později, živí hráči úplně naposledy.
+
+**FVP scope pro Status tree:** I.1 kvantita, I.2 kvantita+kvalita, II.1, II.2. Zbytek (III, IV, kvalita I.1) = placeholdery / „Bla bla" stubs, all-green v UI.
+
+---
+
+## Status — Strom zdraví kolonie
+
+Fraktální strom ukazatelů zdraví kolonie. **Stav kolonie = posádka + základna.** Synonyma (Posádka/Kolonisté/Crew) se neřeší — alias.
+
+### Struktura
+
+```
+Status
+ ├── I. Aktuální stav
+ │   ├── I.1 Posádka  (kvantita + kvalita)
+ │   └── I.2 Základna (kvantita + kvalita)
+ ├── II. Udržitelnost (vyhlídky — přežití)
+ │   ├── II.1 Zásoby kolonistů (vzduch, voda, jídlo — runway + trend)
+ │   └── II.2 Entropie základny (repair vs. decay rate)
+ ├── III. Rozvoj (vyhlídky — expanze)        [P2+ pahýl]
+ │        migrace, rozmnožování, pás, expedice
+ └── IV. Společenský kapitál                  [P2+ pahýl]
+          důvěra, politická stabilita, koheze
+```
+
+### Agregace
+
+**Parent = worst child** (fraktální semafor red/orange/green). Status root barva = nejhorší listová metrika. Kompozice rekurzivní na všech úrovních.
+
+Prahy semaforu jsou jednotné (S18 dashboard axiom): `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`. Helper `metricColor(pct, inverted?)` v `palette.ts`.
+
+### Metriky per uzel (FVP seedy, laditelné)
+
+- **I.1 kvantita:** počet živých aktérů / Habitat kapacita. Kritické < 25 %.
+- **I.1 kvalita:** ∑HP aktérů / ∑HP_MAX (FVP pahýl; P2+ happiness/stress/health).
+- **I.2 kvantita:** osazené bays / 16 (ratio non-void).
+- **I.2 kvalita:** ∑HP všech vrstev / ∑HP_MAX_THEORETICAL.
+- **II.1:** `min(food_days, air_days, water_days)` do 0 při current drain rate.
+- **II.2:** net HP trajectory per game-day (repair rate − decay rate).
+- **III, IV:** FVP placeholder all-green, „bla bla" text.
+
+Detail metrik (konkrétní formule, kalibrace) — viz otevřené otázky v `IDEAS.md` („Status tree Q2–Q10").
+
+---
+
 ## Spatial Hierarchy — entity světa
 
 Rozhodnuto v S5. Pět úrovní, od globální po atomickou:
@@ -272,7 +355,12 @@ Právní strata kolonisty (po Act 0). Tři úrovně: **Indenture**, **Probationa
 
 ---
 
-## Events
+## Events — dvě vrstvy
+
+Ve Voidspanu existují **dvě odlišné vrstvy events**:
+
+1. **Narativní events** (níže: Belt Closure, Orbital Shift, Capsule Arrival, Observatory) — **scripted** narativní spouštěče z `SCENARIO §5`. Mají trigger (podmínka ve světě), narativní text, rozhodovací body.
+2. **Event Log (telemetrie, S20)** — **strukturovaný proud** všech událostí simulace (deaths, repairs, decays, builds, arrivals…). Oddělená infrastruktura, viz dále.
 
 ### Belt Closure Event
 Dokončení prstence (spojení posledního segmentu s hubem). Historická událost řádu ~10M v event logu. Ceremonie, jednorázové v rámci iterace beltu.
@@ -285,6 +373,110 @@ Každá nová kapsle na orbitě = event. Vláda kolonie ji musí posoudit (aktiv
 
 ### Observatory Event
 **První detekce jiného beltu** v soustavě. Narativní spouštěč přechodu z izolace (Belt1 solo) na R1 Belt Network. *„Naše observatoř zaznamenala novou mateřskou loď na orbitě… Nejsme sami."* Probíhá přes `CommandPost.Observatory` (integrovaná), později dedikovaný Observatory modul.
+
+---
+
+## Event Log System (S20)
+
+Strukturovaný proud všech událostí simulace. **Telemetrie + UI čtivý ticker**, ne narativní scripted events. Inspirace: PocketStory Events systém (verb+consequence taxonomie, severity barvy, ring buffer).
+
+**Model-first axiom:** event log žije v `World.events: Event[]` (jediný zdroj pravdy). UI (Event Log Card) je projekce. Umožňuje serializaci / persistence P2+ (MINDMAP §5.3 — 10M event stream jako experimentální data).
+
+### Datový model
+
+```ts
+type Event = {
+  tick: number;                           // herní tick (log entry timestamp)
+  verb: EventVerb;                        // 4znakový tag akce
+  csq?: EventCsq;                         // consequence: OK / FAIL / CRIT / START / PARTIAL
+  loc?: string;                           // bay idx, module id, segment label
+  actor?: string;                         // actor id
+  item?: string;                          // module kind, resource type
+  amount?: number;
+  target?: string;
+  text?: string;                          // volitelný narativní text
+  severity: "crit" | "warn" | "pos" | "neutral"; // derived z verb×csq
+};
+```
+
+**Severity je odvozená**, ne uložená — pure lookup `verb×csq → severity` v jednom zdroji pravdy. UI renderer jen čte.
+
+### Verb Catalog (FVP seed)
+
+Čtyřznakové (monospace rytmus). Unicode ikona + význam.
+
+| Verb | Icon | Význam |
+|---|---|---|
+| `BOOT` | `◉` | start simulace |
+| `SPWN` | `+` | spawn (kolonista, modul, kapsle) |
+| `DEAD` | `†` | aktér umřel (state=dead) |
+| `ARRV` | `↓` | landing / dokování |
+| `DPRT` | `↑` | odlet |
+| `REPR` | `✓` | repair task (complete nebo start) |
+| `BLD ` | `▲` | build task |
+| `DEMO` | `▽` | demolish |
+| `DMG ` | `×` | damage event (HP drop) |
+| `DECY` | `↘` | decay (entropie HP drain bez útoku) |
+| `DRN ` | `−` | resource drain (air / food / water) |
+| `PROD` | `*` | produkce (solar E, Greenhouse food) |
+| `HAUL` | `→` | transport materiálu |
+| `ASSN` | `»` | task assigned |
+| `CMPL` | `✓✓` | task completed |
+| `FAIL` | `!` | task failed |
+| `IDLE` | `·` | aktér idle |
+| `WAKE` | `☆` | aktér probuzen |
+| `DOCK` | `⊙` | dock event |
+| `TICK` | `·` | rytmický marker (default filtered off) |
+| `STAT` | `§` | Status tree threshold crossed |
+| `EVNT` | `◆` | scripted narativní event (SCENARIO §5) |
+| `SAY ` | `"` | dialog (P2+ chat) |
+| `RPRT` | `»»` | systémová zpráva |
+
+### Consequence
+
+`OK` (success) · `FAIL` · `PARTIAL` · `CRIT` (critical) · `START` (pro multi-tick tasky).
+
+Klíč filteru + dataset = `verb:csq` (např. `REPR:OK`, `DMG:CRIT`). Jen `verb` = wildcard přes všechny csq.
+
+### Severity — barva
+
+| Severity | Paleta token | Vzor případů |
+|---|---|---|
+| `crit` | `UI_STATUS_ALERT` (red) | `DEAD:*`, `DMG:CRIT`, `DRN:CRIT`, `FAIL:*` |
+| `warn` | `UI_STATUS_WARN` (amber) | `DECY:*`, `DMG:*`, `DRN:*` |
+| `pos`  | `UI_STATUS_OK` (green) | `REPR:OK`, `BLD:OK`, `CMPL:OK`, `PROD:OK`, `WAKE:*` |
+| `neutral` | `UI_TEXT_DIM` (amber dim) | `TICK`, `IDLE`, `ASSN`, `HAUL`, `MOV`, `RPRT:*` |
+
+Mapping je pure function (`severity(verb, csq)`) — žádný switch rozesetý po UI.
+
+### Ring buffer
+
+**Kapacita: 500 events** (S20 decision). Push přes `appendEventLog`, přetečení = shift nejstarší. Žádný disk persist v FVP (P2+ přijde).
+
+### Filter chips (UX)
+
+**Lazy emergence axiom (S20):** filter chip pro daný verb se objeví **až při prvním výskytu** toho druhu eventu v aktuálním sezení. UI není přeplněné 23 čipy od startu; roste postupně, jak simulace generuje skutečnost.
+
+Toggle visibility per verb. `TICK` defaultně off (jinak zaplácne log). Plná historie zůstává v bufferu, jen se skrývá render.
+
+### UI — Event Log Card (layer 3.5 floating)
+
+Hotkey **`[E]`** toggle. UI Layer Stack axiom (S19): vrstva 3.5 Floating workspace.
+
+- **Pozice:** pravý okraj canvasu, margin ~12 px nahoře i dole (prostor mezi Top a Bottom Barem).
+- **Šířka:** ~420 px (nebo 30 % viewport, dle finálního tuningu).
+- **Pozadí:** `COL_HULL_DARK` alpha 0.9 + stroke border `UI_BORDER_DIM` (axiom S19).
+- **Font:** Jersey 25, size `FONT_SIZE_HINT` (16 px), monospace rytmus.
+- **Řádek:** `[T:D.HH:MM]  ICON VERB  actor/loc  detail` — barva podle severity.
+- **Header:** nadpis `EVENT LOG` + filter chips + close `✕`.
+- **Footer:** `N / 500 events   [clear]`.
+- **Scroll:** auto-bottom na nový event; manuální scroll pauzuje autoscroll, resume na bottom.
+- **Žádná pauza simulace** — čas běží při otevření i při scrollu (Perpetual Observer axiom).
+- **ESC** zavře (UI Layer Stack globální exit).
+
+### Click-through navigation (IDEAS S20, P2+)
+
+Klik na event s `loc` = camera jumps + bay selection highlight. Odloženo do IDEAS, ne v FVP.
 
 ---
 

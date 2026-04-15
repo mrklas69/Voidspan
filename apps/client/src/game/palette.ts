@@ -144,4 +144,5 @@ export const FONT_SIZE_HUD     = "22px"; // HUD lišta, primární hodnoty
 export const FONT_SIZE_BODY    = "20px"; // běžný text, task list
 export const FONT_SIZE_LABEL   = "18px"; // popisky, caption, dim text
 export const FONT_SIZE_HINT    = "16px"; // nejmenší čitelný — hotkeys, legenda
+export const FONT_SIZE_CMD     = "12px"; // Bottom Bar commands — o 1/4 menší než HINT (axiom S20, user request)
 export const FONT_SIZE_PANEL_HEADER = "22px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)

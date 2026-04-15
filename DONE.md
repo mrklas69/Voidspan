@@ -17,14 +17,36 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 - [x] **Mateřská loď plně osazena** — 8 reálných assetů (habitat/storage/medcore/assembler/command_post/dock/engine/solar_array), všechny whitelisted.
 - [x] **v0.6 bump** — root + apps/client package.json.
 
-## 2026-04-15 (Sezení 20 — @AUDIT:CODE + @AUDIT:DOCS cleanup)
+## 2026-04-15 (Sezení 20 — @AUDIT cleanup + Simulation axioms + EventLog spec)
 
+### Audit kód + docs
 - [x] **Paleta: overlay/trajectory konstanty** — `UI_OVERLAY_BLACK`, `UI_TRAJ_STATIC/RISING/FALLING` sémantické aliasy; odstraněny ad-hoc `0x000000` / `0xff8800` / `0x00ff00` / `0xff0000` z `segment.ts`, `modal.ts`, `welcome.ts` (uzavírá S18 Censure regression riziko).
 - [x] **`apps/client/src/game/tuning.ts`** — centrální zdroj laditelných parametrů (TICK_MS, HP_MAX, WD_PER_HP, seedy resources, wear + damages, energy). `world.ts` importuje + re-exportuje pro zpětnou kompatibilitu.
 - [x] **`header.ts`** — duplicitní string `"Seed 12 Wh"` nahrazen `${ENERGY_SEED}` (DRY).
 - [x] **Docs cleanup** — SPEC §4.1 Cell → BAY/SEGMENT, SCENARIO Echo/Kredo → Energy/Coin (9 výskytů), SCENARIO Appendix B CELL_TYPE → MODULE_TYPE, POC_P1 §10 retirovaná poznámka o Kredo.
 - [x] **MINDMAP sync** — §4.5 Scripted events a §6.5 Moderation & LLM `[○]` → `[◐]`.
 - [x] **Fix POC_P1 §13 indexace** — TODO položka přesunuta; bug byl opraven už v S16 (`row*8+col` v `POC_P1.md` §13 i v kódu).
+
+### Simulation axioms + Status tree (GLOSSARY kánon)
+- [x] **Colony Goal (single axiom)** — trvale udržitelný život a rozvoj člověka; kompas ≠ win condition.
+- [x] **Perpetual Observer Simulation axiom** — svět žije nepřetržitě, bez hráčů/NPC/HP; server end = jediný terminál.
+- [x] **Two Perspectives axiom** — Observer bez GAME_OVER, Player s GAME_OVER (P2+).
+- [x] **Maslow axiom** — osy I–IV nezávislé, strategie investic hierarchická.
+- [x] **FVP** pojem — First Viable Product (≠ P1 POC), observable simulation sandbox.
+- [x] **Status tree** — strom zdraví kolonie (I Aktuální stav / II Udržitelnost / III Rozvoj / IV Společenský kapitál × kvantita/kvalita), parent = worst child, FVP metriky per uzel.
+
+### Simulation loop scaffold
+- [x] **`stepWorld` 11-slot pipeline** — decayTick / resourceDrain (legacy wrap) / autoEnqueueTasks / assignIdleActors / progressTasks / actorLifeTick / productionTick / arrivalsTick / scheduledEvents / recomputeStatus / appendEventLog. Sloty 1, 3, 6–11 = no-op stuby; slot 2 drží legacy phase_a/b/c drain.
+- [x] **`Actor.state += "dead"`** — připraveno pro wire (aktér může být dead bez end of simulation).
+
+### Event Log System spec
+- [x] **GLOSSARY §Event Log System** — datový model `Event`, verb katalog (23 verbů, Unicode ikony), consequence (`OK/FAIL/PARTIAL/CRIT/START`), severity → paleta, ring buffer 500, lazy filter chips axiom, UI Event Log Card (layer 3.5, hotkey `[E]`, alpha 0.9 + stroke border, auto-scroll bez pauzy simulace).
+- [x] **`FONT_SIZE_CMD = 12px`** — Bottom Bar Commands font o ¼ menší než HINT (per user request).
+- [x] **Commands hint update** — `[E] event log  [H] help  [WASD] select bay` (hotkey [E] zapsán, implementace v TODO).
+- [x] **Events rozlišení** — GLOSSARY §Events rozděleno: narativní (scripted SCENARIO §5) vs. Event Log (telemetrie).
+
+### Session log
+- [x] **`.claude/sessions/2026-04-15.md`** — přidána S20 sekce (detail výše).
 
 ## 2026-04-14 (Sezení 16 — HP-unified axiom + HUD live + Mateřská loď)
 

@@ -91,10 +91,13 @@ export type ActorDef = {
   role: string;
 };
 
+// `dead` = legitimní terminální stav aktéra (Perpetual Observer Simulation axiom,
+// IDEAS S20). Když aktér umře, svět běží dál — aktér zůstane jako záznam,
+// simulace nekončí. Plně wired (HP drain, dead trigger) v navazujícím TODO.
 export type Actor = {
   id: string;
   kind: ActorKind;
-  state: "idle" | "working";
+  state: "idle" | "working" | "dead";
   taskId?: string;
 };
 

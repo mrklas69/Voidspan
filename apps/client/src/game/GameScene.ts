@@ -18,7 +18,7 @@ import {
 } from "./world";
 import type { World } from "./model";
 import { MODULE_DEFS } from "./model";
-import { FONT_FAMILY, FONT_SIZE_HINT } from "./palette";
+import { FONT_FAMILY, FONT_SIZE_CMD } from "./palette";
 import {
   CANVAS_W,
   CANVAS_H,
@@ -158,10 +158,10 @@ export class GameScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         logY + LOG_H / 2,
-        "[H] help  [WASD] select bay",
+        "[E] event log  [H] help  [WASD] select bay",
         {
           fontFamily: FONT_FAMILY,
-          fontSize: FONT_SIZE_HINT,
+          fontSize: FONT_SIZE_CMD,
           color: COL_TEXT_DIM,
         },
       )

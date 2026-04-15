@@ -421,16 +421,54 @@ function toLoss(w: World, reason: LossReason): void {
   for (const a of w.actors) if (a.state === "working") a.state = "idle";
 }
 
-// === Tick step ===
+// === Simulation loop — Perpetual Observer Simulation axiom (kandidát, IDEAS S20) ===
+//
+// Axiom: svět žije nepřetržitě. Simulace nekončí WIN/LOSS, končí jen vypnutím serveru.
+// Observer perspektiva = bez GAME_OVER. Player perspektiva (P2+) má GAME_OVER per hráč.
+//
+// Pipeline sloty (některé dnes no-op, dolaďují se iterativně — viz TODO
+// „Perpetual Observer — full implementation"). Axiom-level pořadí je kánon,
+// i když těla funkcí budou prázdná do implementace jednotlivých kusů:
+//
+//   1) decayTick           — entropie snižuje HP nerepaired vrstev (per game-day)
+//   2) resourceDrain       — spotřeba vzduchu/jídla/vody; aktuálně drží starou phase_a/b/c mechaniku
+//   3) autoEnqueueTasks    — priority queue (critical HP → repair, chybějící zásoba → produce)
+//   4) assignIdleActors    — volné drony → task dle allowed_actors + priority
+//   5) progressTasks       — WD delta, HP/resource sync, completion
+//   6) actorLifeTick       — HP drain aktérů při nedostatku; HP=0 → state="dead" (ne LOSS!)
+//   7) productionTick      — SolarArray → E, Greenhouse → food, MedCore → heal
+//   8) arrivalsTick        — kapsle na orbitu, Network Arc signály
+//   9) scheduledEvents     — scripted events bank (SCENARIO §5)
+//  10) recomputeStatus     — agregace Status tree (I–IV) pro Observer UI
+//  11) appendEventLog      — telemetrie (deaths, births, arrivals, milestones)
+//
+// Phase/win/loss model z P1 POC tu pořád **žije jako legacy** (onboarding puzzle,
+// testy). Retirement → samostatný úkol v TODO.
 
 export function stepWorld(w: World): void {
+  // Legacy early-return: dokud je FSM win/loss aktivní. V plném Observer axiomu zmizí.
   if (w.phase === "win" || w.phase === "loss" || w.phase === "boot") return;
 
   w.tick += 1;
 
-  assignIdleActors(w);
-  progressTasks(w);
+  decayTick(w);           // slot 1 — no-op do implementace decay modelu
+  resourceDrain(w);       // slot 2 — wrap legacy phase_a/b/c logiky
+  autoEnqueueTasks(w);    // slot 3 — no-op; dnes enqueuje hráč klikem
+  assignIdleActors(w);    // slot 4
+  progressTasks(w);       // slot 5
+  actorLifeTick(w);       // slot 6 — no-op do implementace actor HP
+  productionTick(w);      // slot 7 — no-op
+  arrivalsTick(w);        // slot 8 — no-op
+  scheduledEvents(w);     // slot 9 — no-op
+  recomputeStatus(w);     // slot 10 — no-op
+  appendEventLog(w);      // slot 11 — no-op
+}
 
+// === Pipeline sloty (stuby + legacy wrap) ===
+
+// Slot 2 — dnes drží legacy phase_a/b/c mechaniku (air/food drain → toLoss).
+// V plném Observer axiomu: per-capita drain bez phase gate, žádný toLoss.
+function resourceDrain(w: World): void {
   if (w.phase === "phase_a") {
     w.resources.flux.air = Math.max(0, w.resources.flux.air - AIR_DRAIN_PER_TICK);
     if (w.resources.flux.air <= 0) {
@@ -438,7 +476,6 @@ export function stepWorld(w: World): void {
       return;
     }
   }
-
   if (w.phase === "phase_b" || w.phase === "phase_c") {
     w.resources.slab.food = Math.max(0, w.resources.slab.food - FOOD_DRAIN_PER_TICK);
     if (w.resources.slab.food <= 0) {
@@ -447,6 +484,17 @@ export function stepWorld(w: World): void {
     }
   }
 }
+
+// Sloty 1, 3, 6–11 — no-op stuby. Pořadí a podpis zafixované axiomem, těla
+// postupně naplníme. Podpis `(w: World): void` drží uniformitu pipeline.
+function decayTick(_w: World): void { /* TODO: HP drain na nerepaired vrstvy */ }
+function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue */ }
+function actorLifeTick(_w: World): void { /* TODO: actor HP drain + dead state */ }
+function productionTick(_w: World): void { /* TODO: modul-specific produkce */ }
+function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
+function scheduledEvents(_w: World): void { /* TODO: events bank trigger */ }
+function recomputeStatus(_w: World): void { /* TODO: Status tree agregace I–IV */ }
+function appendEventLog(_w: World): void { /* TODO: telemetrie ring buffer */ }
 
 // === Derived: Work (W) ===
 

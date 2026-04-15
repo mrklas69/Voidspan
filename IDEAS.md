@@ -2,6 +2,75 @@
 
 Raw nápady a inspirace. Nezralé myšlenky patří sem. Konkrétní úkoly → `TODO.md`. Ustavené pojmy → `GLOSSARY.md`. Narativní scénář → `SCENARIO.md`.
 
+## Status tree + Colony Goal (S20 — kandidát na kánon)
+
+Raw zápis diskuse ze sezení 20. Uzavře se **jiným přístupem** (user TBD); Q2–Q10 zůstávají otevřené do té doby.
+
+### Axiom kandidáti
+
+**A. Colony Goal (single axiom):**
+> Jediný GOAL hry/simulace = **trvale udržitelný život a rozvoj člověka**.
+> Kompas směru: **hodně živých (a později šťastných) lidí s dobrou perspektivou.**
+> Goal ≠ win condition — je to **kompas**, ne cílová čára. Sladěné s MINDMAP §1.2 ("peak = pamatovatelný příběh, ne score") a Endings Spectrum (bez terminálního stavu).
+
+**B. Perpetual Observer Simulation axiom:**
+> Simulace **nemá terminální stav**. Svět žije dokud běží server — bez hráčů, bez NPC, i když všechny entity mají HP=0. Přidání hráče = resume, ne restart. Hru končí **správce vypnutím serveru**, ne herní událost.
+> Perspektiva axiom: **Observer** nemá WIN/LOSS; **Player** má GAME_OVER (P2+). WIN/LOSS puzzle v P1 byl **onboarding test**, ne kánon.
+
+**C. Status tree (stav kolonie = posádka + základna):**
+> Fraktální strom ukazatelů zdraví kolonie. Synonyma (Posádka/Kolonisté/Crew) neřešit — alias.
+> Struktura:
+> ```
+> Status
+>  ├── I. Aktuální stav
+>  │   ├── I.1 Posádka  (kvantita + kvalita)
+>  │   └── I.2 Základna (kvantita + kvalita)
+>  ├── II. Udržitelnost (vyhlídky — přežití)
+>  │   ├── II.1 Zásoby kolonistů (vzduch, voda, jídlo — runway + trend)
+>  │   └── II.2 Entropie základny (repair vs. decay rate)
+>  ├── III. Rozvoj (vyhlídky — expanze)       [P2+ pahýl]
+>  │        migrace, rozmnožování, pás, expedice
+>  └── IV. Společenský kapitál                 [P2+ pahýl]
+>           důvěra, politická stabilita, koheze
+> ```
+> Agregace: **parent = worst child** (fraktální semafor red/orange/green) — potvrzeno.
+> FVP scope = I.1 kvantita + I.2 + II.1 + II.2. Zbytek **placeholdery** / „Bla bla" stubs, all-green. Uzly mimo FVP dostanou v GLOSSARY jen pahýl + odkaz „detail v budoucí iteraci".
+
+**D. Maslow axiom:**
+> Osy I–IV jsou **nezávislé dimenze** (kolonie má hodnotu na každé). Ale strategie investic je **hierarchická** — vrstvu N lze efektivně budovat jen na pevné N-1. Inspirace: Maslowova pyramida potřeb.
+
+### Pojem
+- **FVP = First Viable Product.** Ne P1 POC (ten byl puzzle), ale minimální observable simulation sandbox, který ukážeme playtestrům P1–P4.
+
+### Otevřené otázky (user: rozlouskne jiným přístupem)
+
+- **Q2** I.1 kvantita metrika — count, ratio k Habitat kapacitě, nebo jiné?
+- **Q3** I.1 kvalita metrika v P1 — ∑HP aktérů / ∑HP_MAX jako pahýl?
+- **Q4** I.2 kvantita metrika — osazené bays / funkční moduly / plocha?
+- **Q5** I.2 kvalita metrika — agregované HP per vrstva, nebo vážené?
+- **Q6** II.1 runway — min(food_days, air_days, water_days) v game-days do 0?
+- **Q7** II.2 entropie — net HP trajectory; ale v P1 není decay model, pahýl `0`?
+- **Q8** III + IV pahýly — jen název + 1–2 věty + „P2+" flag?
+- **Q9** Observer dashboard UX — rozšířit Top Bar, nebo nový floating panel „STATUS" (hotkey `S`)?
+- **Q10** Top Bar teď ukazuje `PHASE A — HULL BREACH` + `LOSS (air)`. Axiom B to retiruje. Refaktor kdy — hned, nebo po zápisu Status tree do GLOSSARY?
+
+### Event Log — otevřené myšlenky (S20)
+
+- **Lazy filter chips** — chip pro verb se objeví až při prvním výskytu. Čistší UI při startu, roste organicky. Potvrzeno S20 (GLOSSARY kánon); zde parkujeme variace: chipy se řadí podle recency (poslední objevený vlevo)? Podle abecedy? Podle počtu výskytů?
+- **Click-through navigation (P2+)** — klik na event s `loc` = camera jump + bay select. Velký UX win pro Observer. V FVP odloženo; nic nelinkovat v textu eventů, ať se to neopře o křehký schéma.
+- **Event merge / coalesce** — 40 stejných `TICK` za minutu zaplácne log. Nápad: sdružit do `TICK × 40` (count badge) s timestamp range. Ne pro FVP (komplikace), ale nápad do banku.
+- **Replay / export** — P2+: uložit event stream JSON, přehrát simulaci z logu pro debugging + playtest analýzu.
+- **Colored actor badges** — jako v PocketStory inverzní background per actor id. Pro Voidspan pozor — můžeme použít vlastní lehký tint (ne plný invert), drží se paletové sémantiky.
+
+### Důsledky pro FVP scope (k rozhodnutí)
+- **Simulation-first, not puzzle-first:** FVP = observable svět s automatikou dronů, výrobou, obchodem; **NPC přidat později**, živí hráči **úplně naposledy**.
+- Současný `world.ts` má `Phase = boot | phase_a | ... | win | loss` + `toLoss()` + early-return pro win/loss. V Observer axiomu **zmizí win/loss**; phase jako onboarding tutorial milník může zůstat nebo se taky retiruje.
+- POC_P1.md §18 WIN/LOSS dialogy přepsat jako **events v Event logu**, ne modaly.
+- Kolonisté: `state="dead"` jako legitimní terminální stav *aktéra*, ne simulace. Air=0 → HP drain aktérů, ne `toLoss`.
+- A3 bezdomovectví — už diskutováno dříve, HP drain mechanika existuje; vazba na Status tree I.1 kvalita přijde později.
+
+---
+
 ## Koncept & téma
 
 - **Vesmírná kolonie**, gold rush / Minecraft server vibe. Belt jako domov, frontier jako divočina před uzavřením prstence.
