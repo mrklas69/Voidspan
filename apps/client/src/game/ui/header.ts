@@ -5,9 +5,10 @@
 import Phaser from "phaser";
 import pkg from "../../../package.json";
 import type { World } from "../model";
+import { MODULE_DEFS, STATUS_LABELS, statusRating } from "../model";
 import { formatResource, formatScalar } from "../format";
 import { formatGameTime, computeWork, ENERGY_MAX } from "../world";
-import { ENERGY_SEED } from "../tuning";
+import { TOOLTIP_LIST_MAX_ITEMS } from "../tuning";
 import { TooltipManager } from "../tooltip";
 import {
   FONT_FAMILY,
@@ -59,23 +60,22 @@ export class HeaderPanel {
   }
 
   attachTooltips(tooltips: TooltipManager): void {
+    const env = (() => {
+      const host = window.location.hostname;
+      if (!host || host === "localhost" || host === "127.0.0.1")
+        return "local (standalone)";
+      if (host.endsWith(".github.io")) return `GitHub Pages (${host})`;
+      return host;
+    })();
     const identityProvider = () =>
-      `Server: local (standalone)\nVersion: v${pkg.version}\nWorld: Teegarden.Belt1.Seg042`;
+      `Server: ${env}\nVersion: v${pkg.version}\nWorld: Teegarden.Belt1.Seg042`;
     tooltips.attach(this.iconText, identityProvider);
     tooltips.attach(this.appText, identityProvider);
     tooltips.attach(this.metaText, identityProvider);
 
     // Resource bars tooltips — live z `getWorld()`.
     const resourceTooltips: Array<() => string> = [
-      () => {
-        const e = this.getWorld().resources.energy;
-        return (
-          "Energy — baterie pásu [E]\n" +
-          `${formatScalar(e)} / ${ENERGY_MAX} Wh\n\n` +
-          `Seed ${ENERGY_SEED} Wh (S16 kalibrace).\n` +
-          "V P1 statická — produkce/spotřeba P2+."
-        );
-      },
+      () => this.energyTooltip(),
       () => {
         const w = this.getWorld();
         const work = computeWork(w);
@@ -125,6 +125,55 @@ export class HeaderPanel {
       const provider = resourceTooltips[i];
       if (t && provider) tooltips.attach(t, provider);
     }
+  }
+
+  private energyTooltip(): string {
+    const w = this.getWorld();
+    const pct = Math.round((w.resources.energy / ENERGY_MAX) * 100);
+    const rating = statusRating(pct);
+    const ratingLabel = STATUS_LABELS[rating];
+
+    const income: Array<{ name: string; pw: number; hpPct: number }> = [];
+    const expense: Array<{ name: string; pw: number; hpPct: number }> = [];
+    for (const mod of Object.values(w.modules)) {
+      if (mod.status !== "online") continue;
+      const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
+      const pw = MODULE_DEFS[mod.kind].power_w * hpRatio;
+      const entry = { name: `${mod.kind} (${mod.id})`, pw, hpPct: Math.round(hpRatio * 100) };
+      if (pw > 0) income.push(entry);
+      else if (pw < 0) expense.push(entry);
+    }
+    income.sort((a, b) => b.pw - a.pw);
+    expense.sort((a, b) => a.pw - b.pw);
+
+    const totalIncome = income.reduce((s, e) => s + e.pw, 0);
+    const totalExpense = expense.reduce((s, e) => s + e.pw, 0);
+    const net = totalIncome + totalExpense;
+    const netSign = net >= 0 ? "+" : "";
+
+    const fmtList = (list: typeof income, sign: string): string[] => {
+      const lines: string[] = [];
+      const show = list.slice(0, TOOLTIP_LIST_MAX_ITEMS);
+      for (const e of show) {
+        lines.push(`  ${e.name}  ${sign}${Math.abs(e.pw).toFixed(1)} W  (${e.hpPct}% HP)`);
+      }
+      const rest = list.length - show.length;
+      if (rest > 0) lines.push(`  ... +${rest} dalších`);
+      if (list.length === 0) lines.push(`  (žádné)`);
+      return lines;
+    };
+
+    return [
+      `Stav: ${ratingLabel.cs} ${pct}% (${w.resources.energy.toFixed(1)} / ${ENERGY_MAX} Wh)`,
+      ``,
+      `Příjmy (+${totalIncome.toFixed(1)} W):`,
+      ...fmtList(income, "+"),
+      ``,
+      `Výdaje (${totalExpense.toFixed(1)} W):`,
+      ...fmtList(expense, "-"),
+      ``,
+      `Bilance: ${netSign}${net.toFixed(1)} W`,
+    ].join("\n");
   }
 
   render(): void {

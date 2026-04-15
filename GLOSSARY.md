@@ -86,7 +86,7 @@ Status
  │   └── II.2 Entropie základny (repair vs. decay rate)
  ├── III. Rozvoj (vyhlídky — expanze)        [P2+ pahýl]
  │        migrace, rozmnožování, pás, expedice
- └── IV. Společenský kapitál                  [P2+ pahýl]
+ └── IV. Společnost                            [P2+ pahýl]
           důvěra, politická stabilita, koheze
 ```
 

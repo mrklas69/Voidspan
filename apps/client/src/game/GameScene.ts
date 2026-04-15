@@ -149,9 +149,14 @@ export class GameScene extends Phaser.Scene {
         "[WASD]   move bay selection (yellow cursor)\n" +
         "[ESC]    zavřít tento dialog\n" +
         "\n" +
+        "Touch\n" +
+        "\n" +
+        "Tap bay = select. Buttons [I] [E] [H] dole.\n" +
+        "Drag event log = scroll.\n" +
+        "\n" +
         "Observer mode — bez akcí.\n" +
         "Sleduj postupný zánik kolonie.\n" +
-        "Hover kdekoli = tooltip s detailem.",
+        "Hover / tap = tooltip s detailem.",
     });
   }
 
@@ -159,22 +164,36 @@ export class GameScene extends Phaser.Scene {
 
   private createLog(): void {
     const logY = CANVAS_H - LOG_H;
-    // Hint ticker — jediný vycentrovaný text se všemi zkratkami včetně [H] Help.
-    // Celý řádek je klikatelný (otevře Help modal) — [H] je zároveň hotkey.
-    const hint = this.add
-      .text(
-        CANVAS_W / 2,
-        logY + LOG_H / 2,
-        "[I] info  [E] event log  [H] help  [WASD] select bay",
-        {
-          fontFamily: FONT_FAMILY,
-          fontSize: FONT_SIZE_CMD,
-          color: COL_TEXT_DIM,
-        },
-      )
-      .setOrigin(0.5, 0.5)
-      .setInteractive({ useHandCursor: true });
-    hint.on("pointerdown", () => this.openHelpModal());
+    const btnY = logY + LOG_H / 2;
+    const style: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: FONT_FAMILY,
+      fontSize: FONT_SIZE_CMD,
+      color: COL_TEXT_DIM,
+    };
+
+    // Touch-friendly command buttons — každý zvlášť klikatelný (mobil bez klávesnice).
+    const commands: Array<{ text: string; action: () => void }> = [
+      { text: "[I] info", action: () => this.infoPanel.toggle() },
+      { text: "[E] events", action: () => this.eventLog.toggle() },
+      { text: "[H] help", action: () => this.openHelpModal() },
+    ];
+
+    // Vytvoř texty, změř šířky, vycentruj blok.
+    const gap = 32;
+    const texts = commands.map((cmd) =>
+      this.add.text(0, btnY, cmd.text, style).setOrigin(0, 0.5),
+    );
+    const totalW =
+      texts.reduce((sum, t) => sum + t.width, 0) + gap * (texts.length - 1);
+    let x = (CANVAS_W - totalW) / 2;
+
+    for (let i = 0; i < texts.length; i++) {
+      const t = texts[i]!;
+      t.setX(x);
+      t.setInteractive({ useHandCursor: true });
+      t.on("pointerdown", commands[i]!.action);
+      x += t.width + gap;
+    }
   }
 
   // === Debug klávesy (case-insensitive — axiom) =============================

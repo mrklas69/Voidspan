@@ -21,7 +21,6 @@ import {
 
 const DELAY_MS = 400;
 const REFRESH_MS = 100; // interval pro re-volání provideru → živý text při držení myši
-const MAX_WIDTH = 280;
 const PAD_X = 8;
 const PAD_Y = 4;
 const OFFSET = 12;
@@ -51,12 +50,14 @@ export class TooltipManager {
       .setOrigin(0, 0)
       .setDepth(DEPTH + 1)
       .setVisible(false);
+    // Responzivní šířka (S22) — wordWrap na canvas max, tooltip bg se přizpůsobí obsahu.
+    const wrapMax = scene.scale.width - 4 * OFFSET;
     this.text = scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
         fontSize: FONT_SIZE_HINT,
         color: UI_TEXT_PRIMARY,
-        wordWrap: { width: MAX_WIDTH - 2 * PAD_X },
+        wordWrap: { width: wrapMax },
         lineSpacing: 2,
       })
       .setOrigin(0, 0)
@@ -129,7 +130,7 @@ export class TooltipManager {
     this.text.setText(text);
     this.text.setColor(UI_TEXT_PRIMARY);
 
-    const tw = Math.min(this.text.width, MAX_WIDTH - 2 * PAD_X);
+    const tw = this.text.width;
     const th = this.text.height;
     const w = tw + 2 * PAD_X;
     const h = th + 2 * PAD_Y;

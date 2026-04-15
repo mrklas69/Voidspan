@@ -120,3 +120,11 @@ export const THRESHOLD_WARN_PCT = 40;
 
 // Ring buffer kapacita — max počet událostí v paměti. Přetečení = shift nejstarší.
 export const EVENT_LOG_CAPACITY = 500;
+
+// ============================================================================
+// §9 Tooltip seznamy (S22)
+// ============================================================================
+
+// Max položek v tooltip rozpisech (Energie příjmy/výdaje, atd.).
+// Delší seznamy se oříznou na N prvních + "... +M dalších".
+export const TOOLTIP_LIST_MAX_ITEMS = 5;

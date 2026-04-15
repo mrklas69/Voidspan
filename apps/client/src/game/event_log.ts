@@ -8,6 +8,8 @@ import { VERB_CATALOG } from "./events";
 import { formatGameTime } from "./world";
 import {
   COL_HULL_DARK,
+  COL_HULL_MID,
+  COL_TEXT_WHITE,
   UI_BORDER_DIM,
   UI_TEXT_ACCENT,
   UI_TEXT_PRIMARY,
@@ -16,7 +18,7 @@ import {
   FONT_SIZE_HINT,
   FONT_SIZE_LABEL,
   HEX_ALERT_RED,
-  HEX_WARN_AMBER,
+  HEX_WARN_ORANGE,
   HEX_OK_GREEN,
 } from "./palette";
 import { CANVAS_W, CANVAS_H, HUD_H, LOG_H } from "./ui/layout";
@@ -47,17 +49,23 @@ function saveVisiblePref(v: boolean): void {
 
 const SEVERITY_COLOR: Record<string, string> = {
   crit: HEX_ALERT_RED,
-  warn: HEX_WARN_AMBER,
+  warn: HEX_WARN_ORANGE,
   pos: HEX_OK_GREEN,
   neutral: UI_TEXT_DIM,
 };
 
-// Formát: [TIME, LOC] ACTOR VERB:CSQ AMOUNT ITEM → TARGET
+// Formát: [KDY, KDE] ICON TEXT — lidská věta (axiom S22).
+// Fallback na strukturovaný formát pokud text chybí.
 function formatEventRow(ev: Event): string {
   const time = formatGameTime(ev.tick);
   const spacetime = ev.loc ? `[${time}, ${ev.loc}]` : `[${time}]`;
-
   const entry = VERB_CATALOG[ev.verb];
+
+  if (ev.text) {
+    return `${spacetime} ${entry.icon} ${ev.text}`;
+  }
+
+  // Fallback — strukturovaný formát pro eventy bez text pole.
   const csqTag = ev.csq ? `:${ev.csq}` : "";
   const actor = ev.actor ?? "";
   const verb = `${entry.icon} ${ev.verb}${csqTag}`;
@@ -89,6 +97,14 @@ export class EventLogPanel {
   // Lazy filter chips — tracked verbs (pro budoucí chip UI).
   private seenVerbs = new Set<EventVerb>();
 
+  // Touch drag scroll state.
+  private touchDragY: number | null = null;
+  private touchDragOffset = 0;
+
+  // Visual scrollbar.
+  private scrollTrack!: Phaser.GameObjects.Rectangle;
+  private scrollThumb!: Phaser.GameObjects.Rectangle;
+
   constructor(scene: Phaser.Scene, getWorld: () => World) {
     this.scene = scene;
     this.getWorld = getWorld;
@@ -110,9 +126,11 @@ export class EventLogPanel {
       .setOrigin(0, 0)
       .setStrokeStyle(1, UI_BORDER_DIM)
       .setInteractive();
-    // Block clicks from reaching game underneath.
-    this.bg.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+    // Block clicks from reaching game underneath + start touch drag tracking.
+    this.bg.on("pointerdown", (p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
+      this.touchDragY = p.y;
+      this.touchDragOffset = this.scrollOffset;
     });
     this.container.add(this.bg);
 
@@ -147,13 +165,13 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
-    // Body rows — pre-allocate MAX_VISIBLE text objects.
+    // Body rows — pre-allocate MAX_VISIBLE text objects (18px — S22 rozhodnutí).
     for (let i = 0; i < MAX_VISIBLE; i++) {
       const rowY = HEADER_H + i * ROW_H;
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
-          fontSize: FONT_SIZE_HINT,
+          fontSize: "18px",
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);
@@ -193,6 +211,20 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(footerLine);
 
+    // Scrollbar — visual track + thumb (reflects row-based scrollOffset).
+    const sbX = PANEL_W - 10;
+    this.scrollTrack = this.scene.add
+      .rectangle(sbX, HEADER_H, 8, BODY_H, COL_HULL_MID, 0.3)
+      .setOrigin(0, 0)
+      .setVisible(false);
+    this.container.add(this.scrollTrack);
+
+    this.scrollThumb = this.scene.add
+      .rectangle(sbX, HEADER_H, 8, 30, COL_TEXT_WHITE, 0.5)
+      .setOrigin(0, 0)
+      .setVisible(false);
+    this.container.add(this.scrollThumb);
+
     // Scroll — mouse wheel on bg.
     this.bg.on("wheel", (_p: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number) => {
       const events = this.getWorld().events;
@@ -209,12 +241,32 @@ export class EventLogPanel {
       }
       this.renderRows();
     });
+
+    // Touch drag scroll — pointerdown starts on bg, move/up tracked scene-wide.
+    this.scene.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (this.touchDragY === null || !this.visible) return;
+      const dy = this.touchDragY - pointer.y;
+      const rows = Math.round(dy / ROW_H);
+      const events = this.getWorld().events;
+      const maxOffset = Math.max(0, events.length - MAX_VISIBLE);
+      this.scrollOffset = Math.max(
+        0,
+        Math.min(maxOffset, this.touchDragOffset + rows),
+      );
+      this.autoScroll = this.scrollOffset >= maxOffset;
+      this.renderRows();
+    });
+
+    this.scene.input.on("pointerup", () => {
+      this.touchDragY = null;
+    });
   }
 
   toggle(): void {
     this.visible = !this.visible;
     this.container.setVisible(this.visible);
     saveVisiblePref(this.visible);
+    this.touchDragY = null;
     if (this.visible) {
       this.autoScroll = true;
       this.lastRenderedCount = -1; // force re-render
@@ -262,5 +314,20 @@ export class EventLogPanel {
     }
 
     this.footerText.setText(`${events.length} events`);
+
+    // Scrollbar thumb — reflects row-based scroll position.
+    const total = events.length;
+    if (total > MAX_VISIBLE) {
+      const ratio = MAX_VISIBLE / total;
+      const thumbH = Math.max(20, Math.floor(BODY_H * ratio));
+      const travel = BODY_H - thumbH;
+      const maxOff = total - MAX_VISIBLE;
+      const pos = maxOff > 0 ? (this.scrollOffset / maxOff) * travel : 0;
+      this.scrollThumb.setSize(8, thumbH).setY(HEADER_H + pos).setVisible(true);
+      this.scrollTrack.setVisible(true);
+    } else {
+      this.scrollThumb.setVisible(false);
+      this.scrollTrack.setVisible(false);
+    }
   }
 }

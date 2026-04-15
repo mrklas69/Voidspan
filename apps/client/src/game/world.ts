@@ -212,7 +212,7 @@ export function createInitialWorld(): World {
   };
 
   recomputeStatus(world); // seed reálný status, aby první tick neemitoval falešný STAT
-  appendEvent(world, "BOOT", { text: "Simulation started" });
+  appendEvent(world, "BOOT", { text: "Simulace spuštěna" });
   return world;
 }
 
@@ -353,7 +353,7 @@ function assignIdleActors(w: World): void {
     actor.state = "working";
     actor.taskId = task.id;
     task.assigned.push(actor.id);
-    appendEvent(w, "ASSN", { actor: actor.id, item: task.kind, target: task.id });
+    appendEvent(w, "ASSN", { actor: actor.id, item: task.kind, target: task.id, text: `${actor.id} přiřazen k ${task.kind} (${task.id})` });
   }
 }
 
@@ -406,7 +406,7 @@ function completeTask(w: World, task: Task): void {
   }
 
   const loc = task.target.moduleId ?? (task.target.bayIdx !== undefined ? `bay${task.target.bayIdx}` : undefined);
-  appendEvent(w, "CMPL", { csq: "OK", loc, item: task.kind, text: `${task.kind} ${task.id} done` });
+  appendEvent(w, "CMPL", { csq: "OK", loc, item: task.kind, text: `${task.kind} ${task.id} dokončen` });
 
   for (const aid of task.assigned) {
     const a = w.actors.find((x) => x.id === aid);
@@ -488,14 +488,14 @@ function resourceDrain(w: World): void {
     const airBefore = w.resources.flux.air;
     w.resources.flux.air = Math.max(0, w.resources.flux.air - AIR_DRAIN_PER_TICK);
     if (airBefore > 0 && w.resources.flux.air <= 0) {
-      appendEvent(w, "DRN", { csq: "CRIT", item: "air", text: "air depleted" });
+      appendEvent(w, "DRN", { csq: "CRIT", item: "air", text: "Air vyčerpán — hull breach" });
     }
   }
   if (w.phase === "phase_b" || w.phase === "phase_c") {
     const foodBefore = w.resources.slab.food;
     w.resources.slab.food = Math.max(0, w.resources.slab.food - FOOD_DRAIN_PER_TICK);
     if (foodBefore > 0 && w.resources.slab.food <= 0) {
-      appendEvent(w, "DRN", { csq: "CRIT", item: "food", text: "food depleted" });
+      appendEvent(w, "DRN", { csq: "CRIT", item: "food", text: "Jídlo vyčerpáno" });
     }
   }
 }
@@ -520,7 +520,7 @@ function decayTick(w: World): void {
     mod.hp = Math.max(0, mod.hp - drain);
     if (mod.hp <= 0 && mod.status === "online") {
       mod.status = "offline";
-      appendEvent(w, "DECY", { csq: "CRIT", loc: mod.id, item: mod.kind, text: `${mod.kind} destroyed by decay` });
+      appendEvent(w, "DECY", { csq: "CRIT", loc: mod.id, item: mod.kind, text: `${mod.kind} zničen rozpadem` });
     }
   }
 }
@@ -540,7 +540,7 @@ function actorLifeTick(w: World): void {
         if (task) task.assigned = task.assigned.filter((id) => id !== a.id);
         a.taskId = undefined;
       }
-      appendEvent(w, "DEAD", { actor: a.id, text: airZero ? "suffocated" : "starved" });
+      appendEvent(w, "DEAD", { actor: a.id, text: `${a.id} zemřel — ${airZero ? "udušení" : "hlad"}` });
     }
   }
 }
@@ -563,7 +563,7 @@ function productionTick(w: World): void {
   const before = w.resources.energy;
   w.resources.energy = Math.max(0, Math.min(ENERGY_MAX, w.resources.energy + delta));
   if (before > 0 && w.resources.energy <= 0) {
-    appendEvent(w, "DRN", { csq: "CRIT", item: "energy", text: "energy depleted" });
+    appendEvent(w, "DRN", { csq: "CRIT", item: "energy", text: "Energie vyčerpána" });
   }
 }
 function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
@@ -572,7 +572,7 @@ function scheduledEvents(_w: World): void { /* TODO: events bank trigger */ }
 //   I.  Aktuální stav    ×8   crew=I.1, base=I.2
 //   II. Udržitelnost     ×4   supplies=II.1, entropy=II.2
 //   III. Rozvoj          ×2   [P2+ pahýl = 100%]
-//   IV. Společenský kap. ×1   [P2+ pahýl = 100%]
+//   IV. Společnost       ×1   [P2+ pahýl = 100%]
 // Patro = min(children). Overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15.
 function recomputeStatus(w: World): void {
   const toLevel = (pct: number): StatusLevel =>
@@ -629,21 +629,35 @@ function recomputeStatus(w: World): void {
 
   // Detekce změn level — SIGN event pro každou osu, která změní rating.
   // Skip v boot phase (init, startGame — stav se ustaluje).
-  const emitSign = (name: string, prev: StatusNode, pct: number) => {
+  // Text = lidská věta: KDO ↑/↓ ODKUD → KAM (KOLIK%) — PROČ (axiom S22).
+  const AXIS_CS: Record<string, string> = {
+    crew: "Posádka", base: "Základna", supplies: "Zásoby",
+    entropy: "Entropie", overall: "Celkový stav",
+  };
+  const emitSign = (name: string, prev: StatusNode, pct: number, detail?: string, displayName?: string) => {
     const newLevel = toLevel(pct);
     if (w.phase !== "boot" && prev.level !== newLevel) {
       const prevR = statusRating(prev.pct);
       const newR = statusRating(pct);
-      const prevLabel = STATUS_LABELS[prevR].en;
-      const newLabel = STATUS_LABELS[newR].en;
+      const prevLabel = STATUS_LABELS[prevR].cs;
+      const newLabel = STATUS_LABELS[newR].cs;
       const dir = pct > prev.pct ? "↑" : "↓";
-      appendEvent(w, "SIGN", { item: name, text: `${dir} ${prevLabel} → ${newLabel} (${Math.round(pct)}%)` });
+      const cs = displayName ?? AXIS_CS[name] ?? name;
+      const extra = detail ? ` — ${detail}` : "";
+      appendEvent(w, "SIGN", {
+        item: name,
+        amount: Math.round(pct),
+        text: `${cs} ${dir} ${prevLabel} → ${newLabel} (${Math.round(pct)}%)${extra}`,
+      });
     }
   };
 
-  emitSign("crew", w.status.crew, crewPct);
-  emitSign("base", w.status.base, basePct);
-  emitSign("supplies", w.status.supplies, suppliesPct);
+  // Supplies: zobraz konkrétní zdroj (Air/Food), ne abstraktní „Zásoby".
+  const suppliesDriver = foodPct <= airPct ? "food" : "air";
+  const driverLabel = suppliesDriver === "air" ? "Air" : "Food";
+  emitSign("crew", w.status.crew, crewPct, `${aliveActors}/${totalActors} alive`);
+  emitSign("base", w.status.base, basePct, `avg HP ${Math.round(basePct)}%`);
+  emitSign("supplies", w.status.supplies, suppliesPct, undefined, driverLabel);
   emitSign("entropy", w.status.entropy, entropyPct);
   emitSign("overall", w.status.overall, overallPct);
 

@@ -184,7 +184,7 @@ export function statusRating(pct: number): StatusRating {
 //   I.  Aktuální stav    ×8   (crew + base)
 //   II. Udržitelnost     ×4   (supplies + entropy)
 //   III. Rozvoj          ×2   [P2+ pahýl = 100%]
-//   IV. Společenský kap. ×1   [P2+ pahýl = 100%]
+//   IV. Společnost       ×1   [P2+ pahýl = 100%]
 // overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15
 // Patro = min(children) — worst child uvnitř patra.
 

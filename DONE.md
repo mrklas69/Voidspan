@@ -2,6 +2,20 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-15 (Sezení 22 — Mobile touch + Event format + InfoPanel UX + Energy infotip)
+
+- [x] **Touch ovládání** — bottom bar touch buttony [I][E][H], touch drag scroll EventLog, viewport meta, orientationchange handler.
+- [x] **Environment detection** — header tooltip: hostname → local/GitHub Pages/custom.
+- [x] **Event texty české věty** — `formatEventRow` preferuje `text` pole, všechny appendEvent s CZ textem.
+- [x] **SIGN supplies → driver resource** — `Air ↓ Dostačující → Slabá (40%)` místo abstraktního „Zásoby".
+- [x] **Severity izomorfismus** — warn orange (#ff8020), 4 vizuálně odlišné barvy.
+- [x] **InfoPanel pyramida** — řazení I→II→zbytek, Unicode ikony dvousloupcový layout, scroll system.
+- [x] **Icon test + rozhodnutí** — Unicode 18px. Sada: ☻⌂≡↯▲◆.
+- [x] **IV. Společnost** — přejmenování z Společenský kapitál.
+- [x] **Energy infotip** — Top Bar E: stav+rating, příjmy/výdaje s ořezem, bilance.
+- [x] **Tooltip responzivní šířka** — bez fixního MAX_WIDTH.
+- [x] **Oba panely 18px font** — InfoPanel + EventLogPanel body text.
+
 ## 2026-04-15 (Sezení 21 — Event Log + Perpetual Observer + Pyramida vitality)
 
 - [x] **Event Log datový model** — `Event`, `EventVerb` (24+SIGN), `EventCsq`, `EventSeverity` v `model.ts`. `World.events: Event[]`.

@@ -6,7 +6,7 @@ Aktualizuj kdykoli se změní struktura projektu (nový bod, přejmenování, p�
 
 **Legenda stavu:** `[●]` plné / `[◐]` rozpracováno / `[○]` prázdno / `[✕]` zrušeno.
 
-Verze: **v2.5** (2026-04-15, konec sezení 20 — **@AUDIT:CODE + @AUDIT:DOCS cleanup** (paleta overlay/trajectory konstanty, `tuning.ts` centrální laditelné parametry, SPEC §4.1 Cell→BAY/SEGMENT, SCENARIO Echo/Kredo→Energy/Coin 9×, MINDMAP sync §4.5/§6.5), **Simulation axioms (GLOSSARY kánon):** Colony Goal (single), Perpetual Observer Simulation, Two Perspectives (Observer vs Player), Maslow (N na pevném N-1), FVP (First Viable Product). **Status — Strom zdraví kolonie** (I. Aktuální stav × II. Udržitelnost × III. Rozvoj × IV. Společenský kapitál; parent=worst child; FVP = I.1+I.2+II.1+II.2). **Event Log System** (verb+csq taxonomie, 23 verbů, 4 severity → paleta, ring buffer 500, lazy filter chips, Unicode ikony; hotkey `[E]`). `stepWorld` refactor → 11-slot pipeline (decayTick/resourceDrain/autoEnqueue/assign/progress/actorLife/production/arrivals/events/status/log). `Actor.state` += `"dead"`. Bottom Bar Commands font `FONT_SIZE_CMD` 12px (¼ menší než HINT). **52/52 testů zelených.**)
+Verze: **v2.6** (2026-04-15, konec sezení 22 — **Mobile touch** (bottom bar buttony, touch drag scroll, orientationchange, viewport meta). **Event format axiom S22** (formatEventRow preferuje text pole = lidská věta; české texty; SIGN driver resource „Air ↓ Dostačující → Slabá"; severity warn→orange izomorfní s ratingem). **InfoPanel UX** (pyramida I→II řazení, Unicode ikony dvousloupcový `☻⌂≡↯▲◆` 18px, scroll system s GeometryMask+scrollbar+wheel+drag). **Energy infotip** (Top Bar E: stav+rating, příjmy/výdaje/bilance, TOOLTIP_LIST_MAX_ITEMS=5). **Tooltip responzivní šířka** (bez fixního MAX_WIDTH). **IV. Společnost** (přejmenováno). **Environment detection** (hostname→local/GH Pages). **52/52 testů zelených.**)
 
 ---
 
@@ -99,18 +99,20 @@ Experiment = rovný podíl → opravňuje event log řádu 10M **jako data pro p
 
 ## Aktuální fokus
 
-**S21 hotovo:** Event Log System kompletní (datový model, verb katalog, severity, ring buffer, EventLogPanel [E], SIGN verb). Phase win/loss retirováno. Actor cryo/hp/dead wiring. Energy model (productionTick s HP ratio axiomem). Decay model (decayTick 1%/game day). Status tree pyramida vitality (Maslow 8/4/2/1 váhy). InfoPanel [I] s live status reportem + rating barvami. Tooltip z-order fix. Sdílená feedback memory přes git. GLOSSARY: 5 úrovní hodnocení pásu.
+**S22 hotovo:** Mobile touch (bottom bar buttony, drag scroll, orientationchange). Event format axiom (lidské věty CZ, SIGN driver resource, severity izomorfismus s ratingem). InfoPanel pyramida + Unicode ikony dvousloupcový layout + scroll. Energy infotip (Top Bar E: příjmy/výdaje/bilance). Tooltip responzivní šířka. IV. Společnost. Environment detection.
+
+**S21 hotovo:** Event Log System kompletní. Phase win/loss retirováno. Actor cryo/hp/dead. Energy/decay model. Status tree pyramida vitality. InfoPanel [I]. Sdílená feedback memory.
 
 **Další bagr:**
-1. **Cryo failure trigger** — energie=0 → nucené probuzení posádky → řetěz zánik.
-2. **Per-capita resource drain** — `resourceDrain` bez phase gate, `n_alive × per_actor_rate`.
-3. **autoEnqueueTasks** — drony samy opravují critical HP. Observer-driven priority queue.
-4. **Event interpret šablony** — zero-token NLG (PocketStory vzor). Verb×csq → lidská věta.
-5. **Build/demolish progrese** (zůstává z S18 split). Player mode only.
-6. **Floating panel manager** — K/U/Z/E/P workspace. Globální ESC z S19 TODO.
-7. **Lazy filter chips** — chip UI pro verb filtrování v EventLog.
-8. **Module FX animations** — blink/fan/dish/sparks. Data-driven.
-9. **Asteroid damage** + **Surface overlay system** — IDEAS parkoviště.
+1. **Energy=0 → freeze + cryo failure** — všechny entity bez E se zastaví, HP astronautů klesá. Řetěz zánik.
+2. **Tooltip barevný header** — SIGN/Energy stav s 5stavovým semaforem (headerText objekt v TooltipManager).
+3. **Per-capita resource drain** — `resourceDrain` bez phase gate, `n_alive × per_actor_rate`.
+4. **autoEnqueueTasks** — drony samy opravují critical HP. Observer-driven priority queue.
+5. **Energy cost per WD** — repair/build tasky stojí i energii, drony se nabíjí wifi.
+6. **Build/demolish progrese** (zůstává z S18 split). Player mode only.
+7. **Floating panel manager** — K/U/Z/E/P workspace. Globální ESC z S19 TODO.
+8. **Lazy filter chips** — chip UI pro verb filtrování v EventLog.
+9. **Module FX animations** — blink/fan/dish/sparks. Data-driven.
 
 **Terminologie prototypů:** P1/P2/P3/P4 = **POC** (proof of concept), ne MVP. Cíl = dialog s blízkými, ne trh.
 

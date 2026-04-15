@@ -49,7 +49,13 @@ async function boot(): Promise<void> {
       // lepší degradace než nekonečný wait.
     }
   }
-  new Phaser.Game(config);
+  const game = new Phaser.Game(config);
+
+  // Přepočet layoutu při otočení zařízení (mobilní Safari fallback —
+  // orientationchange se občas nepropaguje jako resize).
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => game.scale.refresh(), 200);
+  });
 }
 
 boot();
