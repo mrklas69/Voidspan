@@ -16,18 +16,27 @@ import {
   UI_BORDER_DIM,
   UI_TEXT_ACCENT,
   UI_TEXT_PRIMARY,
+  UI_MASK_WHITE,
   FONT_FAMILY,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
   RATING_COLOR,
 } from "./palette";
 import { HUD_H } from "./ui/layout";
+import {
+  PANEL_DEPTH as DEPTH,
+  PANEL_MARGIN as MARGIN,
+  PANEL_PADDING as PADDING,
+  PANEL_BG_ALPHA,
+  PANEL_HEADER_H as HEADER_H,
+  SCROLLBAR_W,
+  SCROLLBAR_GAP,
+  SCROLL_STEP,
+  loadPanelOpenPref,
+  savePanelOpenPref,
+} from "./ui/panel_helpers";
+import { dockManager } from "./ui/dock_manager";
 
-const DEPTH = 1500;
 const PANEL_W = 420;
-const MARGIN = 12;
-const PADDING = 12;
-const PANEL_BG_ALPHA = 0.9;
-const HEADER_H = 40;
 
 // S24 KISS: pevná velikost panelu (baseline 720 - 60 - 60 - 24 = 576).
 const PANEL_H = 576;
@@ -35,19 +44,11 @@ const PANEL_H = 576;
 // Scroll area — starts below rating row, ends at panel bottom.
 const SCROLL_TOP = HEADER_H + 28;
 const SCROLL_H = PANEL_H - SCROLL_TOP - 4;
-const SCROLLBAR_W = 8;
-const SCROLLBAR_GAP = 4;
-const SCROLL_STEP = 24;
 
 const LS_KEY = "voidspan.infopanel.open";
 
-function loadVisiblePref(): boolean {
-  try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
-}
-
-function saveVisiblePref(v: boolean): void {
-  try { localStorage.setItem(LS_KEY, v ? "1" : "0"); } catch { /* incognito */ }
-}
+const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
+const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
 export class InfoPanel {
   private scene: Phaser.Scene;
@@ -78,6 +79,7 @@ export class InfoPanel {
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
     if (this.visible) this.renderBody();
+    dockManager.register("info", "left", PANEL_W, () => this.visible);
   }
 
   private build(): void {
@@ -103,7 +105,7 @@ export class InfoPanel {
     const titleText = this.scene.add
       .text(PADDING, PADDING, "Info", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -113,7 +115,7 @@ export class InfoPanel {
     const closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -134,7 +136,7 @@ export class InfoPanel {
     this.ratingLabel = this.scene.add
       .text(PADDING, HEADER_H + 4, "Stav základny: ", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_PRIMARY,
       })
       .setOrigin(0, 0)
@@ -144,7 +146,7 @@ export class InfoPanel {
     this.ratingValue = this.scene.add
       .text(0, HEADER_H + 4, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
       })
       .setOrigin(0, 0)
       .setInteractive();
@@ -161,7 +163,7 @@ export class InfoPanel {
     this.iconText = this.scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: "20px",
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
       })
@@ -171,7 +173,7 @@ export class InfoPanel {
     this.bodyText = this.scene.add
       .text(COL_OFFSET, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: "20px",
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
         wordWrap: { width: contentW - COL_OFFSET },
@@ -181,7 +183,7 @@ export class InfoPanel {
 
     // Geometry mask — clips scrollContent to visible scroll area (world coords).
     const maskGraphics = this.scene.make.graphics({});
-    maskGraphics.fillStyle(0xffffff);
+    maskGraphics.fillStyle(UI_MASK_WHITE);
     maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, contentW, SCROLL_H);
     this.scrollContent.setMask(maskGraphics.createGeometryMask());
 
@@ -297,6 +299,7 @@ export class InfoPanel {
       this.renderBody();
       this.onToggleOpenCb?.();
     }
+    dockManager.notifyChange();
   }
 
   isOpen(): boolean {
@@ -309,6 +312,7 @@ export class InfoPanel {
     this.container.setVisible(false);
     saveVisiblePref(false);
     this.dragY = null;
+    dockManager.notifyChange();
   }
 
   // Axiom: otevřené infoPanely musejí být refreshované každý frame.

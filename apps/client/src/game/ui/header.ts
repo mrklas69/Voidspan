@@ -1,5 +1,5 @@
 // HeaderPanel — Top Bar (HUD).
-// Obsah: ⊙ ikona + VOIDSPAN + meta (verze, adresa, herní čas) + 5 resource bars + Help tlačítko.
+// Obsah: ⊙ ikona (Phaser Graphics, font-independent) + VOIDSPAN + meta + 5 resource bars.
 // Model-first: čte z `getWorld()`, tooltips dynamické.
 
 import Phaser from "phaser";
@@ -12,16 +12,22 @@ import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, 
 import { TooltipManager, type TooltipContent } from "../tooltip";
 import {
   FONT_FAMILY,
-  FONT_SIZE_HUD,
+  FONT_SIZE_CHROME,
   UI_BRAND_ICON,
+  COL_WARN_ORANGE,
   HEX_WARN_ORANGE,
   RATING_COLOR,
   ratingColor,
 } from "../palette";
 import { CANVAS_W, HUD_ROW_Y, COL_TEXT, COL_TEXT_ACCENT } from "./layout";
+import { BrandIcon } from "./brand_icon";
+
+// Vertikální offset BrandIcon, aby kroužek opticky seděl s baseline VT323.
+// HUD_ROW_Y je top textu; ikona má height 26 px, písmo HUD ~24 px → +2 nahoru.
+const BRAND_Y_OFFSET = -2;
 
 export class HeaderPanel {
-  private iconText: Phaser.GameObjects.Text;
+  private iconBrand: BrandIcon;
   private appText: Phaser.GameObjects.Text;
   private metaText: Phaser.GameObjects.Text;
   private resourceTexts: Phaser.GameObjects.Text[] = [];
@@ -32,15 +38,12 @@ export class HeaderPanel {
   ) {
     const baseStyle = {
       fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_HUD,
+      fontSize: FONT_SIZE_CHROME,
     };
 
-    // Top Bar: ikona + AppName + meta + 5 resource bars. Help je v Bottom Baru.
+    // Top Bar: ⊙ ikona (Graphics, nezávislá na fontu) + AppName + meta + 5 resource bars.
     // Pozice se dopočítávají v render() — celý blok je horizontálně vycentrovaný.
-    this.iconText = scene.add.text(0, HUD_ROW_Y, "", {
-      ...baseStyle,
-      color: UI_BRAND_ICON,
-    });
+    this.iconBrand = new BrandIcon(scene, 0, HUD_ROW_Y + BRAND_Y_OFFSET, COL_WARN_ORANGE);
     this.appText = scene.add.text(0, HUD_ROW_Y, "", {
       ...baseStyle,
       color: UI_BRAND_ICON,
@@ -70,7 +73,7 @@ export class HeaderPanel {
     })();
     const identityProvider = () =>
       `Server: ${env}\nVersion: v${pkg.version} (${__BUILD_ID__})\nWorld: Teegarden.Belt1.Seg042`;
-    tooltips.attach(this.iconText, identityProvider);
+    tooltips.attach(this.iconBrand, identityProvider);
     tooltips.attach(this.appText, identityProvider);
     tooltips.attach(this.metaText, identityProvider);
 
@@ -334,7 +337,7 @@ export class HeaderPanel {
     const time = formatGameTime(w.tick);
 
     // --- 1) Nejdřív nastavit texty, aby měřené šířky odpovídaly aktuálnímu obsahu ---
-    this.iconText.setText("O");
+    // Brand ikona je Graphics, kreslí se jen jednou v constructoru — žádný setText.
     this.appText.setText("VOIDSPAN");
     this.metaText.setText(
       `v${pkg.version} Teegarden.Belt1.Seg042 ${time}`,
@@ -374,13 +377,13 @@ export class HeaderPanel {
     }
 
     // --- 2) Změřit celkovou šířku bloku a spočítat počáteční X pro centrování ---
-    const GAP_APP = 0;       // mezi ikonou a VOIDSPAN — slepené
+    const GAP_APP = 4;       // mezi ⊙ ikonou a VOIDSPAN
     const GAP_META = 8;      // mezi VOIDSPAN a meta
     const GAP_META_RES = 32; // mezi meta a prvním resource
     const GAP_RES = 24;      // mezi resource bary
 
     let totalW =
-      this.iconText.width +
+      BrandIcon.WIDTH +
       GAP_APP +
       this.appText.width +
       GAP_META +
@@ -393,8 +396,8 @@ export class HeaderPanel {
 
     // --- 3) Pozicování od středu plátna ---
     let x = Math.round((CANVAS_W - totalW) / 2);
-    this.iconText.setX(x);
-    x += this.iconText.width + GAP_APP;
+    this.iconBrand.setX(x);
+    x += BrandIcon.WIDTH + GAP_APP;
     this.appText.setX(x);
     x += this.appText.width + GAP_META;
     this.metaText.setX(x);

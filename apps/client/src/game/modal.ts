@@ -15,10 +15,8 @@ import {
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
   FONT_FAMILY,
-  FONT_SIZE_H2,
-  FONT_SIZE_BODY,
-  FONT_SIZE_HINT,
-  FONT_SIZE_PANEL_HEADER,
+  FONT_SIZE_PANEL,
+  FONT_SIZE_TIP,
 } from "./palette";
 
 const DEPTH = 2000; // nad tooltipy (1000)
@@ -40,7 +38,7 @@ export class ModalManager {
   private scene: Phaser.Scene;
   private layer: Phaser.GameObjects.GameObject[] = [];
   private open_ = false;
-  private escHandler?: () => void;
+  private onCloseCb?: () => void;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -51,9 +49,15 @@ export class ModalManager {
     return this.open_;
   }
 
+  // Bezargumentová varianta pro ESC stack — uvnitř drží uloženou onClose callback.
+  closeFromEsc(): void {
+    this.close(this.onCloseCb);
+  }
+
   open(opts: ModalOptions): void {
     if (this.open_) return;
     this.open_ = true;
+    this.onCloseCb = opts.onClose;
 
     const cw = this.scene.scale.width;
     const ch = this.scene.scale.height;
@@ -70,7 +74,7 @@ export class ModalManager {
     // Nejdřív změř body text (bez přidání), ať určíme výšku panelu.
     const bodyStyle = {
       fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_BODY,
+      fontSize: FONT_SIZE_PANEL,
       color: UI_TEXT_PRIMARY,
       wordWrap: { width: PANEL_W - 2 * PADDING },
       lineSpacing: 4,
@@ -103,7 +107,7 @@ export class ModalManager {
     const title = this.scene.add
       .text(panelX + PADDING, panelY + PADDING, opts.title, {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_H2,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setDepth(DEPTH + 3);
@@ -132,7 +136,7 @@ export class ModalManager {
     const btnLabel = this.scene.add
       .text(btnX + btnW / 2, btnY + closeH / 2, "Close", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0.5, 0.5)
@@ -145,12 +149,7 @@ export class ModalManager {
     });
     this.layer.push(btnBg, btnLabel);
 
-    // ESC zavře modal.
-    this.escHandler = () => this.close(opts.onClose);
-    this.scene.input.keyboard?.once("keydown-ESC", this.escHandler);
-
-    // Quiet unused — reserve pro potenciální future multi-tone.
-    void FONT_SIZE_PANEL_HEADER;
+    // ESC řeší globální handler v GameScene (F5).
   }
 
   close(onClose?: () => void): void {
@@ -158,10 +157,7 @@ export class ModalManager {
     this.open_ = false;
     for (const obj of this.layer) obj.destroy();
     this.layer = [];
-    if (this.escHandler) {
-      this.scene.input.keyboard?.off("keydown-ESC", this.escHandler);
-      this.escHandler = undefined;
-    }
+    this.onCloseCb = undefined;
     onClose?.();
   }
 }

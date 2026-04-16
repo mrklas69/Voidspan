@@ -44,27 +44,19 @@ export type Event = {
 // boot = inicializace (jeden tick), running = perpetuální simulace.
 export type Phase = "boot" | "running";
 
-// === Cover variant ===
-// Plášť má 5 vizuálních variant (cover1.png – cover5.png). Uloženo na bay
-// (ne na modulu), aby každý bay pod modulem mohl mít svou vlastní variantu
-// — při demolici se odhalí různorodý mix.
-export type CoverVariant = 1 | 2 | 3 | 4 | 5;
-
 // === Bay (políčko 1×1 v segmentu) ===
 //
-// Tagged union. TypeScript umí narrowing přes `bay.kind` → bezpečný switch.
-// HP žije jen na vnější vrstvě:
-//   - void: žádné HP, žádný render (hvězdy prosvítají)
-//   - skeleton: hp + hp_max (vnější = kostra)
-//   - covered: hp + hp_max + variant (vnější = plášť)
-//   - module_root: cover variant se pamatuje pod modulem; HP žije na Module
-//   - module_ref: projekce multi-bay modulu, variant pod zakrytá
+// S28 KISS: layered bay axiom retirován. Stavění jde rovnou void → module
+// (3-fázové skeleton/cover bylo vopruz, žádný gameplay benefit). HP žije
+// výhradně na Module instanci.
+//
+//   - void: prázdný slot, hvězdy prosvítají
+//   - module_root: HP žije na Module (přes moduleId)
+//   - module_ref: projekce multi-bay modulu (Engine 2×2 = 1 root + 3 refy)
 export type Bay =
   | { kind: "void" }
-  | { kind: "skeleton"; hp: number; hp_max: number }
-  | { kind: "covered"; hp: number; hp_max: number; variant: CoverVariant }
-  | { kind: "module_root"; moduleId: string; coverVariant: CoverVariant }
-  | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number }; coverVariant: CoverVariant };
+  | { kind: "module_root"; moduleId: string }
+  | { kind: "module_ref"; moduleId: string; rootOffset: { dx: number; dy: number } };
 
 // === Modul: definice (katalog) + instance (stav ve světě) ===
 
@@ -113,14 +105,7 @@ export type ResourceRecipe = {
   fluids?: number;
 };
 
-// Bay layered states — recepty pro skeleton/covered (paralela k ModuleDef).
-// Singletony, ne katalog → konstanty s recepty.
-export type BayDef = {
-  hp_max: number;
-  recipe: ResourceRecipe;
-};
-
-// Instance modulu ve světě. HP žije tady, cover variant pod ním na Bay.
+// Instance modulu ve světě. HP žije tady (jediná vrstva s HP po S28).
 export type Module = {
   id: string;
   kind: ModuleKind;
@@ -185,8 +170,8 @@ export type Task = {
   id: string;
   kind: TaskKind;
   target: {
-    bayIdx?: number; // repair skeleton/covered, build
-    moduleId?: string; // repair module, demolish, haul
+    bayIdx?: number; // build (cílový slot ve void)
+    moduleId?: string; // repair module, demolish
     buildSpec?: ModuleKind;
   };
   wd_total: number;
@@ -271,7 +256,7 @@ export type Status = {
   crew: StatusNode;        // I.1 — posádka (alive / total)
   base: StatusNode;        // I.2 — základna (avg HP modulů)
   supplies: StatusNode;    // II.1 — zásoby (runway)
-  integrity: StatusNode;   // II.2 — integrita (avg HP všech vrstev — bays + moduly)
+  integrity: StatusNode;   // II.2 — integrita (avg HP modulů; po S28 = totéž jako base)
 };
 
 // === Flow history (S26) — rolling window KPI pro controlling ===
@@ -329,9 +314,7 @@ export type World = {
 // KATALOG — statické definice
 // ============================================================================
 //
-// HP_MAX tabulka (S18, layered bay axiom):
-//   skeleton       380   nejslabší — holá kostra, vystavená vakuu
-//   covered        500   plášť (průměr — varianty mohou mít vlastní tuning později)
+// HP_MAX tabulka (S18, monotónně vzestupně):
 //   SolarArray     500   křehké panely
 //   Storage        650   jen stěny a bedny
 //   Habitat        700   obytná kapsle
@@ -341,19 +324,6 @@ export type World = {
 //   Dock          1000   těžká přetlaková komora
 //   Engine        1240   nejpevnější
 // Monotónní, „hmotnost + kritičnost". Playtest ladí.
-
-// === BAY_DEFS — recepty pro layered bay states (S25) ===
-// skeleton/covered se nestaví/neopravuje přes ModuleDef katalog → vlastní def.
-export const BAY_DEFS: Record<"skeleton" | "covered", BayDef> = {
-  skeleton: {
-    hp_max: 380,
-    recipe: { solids: 0.05 }, // holá konstrukce
-  },
-  covered: {
-    hp_max: 500,
-    recipe: { solids: 0.065 }, // plášť + těsnění
-  },
-};
 
 // === MODULE_DEFS ===
 // recipe je per-HP rate. Total build cost = recipe × max_hp. Per-tick repair

@@ -7,7 +7,7 @@ import { ACTOR_DEFS } from "../model";
 import { TooltipManager } from "../tooltip";
 import {
   FONT_FAMILY,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
   UI_DOT_ONLINE,
   UI_DOT_NPC,
   UI_DOT_WORKING,
@@ -46,12 +46,12 @@ export class ActorsPanel {
       const y = contentY + 4 + i * rowH;
       const dot = scene.add.text(ACTORS_X + 10, y, "●", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_DOT_IDLE,
       });
       const name = scene.add.text(ACTORS_X + 10 + 18, y, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: COL_TEXT,
       });
       this.rows.push({ dot, name });

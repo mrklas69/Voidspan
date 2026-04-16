@@ -1,7 +1,7 @@
-// SegmentPanel — střední plocha, 8×2 bay grid (S18 layered axiom).
-// Render dispatch podle bay.kind: void = nic, skeleton = skeleton.png,
-// covered = coverN.png, module_root = modul sprite (multi-bay span),
-// module_ref = skryto (root pokryl span).
+// SegmentPanel — střední plocha, 8×2 bay grid.
+// Render dispatch podle bay.kind: void = nic, module_root = modul sprite
+// (multi-bay span), module_ref = skryto (root pokryl span).
+// Po S28 layered bay retire (skeleton/covered → P2+).
 //
 // Damage overlay (S18 orange trajectory axiom):
 //   - alpha = (1 - hp/hp_max) × ALPHA_MAX (missing HP = síla barvy)
@@ -23,6 +23,7 @@ import {
   BAY_PX,
   BAY_SCALE,
   COL_BAY_SELECTED,
+  setSegmentX,
 } from "./layout";
 import {
   UI_OVERLAY_BLACK,
@@ -30,6 +31,7 @@ import {
   UI_TRAJ_RISING,
   UI_TRAJ_FALLING,
 } from "../palette";
+import { dockManager } from "./dock_manager";
 
 // Oranžová overlay axiom (S18). Barvy vychází z palette — STATIC/RISING/FALLING.
 const OVERLAY_ALPHA_MAX = 0.6;
@@ -80,6 +82,13 @@ export class SegmentPanel {
       .setStrokeStyle(2, COL_BAY_SELECTED)
       .setDepth(20)
       .setVisible(false);
+
+    // BELT axiom (S28): panel ustupuje, ne BELT. Při dock change se segment
+    // re-centruje do volné zóny mezi otevřenými panely.
+    dockManager.onChange(() => {
+      setSegmentX(dockManager.getSegmentX());
+      this.relayout();
+    });
   }
 
   // S24 KISS: BAY_PX je fix, velikost rects/overlays se nemění.
@@ -127,15 +136,12 @@ export class SegmentPanel {
     this.selectedBayIdx = idx;
   }
 
-  // S24: vrátí lidský stav repair tasku na dané bay/modul (Observer mode — bez klik akce).
+  // S24: vrátí lidský stav repair tasku na dané modulu (Observer mode — bez klik akce).
   // Příklady: „Probíhá oprava (30%)", „Oprava pozastavena", „Oprava ve frontě", null = nic.
-  private repairStateText(idx: number, moduleId?: string): string | null {
+  private repairStateText(moduleId: string): string | null {
     const w = this.getWorld();
-    const task = w.tasks.find((t) =>
-      t.kind === "repair" &&
-      (moduleId !== undefined
-        ? t.target.moduleId === moduleId
-        : t.target.bayIdx === idx),
+    const task = w.tasks.find(
+      (t) => t.kind === "repair" && t.target.moduleId === moduleId,
     );
     if (!task) return null;
     const pct = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
@@ -158,32 +164,14 @@ export class SegmentPanel {
     const pos = `Bay [${row},${col}] idx ${idx}`;
 
     if (bay.kind === "void") {
-      return `${pos}\n\nVoid — otevřený prostor.`;
-    }
-    if (bay.kind === "skeleton") {
-      const missing = bay.hp_max - bay.hp;
-      const state = missing > 0 ? (this.repairStateText(idx) ?? "Poškozeno") : "(bez poškození)";
-      return (
-        `${pos}\n\nSkeleton (kostra)\n` +
-        `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
-        state
-      );
-    }
-    if (bay.kind === "covered") {
-      const missing = bay.hp_max - bay.hp;
-      const state = missing > 0 ? (this.repairStateText(idx) ?? "Poškozeno") : "(vzduchotěsné, bez poškození)";
-      return (
-        `${pos}\n\nCovered v${bay.variant} (plášť)\n` +
-        `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
-        state
-      );
+      return `${pos}\n\nVoid — prázdný slot, lze stavět (P2+).`;
     }
     // module_root / module_ref
     const mod = w.modules[bay.moduleId];
     const modName = mod?.kind ?? "?";
     const hp = mod ? `${mod.hp.toFixed(0)} / ${mod.hp_max}` : "?";
     const missing = mod ? mod.hp_max - mod.hp : 0;
-    const state = missing > 0 ? (this.repairStateText(idx, bay.moduleId) ?? "Poškozeno") : "";
+    const state = missing > 0 ? (this.repairStateText(bay.moduleId) ?? "Poškozeno") : "";
     return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}\nHP: ${hp}${state ? `\n${state}` : ""}`;
   }
 
@@ -204,12 +192,6 @@ export class SegmentPanel {
       switch (bay.kind) {
         case "void":
           this.removeSprite(i);
-          break;
-        case "skeleton":
-          this.drawBaySprite(i, "bay_skeleton", 1, 1);
-          break;
-        case "covered":
-          this.drawBaySprite(i, `bay_cover${bay.variant}`, 1, 1);
           break;
         case "module_root": {
           const mod = w.modules[bay.moduleId];

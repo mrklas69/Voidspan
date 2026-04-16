@@ -24,8 +24,10 @@ import {
 // Čtvercový chunk — 2D indexace (cx, cy).
 const CHUNK_SIZE = 480;
 
-// Drift axiom (S16): globální vektor délky 7 px, rotuje jednou za 1 game day.
-const DRIFT_MAGNITUDE_PX = 7;
+// Drift axiom (S16, magnitude bumped S28): globální vektor 30 px, rotuje za 4 min wall.
+// 30 px ≈ 2.5 % šířky baseline canvasu — dost na to, aby hráč pozadí cítil dýchat.
+// Period 4 min drží pohyb pomalý (1 cm/min na 16" displayi) — hypnotický, ne rušivý.
+const DRIFT_MAGNITUDE_PX = 30;
 const DRIFT_PERIOD_MS = 240_000;
 // Buffer = chunks mimo viewport, které držíme (plynulý scroll bez popu).
 const CHUNK_BUFFER = 1;

@@ -7,7 +7,7 @@
 
 import Phaser from "phaser";
 import type { World, Task, TaskStatus } from "./model";
-import { formatGameTime, formatEta, taskEtaTicks, describeTaskTarget } from "./world";
+import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./world";
 import {
   COL_HULL_DARK,
   UI_BORDER_DIM,
@@ -15,8 +15,8 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   FONT_FAMILY,
-  FONT_SIZE_HINT,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
+  FONT_SIZE_TIP,
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
   HEX_WARN_AMBER,
@@ -24,14 +24,19 @@ import {
   HEX_INFO_BLUE,
 } from "./palette";
 import { CANVAS_W, HUD_H } from "./ui/layout";
+import {
+  PANEL_DEPTH as DEPTH,
+  PANEL_MARGIN as MARGIN,
+  PANEL_PADDING as PADDING,
+  PANEL_BG_ALPHA,
+  PANEL_HEADER_H as HEADER_H,
+  loadPanelOpenPref,
+  savePanelOpenPref,
+} from "./ui/panel_helpers";
+import { dockManager } from "./ui/dock_manager";
 
-const DEPTH = 1500;
 const PANEL_W = 420;
-const MARGIN = 12;
-const PADDING = 12;
-const PANEL_BG_ALPHA = 0.9;
 const ROW_H = 20;
-const HEADER_H = 40;
 const FOOTER_H = 28;
 const PANEL_H = 576;
 const BODY_H = PANEL_H - HEADER_H - FOOTER_H;
@@ -39,12 +44,8 @@ const MAX_VISIBLE = Math.floor(BODY_H / ROW_H);
 
 const LS_KEY = "voidspan.taskqueue.open";
 
-function loadVisiblePref(): boolean {
-  try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
-}
-function saveVisiblePref(v: boolean): void {
-  try { localStorage.setItem(LS_KEY, v ? "1" : "0"); } catch { /* incognito */ }
-}
+const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
+const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
 // S24 status → barva (5-color semafor, viz GLOSSARY).
 const STATUS_COLOR: Record<TaskStatus, string> = {
@@ -80,17 +81,17 @@ function formatTaskRow(w: World, task: Task): string {
   }
 
   if (task.status === "completed") {
-    const t = task.completedAt != null ? formatGameTime(task.completedAt) : "—";
+    const t = task.completedAt != null ? formatGameTimeShort(task.completedAt) : "—";
     return `[${t}] ${name} OK`;
   }
 
   if (task.status === "failed") {
-    const t = task.completedAt != null ? formatGameTime(task.completedAt) : "—";
+    const t = task.completedAt != null ? formatGameTimeShort(task.completedAt) : "—";
     return `[${t}] ${name} X FAILED`;
   }
 
   // pending / active / paused — progres + ETA.
-  const t = formatGameTime(task.createdAt);
+  const t = formatGameTimeShort(task.createdAt);
   const pct = task.wd_total > 0 ? Math.min(100, (task.wd_done / task.wd_total) * 100) : 0;
   const bar = progressBar(pct);
   const pctStr = `${Math.round(pct)}%`.padStart(4, " ");
@@ -126,6 +127,7 @@ export class TaskQueuePanel {
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
     if (this.visible) this.render();
+    dockManager.register("tasks", "right", PANEL_W, () => this.visible);
   }
 
   setOnToggleOpen(cb: () => void): void {
@@ -151,7 +153,7 @@ export class TaskQueuePanel {
     this.titleText = this.scene.add
       .text(PADDING, PADDING, "Task Queue", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -160,7 +162,7 @@ export class TaskQueuePanel {
     this.closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -182,7 +184,7 @@ export class TaskQueuePanel {
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
-          fontSize: "20px",
+          fontSize: FONT_SIZE_PANEL,
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);
@@ -193,7 +195,7 @@ export class TaskQueuePanel {
     this.footerText = this.scene.add
       .text(PADDING, PANEL_H - FOOTER_H + 4, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_DIM,
       })
       .setOrigin(0, 0);
@@ -211,6 +213,7 @@ export class TaskQueuePanel {
     this.container.setVisible(this.visible);
     saveVisiblePref(this.visible);
     if (this.visible) this.render();
+    dockManager.notifyChange();
   }
 
   isOpen(): boolean {
@@ -222,6 +225,7 @@ export class TaskQueuePanel {
     this.visible = false;
     this.container.setVisible(false);
     saveVisiblePref(false);
+    dockManager.notifyChange();
   }
 
   // Called every frame from GameScene.update() — lightweight.

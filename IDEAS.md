@@ -414,6 +414,65 @@ Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jed
 
 ---
 
+## Layered bay axiom (retired S28)
+
+S28 KISS rozhodnutí: 3-fázové stavění (`void → skeleton → cover → module`)
+zjednodušeno na `void ↔ module`. Skeleton + cover přidávaly geometrii bez
+gameplay benefitu — hráč/Observer stejně sleduje moduly, ne polotovary.
+
+### Co bylo a proč to padlo
+- **Bay tagged union** měl 5 variant: `void`, `skeleton`, `covered`, `module_root`, `module_ref`. HP žilo na vnější vrstvě (skeleton.hp / covered.hp / mod.hp).
+- **CoverVariant** 1..5 — 5 PNG variant pláště pro vizuální variaci („mozaika").
+- **BAY_DEFS** — vlastní recipe pro skeleton (solids 0.05) a covered (solids 0.065), paralela k MODULE_DEFS.
+- **Důvod retire (z user feedbacku S28):** „Trojfázové stavění Skelet-cover-modul je vopruz. Simulace/hra nic neztratí, když se budou moduly budovat rovnou na prázdnu."
+- **Affected:** ~12 souborů, ~150 LOC pryč. Žádný gameplay regression — dnes byly všechny bays buď skeleton (random 3-4) nebo covered (random 2-3) nebo modul. Po refaktoru: 6 void + 7 modulů (1 Engine fix + 6 random).
+
+### Co z toho má cenu vrátit (P2+)
+- **Build task UX** — task `build` cílí na void slot s `target.bayIdx`, postupně staví modul od hp=0 do hp_max (HP-unified damage axiom S16 už podporuje).
+- **Cover variants jako vizuální skin** — 5 PNG (cover1-5.png) ponechány v `public/assets/bays/`. Mohou se vrátit jako alternativní module skin (každý modul random variant pro vizuální mix), ne jako vlastní bay vrstva.
+- **Skeleton jako "rozestavěný modul"** — sprite pro modul s hp < 30 % hp_max (vizuální „kostra"), ne datový stav. Dnes řeší `damageOverlay` s alpha úměrnou missing HP.
+
+### Co nedávat zpět
+- 3-fázové stavění (skeleton → cover → modul) jako gameplay flow.
+- Per-bay HP nezávisle na modulu — komplikovalo Status tree integrity (musela mixovat dva typy vrstev).
+- BAY_DEFS recepty — paralelní katalog k MODULE_DEFS (DRY violation).
+
+---
+
+## Asteroid system (retired S28, návrat P2+)
+
+S28 audit @AUDIT:CODE → overthinked sekce. Celý systém asteroidů smazán
+(`orbit.ts`, GameScene volání, `asteroid2` preload). PNG asset `asteroid2.png`
+ponechán v `public/assets/sprites/` — připravený pro návrat.
+
+### Co bylo a proč to padlo
+- **`createAsteroidOrbit`** — 3 fix asteroidy v různých fázích, oblouková dráha (Phaser Curves.Ellipse), 25 s per oběh, vrchol nad mid zone.
+- **`launchRandomAsteroid`** — random radius/duration/scale/směr; v initial loop spuštěno 10× při startu.
+- **Důvod retire:** dva paralelní spawnery (~100 LOC) s 80% shodným tělem, **čistě dekorativní** — žádný damage, žádný gameplay impact. Vizuál byl pěkný, ale bez interakce „cargo cult". KISS preferuje smazat dokud není mechanika.
+
+### Kdy se vrátí
+**S asteroid damage mechanikou** (`HP-unified damage axiom` výše):
+1. Asteroid hit → `bay.hp -= damage` skokově.
+2. Splash damage na sousední bays podle průměru / rychlosti.
+3. Trigger: scripted event (rare) nebo Network Arc signál (nepřátelská kolonie).
+4. Drone defense (Combat dron, viz „Drone capacity types" S23) — Protokol v3.x Integrated Defense.
+
+### Návrh návratu (kostra)
+- **Datový model:** `Asteroid = { id, x, y, vx, vy, mass, hp }` v `World.asteroids[]`.
+- **Pipeline slot:** nový `asteroidsTick` (slot 8, dnes `arrivalsTick` no-op) — pohyb + collision detection.
+- **Spawn:** `scheduledEvents` (slot 9) emituje asteroid wave; rate dle Act / Belt density.
+- **Render:** stejný `Phaser.Curves.Ellipse` follower pattern, ale dráha může končit kolizí (ne perpetual loop).
+- **Audio:** impact sound (FUTURE — žádný audio v FVP).
+
+### Co z původního orbit.ts má cenu vrátit
+- **Ellipse path math** — vrchol oblouku nad mid zone, radius 900–1800, vertical offset 100–180 (= asteroid prochází přes obrazovku, ne přímo skrz segment).
+- **Self-spin tween** (6–12 s per otáčka) — drobný vizuální detail.
+- **Kontrast scale 2–4×** — vzdálenost narrative (velký = blízko, malý = daleko).
+
+Návrat odhad: ~150 LOC se 3 testy (collision, splash, spawn rate). Není urgent.
+
+---
+
 ## Otevřené nápady k rozpracování
 
 - Greenhorn reinkarnace.

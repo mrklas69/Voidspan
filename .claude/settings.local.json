@@ -29,7 +29,8 @@
       "Bash(powershell:*)",
       "Bash(where.exe:*)",
       "WebFetch(domain:support.forpsi.com)",
-      "WebFetch(domain:www.forpsi.com)"
+      "WebFetch(domain:www.forpsi.com)",
+      "Bash(tasklist)"
     ]
   }
 }

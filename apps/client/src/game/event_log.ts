@@ -6,7 +6,7 @@ import Phaser from "phaser";
 import type { World, Event, EventVerb } from "./model";
 import { statusRating } from "./model";
 import { VERB_CATALOG } from "./events";
-import { formatGameTime } from "./world";
+import { formatGameTimeShort } from "./world";
 import {
   COL_HULL_DARK,
   COL_HULL_MID,
@@ -16,22 +16,27 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   FONT_FAMILY,
-  FONT_SIZE_HINT,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
+  FONT_SIZE_TIP,
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
   HEX_OK_GREEN,
   RATING_COLOR,
 } from "./palette";
 import { CANVAS_W, HUD_H } from "./ui/layout";
+import {
+  PANEL_DEPTH as DEPTH,
+  PANEL_MARGIN as MARGIN,
+  PANEL_PADDING as PADDING,
+  PANEL_BG_ALPHA,
+  PANEL_HEADER_H as HEADER_H,
+  loadPanelOpenPref,
+  savePanelOpenPref,
+} from "./ui/panel_helpers";
+import { dockManager } from "./ui/dock_manager";
 
-const DEPTH = 1500; // nad segment (0), pod modal (2000)
 const PANEL_W = 420;
-const MARGIN = 12;
-const PADDING = 12;
-const PANEL_BG_ALPHA = 0.9;
 const ROW_H = 20;
-const HEADER_H = 40;
 const FOOTER_H = 28;
 
 // S24 KISS: PANEL_H fix (baseline 720 - 60 - 60 - 24 = 576). Při malém okně
@@ -42,13 +47,8 @@ const MAX_VISIBLE = Math.floor(BODY_H / ROW_H);
 
 const LS_KEY = "voidspan.eventlog.open";
 
-function loadVisiblePref(): boolean {
-  try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
-}
-
-function saveVisiblePref(v: boolean): void {
-  try { localStorage.setItem(LS_KEY, v ? "1" : "0"); } catch { /* incognito */ }
-}
+const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
+const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
 const SEVERITY_COLOR: Record<string, string> = {
   crit: HEX_ALERT_RED,
@@ -60,7 +60,7 @@ const SEVERITY_COLOR: Record<string, string> = {
 // Formát: [KDY, KDE] ICON TEXT — lidská věta (axiom S22).
 // Fallback na strukturovaný formát pokud text chybí.
 function formatEventRow(ev: Event): string {
-  const time = formatGameTime(ev.tick);
+  const time = formatGameTimeShort(ev.tick);
   const spacetime = ev.loc ? `[${time}, ${ev.loc}]` : `[${time}]`;
   const entry = VERB_CATALOG[ev.verb];
 
@@ -115,6 +115,7 @@ export class EventLogPanel {
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
     if (this.visible) this.renderRows();
+    dockManager.register("events", "right", PANEL_W, () => this.visible);
   }
 
   private build(): void {
@@ -141,7 +142,7 @@ export class EventLogPanel {
     this.titleText = this.scene.add
       .text(PADDING, PADDING, "Event Log", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -151,7 +152,7 @@ export class EventLogPanel {
     this.closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -168,13 +169,13 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
-    // Body rows — pre-allocate MAX_VISIBLE text objects (20px — S26 VT323 +2).
+    // Body rows — pre-allocate MAX_VISIBLE text objects.
     for (let i = 0; i < MAX_VISIBLE; i++) {
       const rowY = HEADER_H + i * ROW_H;
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
-          fontSize: "20px",
+          fontSize: FONT_SIZE_PANEL,
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);
@@ -186,7 +187,7 @@ export class EventLogPanel {
     const copyBtn = this.scene.add
       .text(PANEL_W - PADDING - 30, PANEL_H - FOOTER_H + 4, "📋", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
       })
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true });
@@ -202,7 +203,7 @@ export class EventLogPanel {
     this.footerText = this.scene.add
       .text(PADDING, PANEL_H - FOOTER_H + 4, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_DIM,
       })
       .setOrigin(0, 0);
@@ -282,6 +283,7 @@ export class EventLogPanel {
       this.lastRenderedCount = -1; // force re-render
       this.renderRows();
     }
+    dockManager.notifyChange();
   }
 
   isOpen(): boolean {
@@ -293,6 +295,7 @@ export class EventLogPanel {
     this.visible = false;
     this.container.setVisible(false);
     saveVisiblePref(false);
+    dockManager.notifyChange();
   }
 
   // Called every frame from GameScene.update() — lightweight, only re-renders on change.

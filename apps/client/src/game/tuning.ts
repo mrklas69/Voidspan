@@ -55,10 +55,8 @@ export const FLOW_WINDOW_GAME_DAYS = 10;
 // §3 HP axiom (S18) — layered bay vrstvy a WD konverze
 // ============================================================================
 
-// HP_MAX v řádech stovek — monotónně vzestupně přes vrstvy (skeleton < covered < module).
 // Module HP_MAX je v `model.ts` MODULE_DEFS tabulce (per module kind).
-export const SKELETON_HP_MAX = 380;
-export const COVERED_HP_MAX = 500;
+// Bay vrstvy (skeleton/covered) retirovány v S28 — void se staví rovnou na modul.
 
 // WD_PER_HP = kolik work-day jednotek stojí oprava 1 HP.
 // Kalibrace P1: s HP_MAX v řádech stovek drží repair task desítky WD, což je
@@ -73,15 +71,9 @@ export const WD_PER_HP = 0.05;
 export const WEAR_MIN = 0.85;
 export const WEAR_MAX = 1.0;
 
-// Kolik náhodných komponent dostane větší poškození při startu.
-// Rozsahy níže musí mít stejnou délku, jinak damages over-/under-apply.
-export const START_DAMAGES_COUNT = 3;
-
-// HP rozsahy (poměr hp_max) pro tři poškození při startu. Index = severity:
-//   0 → critical, 1 → medium, 2 → minor.
-export const CRITICAL_RANGE: readonly [number, number] = [0.10, 0.20];
-export const MEDIUM_RANGE: readonly [number, number]   = [0.40, 0.60];
-export const MINOR_RANGE: readonly [number, number]    = [0.75, 0.90];
+// Při startu jeden critical hit — Observer hned vidí, co opravit (autopilot reaguje).
+// Medium/minor severity dropnuty (S28 KISS) — wear (85–100 %) drží přirozenou variaci HP.
+export const START_DAMAGE_HP_RATIO: readonly [number, number] = [0.10, 0.20];
 
 // ============================================================================
 // §5 Energy (W/WD)

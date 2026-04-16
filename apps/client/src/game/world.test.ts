@@ -1,4 +1,4 @@
-// Unit testy pro world.ts — layered bay axiom (S18).
+// Unit testy pro world — void ↔ module axiom (S28 layered bay retire).
 // Random layout → testy kontrolují invarianty, ne konkrétní pozice.
 
 import { describe, it, expect } from "vitest";
@@ -8,8 +8,6 @@ import {
   enqueueRepairTask,
   getOuterHP,
   averageFlow,
-  SKELETON_HP_MAX,
-  COVERED_HP_MAX,
   FLOW_WINDOW_GAME_DAYS,
   TICKS_PER_GAME_DAY,
 } from "./world";
@@ -28,12 +26,14 @@ describe("createInitialWorld", () => {
     expect(w.resources.energy).toBe(12);
   });
 
-  it("má 16 bays a 7 modulů (Engine + 6 startovních)", () => {
+  it("má 16 bays a 9 modulů (Engine + 8 startovních: Hab+2×Sol+Med+Ass+CP+2×Sto)", () => {
     const w = createInitialWorld();
     expect(w.segment).toHaveLength(16);
-    expect(Object.keys(w.modules).length).toBe(7);
+    expect(Object.keys(w.modules).length).toBe(9);
     expect(w.modules.engine_1?.kind).toBe("Engine");
     expect(w.modules.commandpost_1?.kind).toBe("CommandPost");
+    expect(w.modules.solar_2?.kind).toBe("SolarArray");
+    expect(w.modules.storage_2?.kind).toBe("Storage");
   });
 
   it("má 32 členů posádky v cryo (vazba: MedCore 32 cryolůžek)", () => {
@@ -73,56 +73,17 @@ describe("createInitialWorld", () => {
     }
   });
 
-  it("zbytek bays je mix skeleton + 2-3 covered (dle random)", () => {
+  it("zbytek bays je void (4 prázdné sloty, S28 layered bay retire)", () => {
     const w = createInitialWorld();
-    const skeletons = w.segment.filter((t) => t.kind === "skeleton").length;
-    const covered = w.segment.filter((t) => t.kind === "covered").length;
-    expect(covered).toBeGreaterThanOrEqual(2);
-    expect(covered).toBeLessThanOrEqual(3);
-    // 16 total = 10 engine+6×1×1 moduly (+ ref) = 10 module bays; zbývá 6.
-    // 6 = skeletons + covered.
-    expect(skeletons + covered).toBe(6);
+    const voids = w.segment.filter((t) => t.kind === "void").length;
+    // 16 total = 4 engine + 8×1×1 moduly = 12 module bays; zbývá 4 void.
+    expect(voids).toBe(4);
   });
 
-  it("covered bays mají variant 1..5", () => {
+  it("aspoň jeden modul má critical poškození (< 25 % hp_max, S28 single hit)", () => {
     const w = createInitialWorld();
-    for (const t of w.segment) {
-      if (t.kind === "covered") {
-        expect(t.variant).toBeGreaterThanOrEqual(1);
-        expect(t.variant).toBeLessThanOrEqual(5);
-      }
-    }
-  });
-
-  it("skeleton.hp_max = SKELETON_HP_MAX, covered.hp_max = COVERED_HP_MAX", () => {
-    const w = createInitialWorld();
-    for (const t of w.segment) {
-      if (t.kind === "skeleton") expect(t.hp_max).toBe(SKELETON_HP_MAX);
-      if (t.kind === "covered") expect(t.hp_max).toBe(COVERED_HP_MAX);
-    }
-  });
-
-  it("tři komponenty mají výraznější poškození (< 90 % hp_max)", () => {
-    const w = createInitialWorld();
-    // Collect outer HP pro všech 16 bays a najdi ty s nejvyšším missing ratio.
-    const pcts: number[] = [];
-    const seenModules = new Set<string>();
-    for (let i = 0; i < 16; i++) {
-      const t = w.segment[i]!;
-      if (t.kind === "skeleton" || t.kind === "covered") {
-        pcts.push(t.hp / t.hp_max);
-      } else if (t.kind === "module_root") {
-        if (!seenModules.has(t.moduleId)) {
-          seenModules.add(t.moduleId);
-          const m = w.modules[t.moduleId]!;
-          pcts.push(m.hp / m.hp_max);
-        }
-      }
-    }
-    pcts.sort((a, b) => a - b);
-    // Critical + medium + minor → 3 komponenty pod 90 % (minor je 75..90).
-    const significantlyDamaged = pcts.filter((p) => p < 0.9).length;
-    expect(significantlyDamaged).toBeGreaterThanOrEqual(3);
+    const damaged = Object.values(w.modules).filter((m) => m.hp / m.hp_max < 0.25);
+    expect(damaged.length).toBeGreaterThanOrEqual(1);
   });
 
   it("každý bay je nezávislá instance", () => {
@@ -147,14 +108,19 @@ describe("stepWorld: tick progresuje", () => {
 // === getOuterHP / enqueueRepairTask ===
 
 describe("getOuterHP", () => {
-  it("vrátí HP vnější vrstvy (skeleton/covered) nebo modulu", () => {
+  it("vrátí HP modulu pod bayem; null pro void slot", () => {
     const w = createInitialWorld();
     for (let i = 0; i < 16; i++) {
+      const bay = w.segment[i]!;
       const outer = getOuterHP(w, i);
-      expect(outer).not.toBeNull();
-      if (outer) {
-        expect(outer.hp).toBeGreaterThan(0);
-        expect(outer.hp_max).toBeGreaterThan(0);
+      if (bay.kind === "void") {
+        expect(outer).toBeNull();
+      } else {
+        expect(outer).not.toBeNull();
+        if (outer) {
+          expect(outer.hp).toBeGreaterThan(0);
+          expect(outer.hp_max).toBeGreaterThan(0);
+        }
       }
     }
   });
@@ -287,10 +253,8 @@ describe("QuarterMaster runtime", () => {
     stepWorld(w);
 
     const after = w.tasks.filter((t) => t.kind === "repair").length;
-    // Pokud je něco poškozeného (a v initial worldu random damages jsou), enqueue by měl vytvořit task.
-    const damagedExists = w.segment.some(
-      (b) => (b.kind === "skeleton" || b.kind === "covered") && b.hp < b.hp_max,
-    ) || Object.values(w.modules).some((m) => m.hp < m.hp_max);
+    // Pokud je něco poškozeného (a v initial worldu jeden critical damage je), enqueue by měl vytvořit task.
+    const damagedExists = Object.values(w.modules).some((m) => m.hp < m.hp_max);
     if (damagedExists) {
       expect(after).toBeGreaterThan(before);
     }

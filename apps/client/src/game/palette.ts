@@ -84,6 +84,11 @@ export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // O ikona AppName — k
 // Cíl: jediný zdroj pro jakýkoliv full-screen dim, bez ad-hoc 0x000000 v kódu.
 export const UI_OVERLAY_BLACK  = 0x000000;              // modal/dialog dim — vždy s alpha < 1
 
+// Phaser mask graphics flag — bílá = viditelná oblast masky.
+// NIKOLI vizuální barva (není v 16-color paletě). Drží paletový axiom
+// „zero hex literals outside palette" pro mask use case (alpha-clipping panelů).
+export const UI_MASK_WHITE     = 0xffffff;
+
 // Bay trajectory overlay barvy (S18 orange trajectory axiom, segment.ts).
 // Oranžová = static missing HP, zelená = rising (repair/build), červená = falling (demolish).
 // Vychází ze status akcentů palety — žádné duplicitní saturace.
@@ -145,14 +150,10 @@ export function ratingColor(pct: number): string {
 // Jednotky px, tak jak je přijímá Phaser Text a CSS font-size.
 
 export const FONT_FAMILY    = '"VT323", monospace';
-// S26: +2 px bump pro VT323 (mírně menší x-height než Jersey 25, potřeba víc pixelů pro čitelnost).
-export const FONT_SIZE_HERO    = "50px"; // wordmark, title card
-export const FONT_SIZE_H1      = "38px"; // screen heading
-export const FONT_SIZE_H2      = "30px"; // section heading
-export const FONT_SIZE_HUD     = "24px"; // HUD lišta, primární hodnoty
-export const FONT_SIZE_BODY    = "22px"; // běžný text, task list
-export const FONT_SIZE_LABEL   = "20px"; // popisky, caption, dim text
-export const FONT_SIZE_HINT    = "18px"; // nejmenší čitelný — hotkeys, legenda
-export const FONT_SIZE_TOOLTIP = "21px"; // tooltip body+header (S26 VT323: +5 vs původních 16)
-export const FONT_SIZE_CMD     = "24px"; // Bottom Bar commands
-export const FONT_SIZE_PANEL_HEADER = "24px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)
+// S28: 3-level hierarchie (sjednocení napříč). Větší = vnější, menší = vnitřní.
+//   CHROME — Top Bar + Bottom Bar (vnější chrome aplikace)
+//   PANEL  — všechny floating panely (Info/Moduly/Události/Úkoly), Help modal, welcome
+//   TIP    — tooltipy + footer/btn/hint texty (nejmenší čitelný)
+export const FONT_SIZE_CHROME = "24px"; // Top Bar, Bottom Bar
+export const FONT_SIZE_PANEL  = "22px"; // hlavičky + content všech panelů, modal, welcome
+export const FONT_SIZE_TIP    = "20px"; // tooltipy + drobné texty (footer, btn, hotkey hints)

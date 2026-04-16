@@ -35,12 +35,10 @@ export let MID_H = CANVAS_H - HUD_H - LOG_H;
 export let SEGMENT_X = (CANVAS_W - SEGMENT_W) / 2;
 export let SEGMENT_Y = MID_Y + (MID_H - SEGMENT_H) / 2;
 
-// === Legacy pro actors.ts / side_right.ts (skryté v GameScene, ale import drží) ===
+// === Legacy pro actors.ts (skrytý panel, ale import drží konstanty) ===
 
 export const ACTORS_W = 150;
 export const ACTORS_X = 0;
-export const TASKQUEUE_W = 250;
-export let TASKQUEUE_X = CANVAS_W - TASKQUEUE_W;
 
 // === Recompute ===============================================================
 
@@ -51,7 +49,12 @@ export function recomputeLayout(vw: number, vh: number): void {
   MID_H = Math.max(0, CANVAS_H - HUD_H - LOG_H);
   SEGMENT_X = Math.max(0, Math.round((CANVAS_W - SEGMENT_W) / 2));
   SEGMENT_Y = Math.round(MID_Y + (MID_H - SEGMENT_H) / 2);
-  TASKQUEUE_X = CANVAS_W - TASKQUEUE_W;
+}
+
+// Setter pro DockManager — segment se re-centruje dle otevřených panelů.
+// Volá se z DockManager.onChange listeneru v SegmentPanel + z GameScene.handleResize.
+export function setSegmentX(x: number): void {
+  SEGMENT_X = Math.max(0, Math.round(x));
 }
 
 // === Barvy (aliasy z palety — axiom Voidspan 16) =============================

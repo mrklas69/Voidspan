@@ -13,7 +13,7 @@ import {
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
   FONT_FAMILY,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
 } from "./palette";
 import type { TooltipManager } from "./tooltip";
 
@@ -47,7 +47,7 @@ export function createCommandButton(
   const text = scene.add
     .text(x + w / 2, y + h / 2, label, {
       fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_LABEL,
+      fontSize: FONT_SIZE_PANEL,
       color: UI_TEXT_PRIMARY,
     })
     .setOrigin(0.5, 0.5);

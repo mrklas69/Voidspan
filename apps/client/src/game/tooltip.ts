@@ -16,13 +16,21 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   FONT_FAMILY,
-  FONT_SIZE_TOOLTIP,
+  FONT_SIZE_TIP,
 } from "./palette";
 
 export type TooltipContent = {
   header: string;
   headerColor?: string;
   body: string;
+};
+
+// Společný předek interaktivních Phaser objektů (Text, Image, Rectangle, Container, Graphics).
+// Vyhneme se `as unknown as` castu při ensureInteractive — `input` je nullable
+// dokud `setInteractive(...)` neběží.
+type InteractiveGameObject = Phaser.GameObjects.GameObject & {
+  input: Phaser.Types.Input.InteractiveObject | null;
+  setInteractive: (config?: unknown) => Phaser.GameObjects.GameObject;
 };
 
 const DELAY_MS = 400;
@@ -62,7 +70,7 @@ export class TooltipManager {
     this.text = scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_TOOLTIP,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: wrapMax },
         lineSpacing: 2,
@@ -73,7 +81,7 @@ export class TooltipManager {
     this.headerText = scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_TOOLTIP,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: wrapMax },
         lineSpacing: 2,
@@ -89,16 +97,11 @@ export class TooltipManager {
   // Přidá hover handler na cílový objekt. Provider se volá při show.
   // Target musí být interactive (jinak Phaser hover eventy neposílá).
   attach(
-    target: Phaser.GameObjects.GameObject & { input?: unknown },
+    target: InteractiveGameObject,
     provider: () => string | TooltipContent | null,
   ): void {
-    // Ensure interactive — pro Text/Image/Rectangle je to bezpečné.
-    const anyTarget = target as unknown as {
-      input: Phaser.Types.Input.InteractiveObject | null;
-      setInteractive: (config?: unknown) => unknown;
-    };
-    if (!anyTarget.input) {
-      anyTarget.setInteractive({ useHandCursor: true });
+    if (!target.input) {
+      target.setInteractive({ useHandCursor: true });
     }
 
     let hovering = false;

@@ -13,6 +13,7 @@ import {
   UI_PANEL_BG,
   UI_BORDER_DIM,
   UI_OVERLAY_BLACK,
+  UI_MASK_WHITE,
   COL_HULL_DARK,
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
@@ -20,8 +21,8 @@ import {
   COL_TEXT_WHITE,
   COL_HULL_MID,
   FONT_FAMILY,
-  FONT_SIZE_H2,
-  FONT_SIZE_HINT,
+  FONT_SIZE_PANEL,
+  FONT_SIZE_TIP,
 } from "./palette";
 
 const DISMISS_KEY = "voidspan.welcome.dismissed";
@@ -98,7 +99,7 @@ const SCROLLBAR_GAP = 6;     // mezera od pravého okraje scroll area
 
 export class WelcomeDialog {
   private layer: Phaser.GameObjects.GameObject[] = [];
-  private isOpen = false;
+  private open_ = false;
   private dismissChecked = false;
   private checkMark!: Phaser.GameObjects.Rectangle;
 
@@ -110,7 +111,6 @@ export class WelcomeDialog {
   private scrollAreaH = 0;
   private scrollbarThumb?: Phaser.GameObjects.Rectangle;
 
-  private escHandler?: () => void;
   private enterHandler?: () => void;
   private wheelHandler?: (p: Phaser.Input.Pointer, objs: unknown, dx: number, dy: number) => void;
 
@@ -118,9 +118,13 @@ export class WelcomeDialog {
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.close());
   }
 
+  isOpen(): boolean {
+    return this.open_;
+  }
+
   open(): void {
-    if (this.isOpen) return;
-    this.isOpen = true;
+    if (this.open_) return;
+    this.open_ = true;
 
     const cw = this.scene.scale.width;
     const ch = this.scene.scale.height;
@@ -154,7 +158,7 @@ export class WelcomeDialog {
     const title = this.scene.add
       .text(centerX, titleY, HEADER_TITLE, {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_H2,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0.5, 0)
@@ -162,7 +166,7 @@ export class WelcomeDialog {
     const meta = this.scene.add
       .text(centerX, titleY + 34, HEADER_META, {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_PRIMARY,
       })
       .setOrigin(0.5, 0)
@@ -189,7 +193,7 @@ export class WelcomeDialog {
     this.bodyText = this.scene.add
       .text(scrollAreaX, scrollAreaY, WELCOME_BODY, {
         fontFamily: FONT_FAMILY,
-        fontSize: "20px", // body −2 px oproti FONT_SIZE_BODY (22)
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: scrollAreaW },
         lineSpacing: 2,
@@ -198,7 +202,7 @@ export class WelcomeDialog {
 
     // Mask = neviditelný rect přes viditelnou scroll area. Text mimo se ořízne.
     const maskShape = this.scene.make.graphics({});
-    maskShape.fillStyle(0xffffff);
+    maskShape.fillStyle(UI_MASK_WHITE);
     maskShape.fillRect(scrollAreaX, scrollAreaY, scrollAreaW, scrollAreaH);
     this.bodyText.setMask(maskShape.createGeometryMask());
     this.layer.push(this.bodyText);
@@ -280,7 +284,7 @@ export class WelcomeDialog {
     const cbLabel = this.scene.add
       .text(cbX + cbSize + 10, cbY + cbSize / 2, "Již nezobrazovat", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_PRIMARY,
       })
       .setOrigin(0, 0.5)
@@ -309,7 +313,7 @@ export class WelcomeDialog {
     const btnLabel = this.scene.add
       .text(btnX + btnW / 2, bottomRowY + btnH / 2, "Pokračovat", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TIP,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0.5, 0.5)
@@ -322,10 +326,8 @@ export class WelcomeDialog {
     });
     this.layer.push(btnBg, btnLabel);
 
-    // Klávesy — ENTER a ESC obě zavřou (uloží stav checkboxu).
-    this.escHandler = () => this.close();
+    // Klávesa ENTER zavře (ESC řeší globální handler v GameScene — F5).
     this.enterHandler = () => this.close();
-    this.scene.input.keyboard?.once("keydown-ESC", this.escHandler);
     this.scene.input.keyboard?.once("keydown-ENTER", this.enterHandler);
   }
 
@@ -341,17 +343,13 @@ export class WelcomeDialog {
   }
 
   close(): void {
-    if (!this.isOpen) return;
-    this.isOpen = false;
+    if (!this.open_) return;
+    this.open_ = false;
     if (this.dismissChecked) markDismissed();
 
     if (this.wheelHandler) {
       this.scene.input.off("wheel", this.wheelHandler);
       this.wheelHandler = undefined;
-    }
-    if (this.escHandler) {
-      this.scene.input.keyboard?.off("keydown-ESC", this.escHandler);
-      this.escHandler = undefined;
     }
     if (this.enterHandler) {
       this.scene.input.keyboard?.off("keydown-ENTER", this.enterHandler);

@@ -8,8 +8,6 @@ import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
 import { WelcomeDialog, shouldShowWelcome } from "./welcome";
 import { BackgroundSystem } from "./background";
-import { createAsteroidOrbit, launchRandomAsteroid } from "./orbit";
-const INITIAL_ASTEROID_COUNT = 10;
 import {
   createInitialWorld,
   stepWorld,
@@ -21,15 +19,15 @@ import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
 import { ModulesPanel } from "./modules_panel";
 import { TaskQueuePanel } from "./task_queue";
-import { FONT_FAMILY, FONT_SIZE_CMD } from "./palette";
+import { FONT_FAMILY, FONT_SIZE_CHROME } from "./palette";
 import * as L from "./ui/layout";
-import { COL_TEXT_DIM, recomputeLayout } from "./ui/layout";
+import { COL_TEXT_DIM, recomputeLayout, setSegmentX } from "./ui/layout";
+import { dockManager } from "./ui/dock_manager";
 import { HeaderPanel } from "./ui/header";
 import { SegmentPanel } from "./ui/segment";
-// S19: ActorsPanel (vlevo) a SideRightPanel (Task Queue + Inspector vpravo)
-// dočasně skryté. Detail bay/modulu se zobrazuje jen v hover-kartě (tooltipu).
-// Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panely [K]/[U]/[P].
-// Zdrojové soubory (ui/actors.ts, ui/side_right.ts) zachovány pro budoucí oživení.
+// S19: ActorsPanel (ui/actors.ts) skrytý — detail bay/modulu jen v hover tooltipu.
+// SideRightPanel retirován v S28 (dead code s layered bay refs).
+// Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panel [K].
 
 export class GameScene extends Phaser.Scene {
   private world!: World;
@@ -39,6 +37,7 @@ export class GameScene extends Phaser.Scene {
 
   private tooltips!: TooltipManager;
   private modal!: ModalManager;
+  private welcome?: WelcomeDialog;
   private background!: BackgroundSystem;
 
   private header!: HeaderPanel;
@@ -68,17 +67,10 @@ export class GameScene extends Phaser.Scene {
     for (const kind of AVAILABLE_MODULE_ASSETS) {
       this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
     }
-    // Bay assety (ne-moduly) — layered bay axiom (S18).
-    // Skeleton = vnější vrstva pro nepokrytý bay; cover1-5 = 5 variant pláště.
-    this.load.image("bay_skeleton", "assets/bays/skeleton.png");
-    for (let v = 1; v <= 5; v++) {
-      this.load.image(`bay_cover${v}`, `assets/bays/cover${v}.png`);
-    }
-    // Construction texture fallback byl odstraněn při rename tiles→bays (S18).
-    // segment.ts má guard přes textures.exists — chybějící klíč schová sprite bezpečně.
-
-    // Orbitální dekor.
-    this.load.image("asteroid2", "assets/sprites/asteroid2.png");
+    // Bay assety (skeleton + cover1-5) retirovány s layered bay axiomem (S28).
+    // PNG ponechány v public/assets/bays/ pro případný návrat. segment.ts má
+    // guard přes textures.exists — chybějící klíč schová sprite bezpečně.
+    // Asteroid sprite retirován — viz IDEAS „Asteroid system (P2+)".
 
     // Hero splash pro Welcome dialog (400×300 indexed PNG, 16-color paleta).
     this.load.image("welcome_hero", "assets/splash/welcome.png");
@@ -107,14 +99,6 @@ export class GameScene extends Phaser.Scene {
     this.background = new BackgroundSystem(this, L.CANVAS_W, L.CANVAS_H);
     this.background.update(0);
 
-    // Asteroid v orbitě — střed horizontálně, dlouhý oběh.
-    createAsteroidOrbit(this, L.CANVAS_W / 2, L.CANVAS_H);
-
-    // Start game: vypustit N asteroidů (S16). Každý má náhodnou dráhu/rychlost/scale.
-    for (let i = 0; i < INITIAL_ASTEROID_COUNT; i++) {
-      launchRandomAsteroid(this, L.CANVAS_W / 2);
-    }
-
     // --- Panely ---
     const getWorld = () => this.world;
     this.header = new HeaderPanel(this, getWorld);
@@ -130,6 +114,10 @@ export class GameScene extends Phaser.Scene {
     // S26: radio mutex mezi InfoPanel a ModulesPanel (sdílí levý roh).
     this.infoPanel.setOnToggleOpen(() => this.modulesPanel.close());
     this.modulesPanel.setOnToggleOpen(() => this.infoPanel.close());
+
+    // Initial dock override — pokud panely otevřené z LS prefs, BELT se hned re-centruje.
+    setSegmentX(dockManager.getSegmentX());
+    this.segment.relayout();
 
     this.createLog();
     this.bindDebugKeys();
@@ -147,8 +135,21 @@ export class GameScene extends Phaser.Scene {
     // "Již nezobrazovat"). Otevírá se po vytvoření všech panelů, aby dialog
     // překryl už rozeběhnutou scénu (nezastavuje čas — axiom S19).
     if (shouldShowWelcome()) {
-      new WelcomeDialog(this).open();
+      this.welcome = new WelcomeDialog(this);
+      this.welcome.open();
     }
+  }
+
+  // === Globální ESC handler (F5) ============================================
+  // Pořadí priority: modal (5.x) → welcome dialog → floating panely (M/I/E/T).
+  // Lokální ESC listenery v Modal/Welcome odebrány — jeden handler řídí vše.
+  private handleEscape(): void {
+    if (this.modal.isOpen()) { this.modal.closeFromEsc(); return; }
+    if (this.welcome?.isOpen()) { this.welcome.close(); return; }
+    if (this.modulesPanel.isOpen()) { this.modulesPanel.close(); return; }
+    if (this.infoPanel.isOpen()) { this.infoPanel.close(); return; }
+    if (this.taskQueue.isOpen()) { this.taskQueue.close(); return; }
+    if (this.eventLog.isOpen()) { this.eventLog.close(); return; }
   }
 
   // S24: resize handler. Jen ty panely, které reálně přesouvají něco dle CANVAS_W/H:
@@ -160,6 +161,8 @@ export class GameScene extends Phaser.Scene {
   // InfoPanel je v levém rohu (x = MARGIN fix) → nepotřebuje relayout.
   private handleResize(gameSize: Phaser.Structs.Size): void {
     recomputeLayout(gameSize.width, gameSize.height);
+    // Po recompute baseline aplikuj dock override (BELT centering podle otevřených panelů).
+    setSegmentX(dockManager.getSegmentX());
     this.background.setSize(L.CANVAS_W, L.CANVAS_H);
     this.segment.relayout();
     this.eventLog.relayout();
@@ -206,17 +209,17 @@ export class GameScene extends Phaser.Scene {
   private createLog(): void {
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_CMD,
+      fontSize: FONT_SIZE_CHROME,
       color: COL_TEXT_DIM,
     };
 
     // Touch-friendly command buttons — každý zvlášť klikatelný (mobil bez klávesnice).
     const commands: Array<{ text: string; action: () => void }> = [
-      { text: "[I] info", action: () => this.infoPanel.toggle() },
-      { text: "[M] modules", action: () => this.modulesPanel.toggle() },
-      { text: "[E] events", action: () => this.eventLog.toggle() },
-      { text: "[T] tasks", action: () => this.taskQueue.toggle() },
-      { text: "[H] help", action: () => this.openHelpModal() },
+      { text: "[I]info", action: () => this.infoPanel.toggle() },
+      { text: "[M]modules", action: () => this.modulesPanel.toggle() },
+      { text: "[E]events", action: () => this.eventLog.toggle() },
+      { text: "[T]tasks", action: () => this.taskQueue.toggle() },
+      { text: "[H]help", action: () => this.openHelpModal() },
     ];
 
     this.logCmdTexts = commands.map((cmd) => {
@@ -278,6 +281,9 @@ export class GameScene extends Phaser.Scene {
           break;
         case "h":
           this.openHelpModal();
+          break;
+        case "escape":
+          this.handleEscape();
           break;
         // Šipky nahoru/dolů — scroll hvězdného pozadí (test průhlednosti).
         case "arrowup":

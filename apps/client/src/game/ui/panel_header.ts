@@ -3,7 +3,7 @@
 // Sdílený mezi ActorsPanel, TaskQueuePanel, InspectorPanel.
 
 import Phaser from "phaser";
-import { FONT_FAMILY, FONT_SIZE_PANEL_HEADER, UI_BORDER_DIM } from "../palette";
+import { FONT_FAMILY, FONT_SIZE_PANEL, UI_BORDER_DIM } from "../palette";
 import { COL_TEXT_ACCENT } from "./layout";
 
 export function createPanelHeader(
@@ -15,7 +15,7 @@ export function createPanelHeader(
 ): number {
   scene.add.text(x, y, text, {
     fontFamily: FONT_FAMILY,
-    fontSize: FONT_SIZE_PANEL_HEADER,
+    fontSize: FONT_SIZE_PANEL,
     color: COL_TEXT_ACCENT,
   });
   // Podtržení — tenká linka pod labelem v dim barvě.

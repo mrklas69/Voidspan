@@ -1,10 +1,10 @@
 // ModulesPanel — floating panel layer 3.5 (levý okraj, mutex s InfoPanel).
-// Hotkey [M] toggle. Per-module stats: status, HP%, power, active repair task.
+// Hotkey [M] toggle. Per-module stats: status, HP%, power. Task progress je v [T].
 // Struktura + scroll kopírují InfoPanel (S22 dialog + S24 KISS fix panel).
 
 import Phaser from "phaser";
 import type { World, Module } from "./model";
-import { MODULE_DEFS } from "./model";
+import { MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
 import type { TooltipManager } from "./tooltip";
 
 import {
@@ -14,36 +14,38 @@ import {
   UI_BORDER_DIM,
   UI_TEXT_ACCENT,
   UI_TEXT_PRIMARY,
+  UI_MASK_WHITE,
   FONT_FAMILY,
-  FONT_SIZE_LABEL,
+  FONT_SIZE_PANEL,
+  RATING_COLOR,
   ratingColor,
 } from "./palette";
 import { HUD_H } from "./ui/layout";
+import {
+  PANEL_DEPTH as DEPTH,
+  PANEL_MARGIN as MARGIN,
+  PANEL_PADDING as PADDING,
+  PANEL_BG_ALPHA,
+  PANEL_HEADER_H as HEADER_H,
+  SCROLLBAR_W,
+  SCROLLBAR_GAP,
+  SCROLL_STEP,
+  loadPanelOpenPref,
+  savePanelOpenPref,
+} from "./ui/panel_helpers";
+import { dockManager } from "./ui/dock_manager";
 
-const DEPTH = 1500;
 const PANEL_W = 460;
-const MARGIN = 12;
-const PADDING = 12;
-const PANEL_BG_ALPHA = 0.9;
-const HEADER_H = 40;
-
 const PANEL_H = 576;
 
-const SCROLL_TOP = HEADER_H + 4;
+// Rating řádek (Stav modulů: …) sedí mezi headerem a scroll area — paralelně s InfoPanel.
+const SCROLL_TOP = HEADER_H + 28;
 const SCROLL_H = PANEL_H - SCROLL_TOP - 4;
-const SCROLLBAR_W = 8;
-const SCROLLBAR_GAP = 4;
-const SCROLL_STEP = 24;
 
 const LS_KEY = "voidspan.modulespanel.open";
 
-function loadVisiblePref(): boolean {
-  try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
-}
-
-function saveVisiblePref(v: boolean): void {
-  try { localStorage.setItem(LS_KEY, v ? "1" : "0"); } catch { /* incognito */ }
-}
+const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
+const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
 // Status ikona per modul. Hraje roli „lampička" — rating barví HP text.
 // S27 font fix: ASCII glyphy (VT323 latin-subset nemá ●○▯▼✕ → fallback rozbíjel
@@ -62,6 +64,8 @@ export class ModulesPanel {
   private getWorld: () => World;
 
   private container!: Phaser.GameObjects.Container;
+  private ratingLabel!: Phaser.GameObjects.Text;
+  private ratingValue!: Phaser.GameObjects.Text;
   private bodyText!: Phaser.GameObjects.Text;
   private visible = false;
 
@@ -85,6 +89,7 @@ export class ModulesPanel {
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
     if (this.visible) this.renderBody();
+    dockManager.register("modules", "left", PANEL_W, () => this.visible);
   }
 
   private build(): void {
@@ -108,7 +113,7 @@ export class ModulesPanel {
     const titleText = this.scene.add
       .text(PADDING, PADDING, "Moduly", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -117,7 +122,7 @@ export class ModulesPanel {
     const closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_LABEL,
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -133,6 +138,24 @@ export class ModulesPanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
+    // Rating — fixed nad scroll area. Po vzoru InfoPanelu.
+    this.ratingLabel = this.scene.add
+      .text(PADDING, HEADER_H + 4, "Stav modulů: ", {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_PANEL,
+        color: UI_TEXT_PRIMARY,
+      })
+      .setOrigin(0, 0);
+    this.container.add(this.ratingLabel);
+
+    this.ratingValue = this.scene.add
+      .text(0, HEADER_H + 4, "", {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_PANEL,
+      })
+      .setOrigin(0, 0);
+    this.container.add(this.ratingValue);
+
     const contentW = PANEL_W - 2 * PADDING - SCROLLBAR_W - SCROLLBAR_GAP;
     this.scrollContent = this.scene.add.container(PADDING, SCROLL_TOP);
     this.container.add(this.scrollContent);
@@ -144,7 +167,7 @@ export class ModulesPanel {
     this.bodyText = this.scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: "20px",
+        fontSize: FONT_SIZE_PANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
         wordWrap: { width: contentW },
@@ -153,7 +176,7 @@ export class ModulesPanel {
     this.scrollContent.add(this.bodyText);
 
     const maskGraphics = this.scene.make.graphics({});
-    maskGraphics.fillStyle(0xffffff);
+    maskGraphics.fillStyle(UI_MASK_WHITE);
     maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, contentW, SCROLL_H);
     this.scrollContent.setMask(maskGraphics.createGeometryMask());
 
@@ -248,6 +271,7 @@ export class ModulesPanel {
       this.renderBody();
       this.onToggleOpenCb?.();
     }
+    dockManager.notifyChange();
   }
 
   isOpen(): boolean {
@@ -260,6 +284,7 @@ export class ModulesPanel {
     this.container.setVisible(false);
     saveVisiblePref(false);
     this.dragY = null;
+    dockManager.notifyChange();
   }
 
   render(): void {
@@ -270,6 +295,13 @@ export class ModulesPanel {
   private renderBody(): void {
     const w = this.getWorld();
     const mods = Object.values(w.modules);
+
+    // Rating — avg HP modulů (= w.status.base.pct). 5-color semafor sdílí metriku s HP textem.
+    const rating = statusRating(w.status.base.pct);
+    const label = STATUS_LABELS[rating];
+    this.ratingValue.setText(`${label.cs} (${label.en}) — ${Math.round(w.status.base.pct)}%`);
+    this.ratingValue.setColor(RATING_COLOR[rating]);
+    this.ratingValue.setX(PADDING + this.ratingLabel.width);
 
     // Řazení: online/building nahoře, pak offline, pak destroyed; sekundárně per kind.
     const statusOrder: Record<Module["status"], number> = {
@@ -326,19 +358,7 @@ export class ModulesPanel {
       lines.push(
         `${statusIcon(mod)} ${mod.kind} (${mod.id})  HP ${hpPct}%  P ${pwStr}${capStr}${statusTag}`,
       );
-
-      // Aktivní task na modul — repair / demolish / build.
-      const task = w.tasks.find(
-        (t) => t.target.moduleId === mod.id && (t.status === "active" || t.status === "paused" || t.status === "pending"),
-      );
-      if (task) {
-        const pct = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
-        const barLen = 10;
-        const filled = Math.round((pct / 100) * barLen);
-        const bar = "█".repeat(filled) + "░".repeat(barLen - filled);
-        const statusLabel = task.status === "active" ? "" : ` [${task.status}]`;
-        lines.push(`    └ ${task.kind} ${bar} ${pct}%${statusLabel}`);
-      }
+      // Repair progress větev odstraněna (S28) — patří do Tasks panelu [T].
     }
 
     this.bodyText.setText(lines.join("\n"));
