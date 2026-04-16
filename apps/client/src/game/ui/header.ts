@@ -7,8 +7,8 @@ import pkg from "../../../package.json";
 import type { World } from "../model";
 import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "../model";
 import { formatResource, formatScalar } from "../format";
-import { formatGameTime, computeWork } from "../world";
-import { TOOLTIP_LIST_MAX_ITEMS } from "../tuning";
+import { formatGameTime, computeWork, averageFlow, formatEta } from "../world";
+import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "../tuning";
 import { TooltipManager, type TooltipContent } from "../tooltip";
 import {
   FONT_FAMILY,
@@ -69,18 +69,20 @@ export class HeaderPanel {
       return host;
     })();
     const identityProvider = () =>
-      `Server: ${env}\nVersion: v${pkg.version}\nWorld: Teegarden.Belt1.Seg042`;
+      `Server: ${env}\nVersion: v${pkg.version} (${__BUILD_ID__})\nWorld: Teegarden.Belt1.Seg042`;
     tooltips.attach(this.iconText, identityProvider);
     tooltips.attach(this.appText, identityProvider);
     tooltips.attach(this.metaText, identityProvider);
 
     // Resource bars tooltips — live z `getWorld()`.
-    const resourceTooltips: Array<() => string | TooltipContent> = [
+    // Coin (index 4): infotip nepoužíván (S26) — nespotřebovává/nedoplňuje se
+    // v FVP. Hover text chybí záměrně, žlutá barva = placeholder status.
+    const resourceTooltips: Array<(() => string | TooltipContent) | null> = [
       () => this.energyTooltip(),
       () => this.workTooltip(),
       () => this.solidsTooltip(),
       () => this.fluidsTooltip(),
-      () => this.coinTooltip(),
+      null, // Coin — bez tooltipu
     ];
     for (let i = 0; i < this.resourceTexts.length; i++) {
       const t = this.resourceTexts[i];
@@ -127,7 +129,7 @@ export class HeaderPanel {
     if (w.resources.energy > 0) {
       for (const sw of Object.values(w.software)) {
         if (sw.status === "running") {
-          expense.push({ name: `▣ ${sw.name} ${sw.version}`, pw: -sw.draw_w, hpPct: 100 });
+          expense.push({ name: `${sw.name} ${sw.version}`, pw: -sw.draw_w, hpPct: 100 });
         }
       }
     }
@@ -245,67 +247,84 @@ export class HeaderPanel {
   }
 
   private solidsTooltip(): TooltipContent {
-    const w = this.getWorld();
-    const s = w.resources.solids;
-    const worstPct = Math.round(Math.min(s.metal, s.components));
-    const rating = statusRating(worstPct);
-    const ratingLabel = STATUS_LABELS[rating];
-    const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
-    const lines = [
-      `Worst: ${worstPct} / 100 S`,
-      `≡ Subtypy:`,
-      `   Metal (kov): ${formatScalar(s.metal)}`,
-      `   Components (komponenty): ${formatScalar(s.components)}`,
-      `▼ Výdaje:`,
-    ];
-    if (activeRepairs > 0) {
-      lines.push(`   ✓ Opravy (${activeRepairs}×): per recipe (metal/components)`);
-    } else {
-      lines.push(`   (žádné aktivní opravy)`);
-    }
-    return {
-      header: `Pevné — ${ratingLabel.cs} (${worstPct}%)`,
-      headerColor: RATING_COLOR[rating],
-      body: lines.join("\n"),
-    };
+    return this.stockTooltip("solids", "Pevné", "S", SOLIDS_MAX, (w) => w.resources.solids);
   }
 
   private fluidsTooltip(): TooltipContent {
-    const w = this.getWorld();
-    const f = w.resources.fluids;
-    const worstPct = Math.round(Math.min(f.water, f.coolant));
-    const rating = statusRating(worstPct);
-    const ratingLabel = STATUS_LABELS[rating];
-    const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
-    const lines = [
-      `Worst: ${worstPct} / 100 F`,
-      `≡ Subtypy:`,
-      `   Water (voda): ${formatScalar(f.water)}`,
-      `   Coolant (chladivo): ${formatScalar(f.coolant)}`,
-      `▼ Výdaje:`,
-    ];
-    if (activeRepairs > 0) {
-      lines.push(`   ✓ Opravy (${activeRepairs}×): per recipe (water/coolant)`);
-    } else {
-      lines.push(`   (žádné aktivní opravy)`);
-    }
-    return {
-      header: `Tekutiny — ${ratingLabel.cs} (${worstPct}%)`,
-      headerColor: RATING_COLOR[rating],
-      body: lines.join("\n"),
-    };
+    return this.stockTooltip("fluids", "Tekutiny", "F", FLUIDS_MAX, (w) => w.resources.fluids);
   }
 
-  private coinTooltip(): TooltipContent {
+  // Unified stock tooltip pro S/F (S26 KPI controlling).
+  // Struktura paralelní k E: Kapacita / Příjmy / Výdaje / Bilance / Runway.
+  // Průměry za posledních FLOW_WINDOW_GAME_DAYS game days (rolling window).
+  private stockTooltip(
+    cat: "solids" | "fluids",
+    labelCs: string,
+    unit: "S" | "F",
+    max: number,
+    getCurrent: (w: World) => number,
+  ): TooltipContent {
     const w = this.getWorld();
+    const current = getCurrent(w);
+    const pct = max > 0 ? Math.round((current / max) * 100) : 0;
+    const rating = statusRating(pct);
+    const ratingLabel = STATUS_LABELS[rating];
+
+    const avgIn = averageFlow(w, cat, "in");
+    const avgOut = averageFlow(w, cat, "out");
+    const net = avgIn - avgOut;
+
+    const windowLabel = w.flow.filled === 0
+      ? `(zatím bez dat)`
+      : `(∅ ${w.flow.filled}/${FLOW_WINDOW_GAME_DAYS}d)`;
+
+    const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
+    const I = "   ";
+
+    // Runway — absolutní čas do vyprázdnění / naplnění přes formatEta (ticks).
+    // EPS drží bilanci „stabilní" v neutrálním pásmu (zaokrouhlovací šum flow).
+    const EPS = 0.001;
+    let runwayLine: string;
+    if (Math.abs(net) < EPS) {
+      runwayLine = `Runway: stabilní`;
+    } else if (net > 0) {
+      const daysToFull = (max - current) / net;
+      if (current >= max) runwayLine = `Runway: naplněno`;
+      else runwayLine = `Runway: naplní za ${formatEta(daysToFull * TICKS_PER_GAME_DAY)}`;
+    } else {
+      const daysToEmpty = current / Math.abs(net);
+      if (current <= 0) runwayLine = `Runway: vyčerpáno`;
+      else runwayLine = `Runway: vyprázdní za ${formatEta(daysToEmpty * TICKS_PER_GAME_DAY)}`;
+    }
+
+    const incomeLines: string[] = [];
+    if (avgIn <= 0) incomeLines.push(`${I}(žádné — P2+ kapsle/recyklace/producer)`);
+    else incomeLines.push(`${I}… +${avgIn.toFixed(2)} ${unit}/d`);
+
+    const expenseLines: string[] = [];
+    if (avgOut <= 0) {
+      expenseLines.push(`${I}(žádné aktivní výdaje)`);
+    } else {
+      const repairLabel = activeRepairs > 0
+        ? `✓ Opravy (${activeRepairs}×): per recipe`
+        : `✓ Opravy: per recipe (průměr z okna)`;
+      expenseLines.push(`${I}${repairLabel}  -${avgOut.toFixed(2)} ${unit}/d`);
+    }
+
+    const netSign = net >= 0 ? "+" : "";
+
     return {
-      header: `Kredit`,
-      headerColor: HEX_WARN_ORANGE,
+      header: `${labelCs} — ${ratingLabel.cs} (${pct}%)`,
+      headerColor: RATING_COLOR[rating],
       body: [
-        `◎ ${formatScalar(w.resources.coin)}`,
-        `Platby, mzdy, směna, stavba.`,
-        `Dock cost: ◎ 20`,
-        `Σ  Bilance: P2+`,
+        `${formatScalar(current)} / ${max} ${unit}`,
+        `▤ Kapacita ${max} ${unit}  (FVP fix)`,
+        `▲ Příjmy ${windowLabel}: +${avgIn.toFixed(2)} ${unit}/d`,
+        ...incomeLines,
+        `▼ Výdaje ${windowLabel}: -${avgOut.toFixed(2)} ${unit}/d`,
+        ...expenseLines,
+        `Σ Bilance: ${netSign}${net.toFixed(2)} ${unit}/d`,
+        runwayLine,
       ].join("\n"),
     };
   }
@@ -322,19 +341,14 @@ export class HeaderPanel {
     );
 
     // Resource bary — Energy skalár + Work derivovaný + Solids/Fluids/Coin z modelu.
-    // Solids/Fluids ukazují **worst** subtyp (per axiom „parent = worst child").
-    // Tooltip rozepíše všechny subtypy, číslo v baru = nejkritičtější.
+    // S26 FVP KISS: S/F jsou ploché hodnoty (0..100), bez subtypů.
     const work = computeWork(w);
-    const s = w.resources.solids;
-    const f = w.resources.fluids;
-    const solidsWorst = Math.min(s.metal, s.components);
-    const fluidsWorst = Math.min(f.water, f.coolant);
     const parts: string[] = [
       formatResource(w.resources.energy, w.energyMax, "E"),
       // S24: available/total W — 0/23 při práci dronů, 23/23 při idle.
       `${work.powerAvailable}/${work.powerMax} W`,
-      formatResource(solidsWorst, 100, "S"),
-      formatResource(fluidsWorst, 100, "F"),
+      formatResource(w.resources.solids, SOLIDS_MAX, "S"),
+      formatResource(w.resources.fluids, FLUIDS_MAX, "F"),
       `◎ ${formatScalar(w.resources.coin)}`,
     ];
     // Dashboard semafor — barva v baru sdílí metriku s barvou v tooltip headeru.
@@ -345,8 +359,8 @@ export class HeaderPanel {
     const colors: string[] = [
       ratingColor(energyPct),
       ratingColor(workPct),
-      ratingColor(solidsWorst),
-      ratingColor(fluidsWorst),
+      ratingColor(w.resources.solids),
+      ratingColor(w.resources.fluids),
       HEX_WARN_ORANGE, // Coin: placeholder oranžová (P2+ = porovnání income/expense)
     ];
 

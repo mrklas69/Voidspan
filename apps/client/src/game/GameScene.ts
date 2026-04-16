@@ -19,6 +19,7 @@ import type { World } from "./model";
 import { MODULE_DEFS } from "./model";
 import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
+import { ModulesPanel } from "./modules_panel";
 import { TaskQueuePanel } from "./task_queue";
 import { FONT_FAMILY, FONT_SIZE_CMD } from "./palette";
 import * as L from "./ui/layout";
@@ -45,6 +46,7 @@ export class GameScene extends Phaser.Scene {
   private eventLog!: EventLogPanel;
   private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
+  private modulesPanel!: ModulesPanel;
 
   // S24: Bottom Bar command buttons — drženy jako array, re-pozicovatelné při resize.
   private logCmdTexts: Phaser.GameObjects.Text[] = [];
@@ -120,10 +122,14 @@ export class GameScene extends Phaser.Scene {
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);
+    this.modulesPanel = new ModulesPanel(this, getWorld);
 
     // S24: radio mutex mezi EventLog a TaskQueue (sdílí pravý roh).
     this.eventLog.setOnToggleOpen(() => this.taskQueue.close());
     this.taskQueue.setOnToggleOpen(() => this.eventLog.close());
+    // S26: radio mutex mezi InfoPanel a ModulesPanel (sdílí levý roh).
+    this.infoPanel.setOnToggleOpen(() => this.modulesPanel.close());
+    this.modulesPanel.setOnToggleOpen(() => this.infoPanel.close());
 
     this.createLog();
     this.bindDebugKeys();
@@ -132,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     this.header.attachTooltips(this.tooltips);
     this.segment.attachTooltips(this.tooltips);
     this.infoPanel.attachTooltips(this.tooltips);
+    this.modulesPanel.attachTooltips(this.tooltips);
 
     // S24: resize handler — recomputeLayout + relayout všech panelů.
     this.scale.on("resize", this.handleResize, this);
@@ -164,22 +171,33 @@ export class GameScene extends Phaser.Scene {
 
   private openHelpModal(): void {
     this.modal.open({
-      title: "Help",
+      title: "Nápověda",
       body:
-        "Shortcuts\n" +
+        "Ovládání (Observer)\n" +
         "\n" +
-        "[H]      open / close this Help\n" +
-        "[WASD]   move bay selection (yellow cursor)\n" +
-        "[ESC]    zavřít tento dialog\n" +
+        "Klávesnice:\n" +
+        "  [WASD]  pohyb žlutým kurzorem po trupu\n" +
+        "  [I]     panel Stav — posádka, základna\n" +
+        "  [M]     panel Moduly — HP, výkon, opravy\n" +
+        "  [E]     panel Události — živý kanál\n" +
+        "  [T]     panel Úkoly — fronta QuarterMastera\n" +
+        "  [H]     tato nápověda\n" +
+        "  [ESC]   zavřít dialog\n" +
         "\n" +
-        "Touch\n" +
+        "Myš / dotyk:\n" +
+        "  Klik na políčko   výběr pro inspekci\n" +
+        "  Hover / long-tap  detail (tooltip)\n" +
+        "  Kolečko / drag    scroll v panelu\n" +
         "\n" +
-        "Tap bay = select. Buttons [I] [E] [H] dole.\n" +
-        "Drag event log = scroll.\n" +
+        "Co sleduješ:\n" +
+        "  ▤  horní pruh — pět os zdrojů\n" +
+        "  ⊙  střed — 16 políček trupu\n" +
+        "  ▨  Události — kronika kolonie\n" +
         "\n" +
-        "Observer mode — bez akcí.\n" +
-        "Sleduj postupný zánik kolonie.\n" +
-        "Hover / tap = tooltip s detailem.",
+        "Kolonie běží bez tebe. Nemusíš nic řešit.\n" +
+        "Pozoruj, jak autopilot drží systém naživu.\n" +
+        "\n" +
+        "Voidspan — FVP Observer Edition · v0.7",
     });
   }
 
@@ -195,6 +213,7 @@ export class GameScene extends Phaser.Scene {
     // Touch-friendly command buttons — každý zvlášť klikatelný (mobil bez klávesnice).
     const commands: Array<{ text: string; action: () => void }> = [
       { text: "[I] info", action: () => this.infoPanel.toggle() },
+      { text: "[M] modules", action: () => this.modulesPanel.toggle() },
       { text: "[E] events", action: () => this.eventLog.toggle() },
       { text: "[T] tasks", action: () => this.taskQueue.toggle() },
       { text: "[H] help", action: () => this.openHelpModal() },
@@ -254,6 +273,9 @@ export class GameScene extends Phaser.Scene {
         case "i":
           this.infoPanel.toggle();
           break;
+        case "m":
+          this.modulesPanel.toggle();
+          break;
         case "h":
           this.openHelpModal();
           break;
@@ -287,5 +309,6 @@ export class GameScene extends Phaser.Scene {
     this.eventLog.render();
     this.taskQueue.render();
     this.infoPanel.render();
+    this.modulesPanel.render();
   }
 }

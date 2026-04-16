@@ -2,6 +2,31 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-16 (Sezení 26 — FVP KISS + KPI controlling + 32 crew + ModulesPanel + VT323 + Observer release prep)
+
+- [x] **FVP resources ploché** — `World.resources.solids/fluids: number` (subtypy metal/components/water/coolant → P2+ `Resource subtypes` v TODO). `ResourceRecipe = { solids?, fluids? }` ploché per-HP rates. `SEED_SOLIDS = 90`, `SEED_FLUIDS = 50` (suma dřívějších subtypů).
+- [x] **Rolling-window KPI** — `FlowHistory` ring per game day (`FLOW_WINDOW_GAME_DAYS = 10`), `recordFlow` / `advanceFlowDay` / `averageFlow` helpery. Pipeline slot 12. `consumeResources` volá recordFlow. @THINK var. C (daily ring) vybrána nad EMA/per-tick-ring/instantaneous.
+- [x] **S/F stockTooltip unified** — Kapacita / Příjmy ∅ Nd / Výdaje ∅ Nd / Σ Bilance / Runway slovně (stabilní / naplní za X / vyprázdní za X / naplněno / vyčerpáno). DRY helper pro S i F.
+- [x] **Coin tooltip odstraněn** — žlutá placeholder, FVP = nespotřebovává/nedoplňuje se.
+- [x] **`SOLIDS_MAX` / `FLUIDS_MAX` = 100** v tuning (FVP fix, Storage-based v P2+).
+- [x] **32 crew v cryo** — `SEED_CREW_CRYO = 32`, player + colonist_01..31, vazba MedCore 32 cryolůžek.
+- [x] **ModulesPanel [M]** — nový panel vlevo, mutex s InfoPanel, hotkey M, Bottom Bar tlačítko, LS persist. Agregát (count/HP avg/E net/prod/spotř) + per-module řádek (status ikona / kind / id / HP% / power / capacity / task progress bar). Řazení online → building → demolishing → offline → destroyed.
+- [x] **InfoPanel redukce** — Zásoby + Energie + HP avg řádky odstraněny. Drží jen Posádka + Základna.
+- [x] **InfoPanel `close()` + `setOnToggleOpen()`** — pro mutex s ModulesPanel.
+- [x] **E infotip QM ikona odstraněna** — `▣ QuarterMaster v2.3` → `QuarterMaster v2.3`.
+- [x] **Font VT323** — výměna z Jersey 25 (fallbackoval CS diakritiku na monospace). Index.html + main.ts preload + palette.ts + style-guide.html.
+- [x] **Font size +2 px bump** — FONT_SIZE_HERO/H1/H2/HUD/BODY/LABEL/HINT o 2. Hardcoded "18px" v panelech → "20px" (event_log/info_panel/modules_panel/task_queue/welcome).
+- [x] **`FONT_SIZE_TOOLTIP = 21px`** — samostatná konstanta (jemnější než HINT). Multi-iterace na user feedback (17 → 21).
+- [x] **`FONT_SIZE_CMD = 24px`** — Bottom Bar commands (postupně 18 → 22 → 24 na user žádost).
+- [x] **Observer Edition welcome text** — `Pozorovateli,` / 32 kolonistů / cílová orbita v soustavě Teegarden's Star / QM v2.3 / pět os zdrojů / 32 spících aktérů / teaser probuzení bez CTA. `OBSERVER_ID` exportovaný konst.
+- [x] **Help modal plně CZ** — [WASD/I/M/E/T/H/ESC] labely, myš/dotyk sekce, „Co sleduješ" s ▤/⊙/▨, v0.7 footer.
+- [x] **`PLAYTEST_GUIDE.md` v rootu** — co sledovat, 10–20 min, 5 otázek (dojem/porozumění/tah/pokračování/věta), bez externích odkazů.
+- [x] **v0.7 bump** v `apps/client/package.json`.
+- [x] **Build ID injection** — `vite.config.ts` `define: { __BUILD_ID__: Date.now().toString(36) }`, `src/vite-env.d.ts` globální typ, Top Bar identity tooltip: `Version: v0.7 (mdzwqr6b)`.
+- [x] **Arcs animation experiment** (CommandPost 4 rohová světla) — napsáno a následně vráceno. Module FX zůstává P2+ (user rozhodl animaci řešit až s Player mode + proper asset approach).
+
+**53/53 testů zelených. TS strict čistý. Dev server běží. Observer Edition připravená na GH Pages deploy.**
+
 ## 2026-04-16 (Sezení 25 — Drone E + Recipes + Solids/Fluids + Resource Taxonomy + Food/Air retire)
 
 - [x] **Drone E drain v productionTick** — `delta = (netPower - droneDraw - softwareDraw) / ticksPerHour`. Symetrie E↔W (S23 work eureka) konečně sim-implementována. Cyklus: drone-on → E drop → drone-off → E rise.

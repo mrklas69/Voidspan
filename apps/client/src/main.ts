@@ -21,7 +21,7 @@ const config: Phaser.Types.Core.GameConfig = {
   pixelArt: true,
 };
 
-// Počkej, než browser doručí Jersey 25 (Google Fonts async).
+// Počkej, než browser doručí VT323 (Google Fonts async).
 // Bez toho Phaser nakreslí texty fallback monospacem a teprve při prvním
 // setText po doručení fontu se re-vykreslí — viditelný font swap. Po načtení
 // fontu startujeme Phaser deterministicky.
@@ -31,12 +31,13 @@ async function boot(): Promise<void> {
       // Načti všechny používané velikosti naráz — každá velikost je
       // zvlášť font face entry (browser cache per-size).
       await Promise.all([
-        document.fonts.load('16px "Jersey 25"'),
-        document.fonts.load('18px "Jersey 25"'),
-        document.fonts.load('20px "Jersey 25"'),
-        document.fonts.load('22px "Jersey 25"'),
-        document.fonts.load('28px "Jersey 25"'),
-        document.fonts.load('36px "Jersey 25"'),
+        document.fonts.load('18px "VT323"'),
+        document.fonts.load('20px "VT323"'),
+        document.fonts.load('22px "VT323"'),
+        document.fonts.load('24px "VT323"'),
+        document.fonts.load('30px "VT323"'),
+        document.fonts.load('38px "VT323"'),
+        document.fonts.load('50px "VT323"'),
       ]);
     } catch {
       // I když font load selže (offline / síť), spustíme hru s fallback fontem —

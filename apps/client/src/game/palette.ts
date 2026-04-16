@@ -137,20 +137,22 @@ export function ratingColor(pct: number): string {
 }
 
 // ============================================================================
-// 3. Typografie — Jersey 25 size scale (style-guide §2)
+// 3. Typografie — VT323 size scale (style-guide §2)
 // ============================================================================
-// Jersey 25 je pixel terminál font na 25-unit native gridu (Google Fonts, OFL).
-// Vyšší rozlišení než VT323 → čitelnější na mobilu, drží retro vibe. Drž tyto
-// velikosti, jinak rozbiješ rytmus UI. Jednotky px, tak jak je přijímá Phaser
-// Text a CSS font-size.
+// VT323 je CRT terminál font (Google Fonts, OFL) — plná podpora české
+// diakritiky (S26 upgrade z Jersey 25, který fallbackoval na monospace pro
+// ě/š/č/ř… → vizuální mix). Drž tyto velikosti, jinak rozbiješ rytmus UI.
+// Jednotky px, tak jak je přijímá Phaser Text a CSS font-size.
 
-export const FONT_FAMILY    = '"Jersey 25", monospace';
-export const FONT_SIZE_HERO    = "48px"; // wordmark, title card
-export const FONT_SIZE_H1      = "36px"; // screen heading
-export const FONT_SIZE_H2      = "28px"; // section heading
-export const FONT_SIZE_HUD     = "22px"; // HUD lišta, primární hodnoty
-export const FONT_SIZE_BODY    = "20px"; // běžný text, task list
-export const FONT_SIZE_LABEL   = "18px"; // popisky, caption, dim text
-export const FONT_SIZE_HINT    = "16px"; // nejmenší čitelný — hotkeys, legenda
-export const FONT_SIZE_CMD     = "18px"; // Bottom Bar commands
-export const FONT_SIZE_PANEL_HEADER = "22px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)
+export const FONT_FAMILY    = '"VT323", monospace';
+// S26: +2 px bump pro VT323 (mírně menší x-height než Jersey 25, potřeba víc pixelů pro čitelnost).
+export const FONT_SIZE_HERO    = "50px"; // wordmark, title card
+export const FONT_SIZE_H1      = "38px"; // screen heading
+export const FONT_SIZE_H2      = "30px"; // section heading
+export const FONT_SIZE_HUD     = "24px"; // HUD lišta, primární hodnoty
+export const FONT_SIZE_BODY    = "22px"; // běžný text, task list
+export const FONT_SIZE_LABEL   = "20px"; // popisky, caption, dim text
+export const FONT_SIZE_HINT    = "18px"; // nejmenší čitelný — hotkeys, legenda
+export const FONT_SIZE_TOOLTIP = "21px"; // tooltip body+header (S26 VT323: +5 vs původních 16)
+export const FONT_SIZE_CMD     = "24px"; // Bottom Bar commands
+export const FONT_SIZE_PANEL_HEADER = "24px"; // hlavičky bočních panelů (ACTORS, TASK QUEUE…)

@@ -16,7 +16,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   FONT_FAMILY,
-  FONT_SIZE_HINT,
+  FONT_SIZE_TOOLTIP,
 } from "./palette";
 
 export type TooltipContent = {
@@ -62,7 +62,7 @@ export class TooltipManager {
     this.text = scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TOOLTIP,
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: wrapMax },
         lineSpacing: 2,
@@ -73,7 +73,7 @@ export class TooltipManager {
     this.headerText = scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_HINT,
+        fontSize: FONT_SIZE_TOOLTIP,
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: wrapMax },
         lineSpacing: 2,

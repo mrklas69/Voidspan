@@ -1,9 +1,17 @@
 import { defineConfig } from "vite";
 
+// Build ID — unique identifier per Vite process start (dev i build). Slouží
+// pro verifikaci, že browser načetl aktuální verzi (Top Bar identity tooltip).
+// Regenerates jen při restartu Vite procesu, ne při HMR.
+const BUILD_ID = Date.now().toString(36);
+
 // Vite config — pure-client static build (POC_P1 §12).
 // base "./" = relativní cesty v indexu, aby build fungoval i z podadresáře (GH Pages apod.).
 export default defineConfig({
   base: "./",
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   server: {
     port: 5173,
     open: true, // automaticky otevři prohlížeč při `pnpm dev`

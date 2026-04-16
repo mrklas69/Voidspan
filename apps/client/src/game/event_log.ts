@@ -168,13 +168,13 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
-    // Body rows — pre-allocate MAX_VISIBLE text objects (18px — S22 rozhodnutí).
+    // Body rows — pre-allocate MAX_VISIBLE text objects (20px — S26 VT323 +2).
     for (let i = 0; i < MAX_VISIBLE; i++) {
       const rowY = HEADER_H + i * ROW_H;
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
-          fontSize: "18px",
+          fontSize: "20px",
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);

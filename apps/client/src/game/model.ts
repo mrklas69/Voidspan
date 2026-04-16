@@ -96,27 +96,21 @@ export type ModuleDef = {
   description: string;
 };
 
-// === Resource Recipe (S25) ===
+// === Resource Recipe (S25, zjednodušeno S26 FVP) ===
 //
-// M:N reference Module/Bay → subtypy Solids/Fluids. Recept definuje **per-HP
-// rate** spotřeby — kolik jednotek subtypu se spotřebuje na 1 HP repair / build.
-// Total cost = recipe × hp_max. Repair tick: cost = recipe × hp_delta.
+// Reference Module/Bay → ploché Solids/Fluids numbers. Recept definuje
+// **per-HP rate** spotřeby — kolik jednotek Solids/Fluids se spotřebuje
+// na 1 HP repair / build. Total cost = recipe × hp_max.
 //
-// Sparse: subtypy které se neuvádí = 0 (nezávisí na nich). Skeleton potřebuje
-// jen metal; MedCore = metal + components + water; Engine = metal + coolant.
+// FVP KISS: bez subtypů. Metal/components/water/coolant → P2+ (viz TODO
+// „Resource subtypes"). Sparse: složka která se neuvádí = 0.
 //
-// Při deficitu kterékoli složky: progressTasks tick skip, protocolTick pauza
-// s důvodem `no Solids` / `no Fluids`.
+// Při deficitu Solids nebo Fluids: progressTasks tick skip, protocolTick
+// pauza s důvodem `no Solids` / `no Fluids`.
 
 export type ResourceRecipe = {
-  solids?: {
-    metal?: number;
-    components?: number;
-  };
-  fluids?: {
-    water?: number;
-    coolant?: number;
-  };
+  solids?: number;
+  fluids?: number;
 };
 
 // Bay layered states — recepty pro skeleton/covered (paralela k ModuleDef).
@@ -280,6 +274,31 @@ export type Status = {
   integrity: StatusNode;   // II.2 — integrita (avg HP všech vrstev — bays + moduly)
 };
 
+// === Flow history (S26) — rolling window KPI pro controlling ===
+//
+// Per-category ring buffer délky FLOW_WINDOW_GAME_DAYS. Index 0 = nejstarší
+// game day, poslední = právě akumulovaný. `lastDay` drží game day index aktuální
+// bucket; při přechodu game day se buffer shiftne (shift + push 0).
+//
+// Obecný pattern — dnes pro S/F, P2+ přidat Coin / population / XP. Bez units
+// (jednotka je kategorie — S, F, ◎, …).
+//
+// `filled` = kolik bucketů má reálná data (0..WINDOW). Plní se postupně od
+// startu simu. Průměr = sum(past buckets) / filled — ignoruje prázdné, aby
+// první dny nebyly podhodnocené (viz @THINK A4 decision).
+
+export type FlowRing = {
+  inBuf: number[];   // délka FLOW_WINDOW_GAME_DAYS, index 0 = nejstarší
+  outBuf: number[];
+};
+
+export type FlowHistory = {
+  solids: FlowRing;
+  fluids: FlowRing;
+  lastDay: number;  // který game day právě akumulujeme
+  filled: number;   // počet zaplněných bucketů (0..WINDOW), rostoucí k WINDOW
+};
+
 // === Root state ===
 
 export type World = {
@@ -287,10 +306,11 @@ export type World = {
   phase: Phase;
   resources: {
     energy: number;
-    solids: { metal: number; components: number };
-    fluids: { water: number; coolant: number };
+    solids: number;
+    fluids: number;
     coin: number;
   };
+  flow: FlowHistory;
   segment: Bay[]; // 16 bays (2×8)
   modules: Record<string, Module>;
   actors: Actor[];
@@ -327,11 +347,11 @@ export type World = {
 export const BAY_DEFS: Record<"skeleton" | "covered", BayDef> = {
   skeleton: {
     hp_max: 380,
-    recipe: { solids: { metal: 0.05 } }, // jen kov, holá konstrukce
+    recipe: { solids: 0.05 }, // holá konstrukce
   },
   covered: {
     hp_max: 500,
-    recipe: { solids: { metal: 0.06, components: 0.005 } }, // plášť + těsnění
+    recipe: { solids: 0.065 }, // plášť + těsnění
   },
 };
 
@@ -351,7 +371,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 8,
     max_hp: 500,
-    recipe: { solids: { metal: 0.05, components: 0.03 } }, // panely + elektronika
+    recipe: { solids: 0.08 }, // panely + elektronika
     description: "Solární panel s integrovaným akumulátorem 80 Wh.",
   },
   Engine: {
@@ -366,7 +386,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 60,
     cost_coin: 30,
     max_hp: 1240,
-    recipe: { solids: { metal: 0.12, components: 0.05 }, fluids: { coolant: 0.05 } },
+    recipe: { solids: 0.17, fluids: 0.05 },
     description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
   },
   Dock: {
@@ -381,7 +401,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 20,
     cost_coin: 20,
     max_hp: 1000,
-    recipe: { solids: { metal: 0.10, components: 0.02 } },
+    recipe: { solids: 0.12 },
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
   },
   Habitat: {
@@ -396,7 +416,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 8,
     cost_coin: 10,
     max_hp: 700,
-    recipe: { solids: { metal: 0.07, components: 0.01 }, fluids: { water: 0.02 } },
+    recipe: { solids: 0.08, fluids: 0.02 },
     description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
   },
   Storage: {
@@ -411,7 +431,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 6,
     cost_coin: 8,
     max_hp: 650,
-    recipe: { solids: { metal: 0.05, components: 0.005 } },
+    recipe: { solids: 0.055 },
     description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
   },
   MedCore: {
@@ -426,7 +446,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 9,
     cost_coin: 12,
     max_hp: 800,
-    recipe: { solids: { metal: 0.05, components: 0.05 }, fluids: { water: 0.05, coolant: 0.01 } },
+    recipe: { solids: 0.10, fluids: 0.06 },
     description: "Lékařské centrum. Léčí HP aktérům (P2+).",
   },
   Assembler: {
@@ -441,7 +461,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 15,
     max_hp: 850,
-    recipe: { solids: { metal: 0.07, components: 0.04 }, fluids: { coolant: 0.02 } },
+    recipe: { solids: 0.11, fluids: 0.02 },
     description: "Výrobna modulů z Coin (◎). Bottleneck stavby v P2+.",
   },
   CommandPost: {
@@ -456,7 +476,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 14,
     max_hp: 900,
-    recipe: { solids: { metal: 0.05, components: 0.06 } },
+    recipe: { solids: 0.11 },
     description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
   },
 };

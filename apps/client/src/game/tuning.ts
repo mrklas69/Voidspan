@@ -33,13 +33,23 @@ export const TICKS_PER_WALL_MINUTE = TICKS_PER_SECOND * 60;
 // ============================================================================
 
 // Startovní zdroje kolonie (Q-P1 CAL-B3).
-// S25 KISS retire: SEED_FOOD a SEED_AIR odstraněny — eating/breathing není
-// gameplay osa v FVP (cryo crew, 24th-century recyklace).
-export const SEED_METAL = 60;       // solids.metal — primární surovina pro repair
-export const SEED_COMPONENTS = 30;  // solids.components — high-tech moduly (CommandPost, MedCore)
-export const SEED_WATER = 30;       // fluids.water — Habitat plumbing, MedCore
-export const SEED_COOLANT = 20;     // fluids.coolant — Engine, Assembler, MedCore
+// S26 FVP KISS: subtypy (metal/components/water/coolant) odloženy na P2+.
+// FVP drží ploché Solids/Fluids — dvě generické suroviny pokrývají celou osu.
+// Kalibrace: SEED_SOLIDS = dřívější metal+components; SEED_FLUIDS = water+coolant.
+export const SEED_SOLIDS = 90;      // ploché Solids (repair/build material)
+export const SEED_FLUIDS = 50;      // ploché Fluids (chladicí/provozní média)
 export const SEED_COIN = 20;        // Kredo — CAL-B2 dock cost budget
+
+// Max kapacita S/F — FVP fix 100 (KISS). P2+ Storage-based (Σ capacity_s modulů).
+export const SOLIDS_MAX = 100;
+export const FLUIDS_MAX = 100;
+
+// Rolling window pro KPI flow metriky (Příjmy/Výdaje/Bilance) — počet game days
+// nazad, ze kterých se průměruje. Denní ring buffer: 1 bucket per game day,
+// shift při přechodu game day, avg = sum(filled buckets) / count (ignoruje
+// ještě nezaplněné dny — viz @THINK A4). Obecný flow pattern, platí pro S/F
+// i budoucí Coin/population/XP metriky.
+export const FLOW_WINDOW_GAME_DAYS = 10;
 
 // ============================================================================
 // §3 HP axiom (S18) — layered bay vrstvy a WD konverze
@@ -100,6 +110,11 @@ export const ACTOR_HP_MAX = 100;
 // HP drain per tick při nedostatku (air=0 nebo food=0).
 // 100 HP / (1 game hour = 240 ticků) ≈ smrt za 1 herní hodinu bez zdrojů.
 export const ACTOR_HP_DRAIN_PER_TICK = ACTOR_HP_MAX / (TICKS_PER_GAME_DAY / 16);
+
+// Počet členů posádky v cryo na startu (S26). Vazba: kapacita MedCore = 32
+// cryolůžek. FVP drží všech 32 v cryo, hráč = jeden z nich (id=`player`),
+// ostatních 31 jako `colonist_01..31`. Probuzení přijde s wake-up mechanismem.
+export const SEED_CREW_CRYO = 32;
 
 // ============================================================================
 // §7 Status tree prahy (S20/S21)

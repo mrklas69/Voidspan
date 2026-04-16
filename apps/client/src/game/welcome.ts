@@ -26,34 +26,47 @@ import {
 
 const DISMISS_KEY = "voidspan.welcome.dismissed";
 
+// Observer session ID — sdílený identifier mezi Welcome headerem a Top Bar
+// identity tooltipem. Statický pro FVP (všichni hráči sdílí stejný OBS-∷-042);
+// P2+ bude per-session unikátní.
+export const OBSERVER_ID = "OBS-∷-042";
+
 // Header — title + metadata zobrazené nahoře mimo scrollable area (vždy vidět).
 const HEADER_TITLE = "TEEGARDEN.BELT1 — OBSERVER ACCESS";
-const HEADER_META = "ID: OBS-∷-042  ·  ISSUED: 2387-04-14  ·  read-only";
+const HEADER_META = `ID: ${OBSERVER_ID}  ·  ISSUED: 2387-04-16  ·  read-only`;
 
 // Tělo dialogu — plain text, žádné box-drawing znaky (Jersey 25 není monospace,
 // ASCII rámečky se rozpadají). Scrolluje se uvnitř rámečku panelu.
 const WELCOME_BODY =
-  "Kandidáte,\n" +
+  "Pozorovateli,\n" +
   "\n" +
-  "pozvání k pozorování kolonie bylo přijato.\n" +
-  "Přístup k datovému kanálu je otevřen.\n" +
+  "32 kolonistů už několik pozemských let spí.\n" +
+  "Mateřská loď úspěšně dorazila na cílovou orbitu\n" +
+  "v soustavě Teegarden's Star.\n" +
   "\n" +
-  "Vidíš shora. Zatím neřídíš.\n" +
-  "Tvá přítomnost uvnitř nic nemění —\n" +
-  "zdraví nikoho neprodlužuje, ani nekrátí.\n" +
+  "Palubní systémy běží.\n" +
+  "Konstrukční drony zahájily výstavbu podle programu.\n" +
+  "QuarterMaster v2.3 orchestruje opravy a zásoby.\n" +
   "\n" +
-  "Sledovat můžeš pět os kolektivních zdrojů:\n" +
-  "energii, práci, stravu, vzduch, kredit.\n" +
-  "Šestnáct políček trupu. Šest aktérů v službě.\n" +
+  "Palubní systém brzy probudí první vlnu kolonistů.\n" +
+  "\n" +
+  "Tohle je vstupní kanál pozorovatele.\n" +
+  "Vidíš shora, neřídíš.\n" +
+  "Zdraví nikoho neprodlužuješ, ani nekrátíš.\n" +
+  "\n" +
+  "Sleduj pět os kolektivních zdrojů:\n" +
+  "Energii, Práci, Pevné, Tekutiny, Kredit.\n" +
+  "Šestnáct políček trupu. 32 spících aktérů.\n" +
   "\n" +
   "Kolonie běží v reálném čase. Nezastaví se,\n" +
   "až kanál zavřeš. Vrátíš se do následků.\n" +
   "\n" +
-  "Až budeš chtít víc než pozorovat,\n" +
-  "kapsle ti bude přidělena. Ne dnes.\n" +
-  "Dnes hleď, rozmysli se, vrať se.\n" +
+  "Až Palubní systém probouzení spustí, nabídne ti kapsli.\n" +
+  "V tomto vydání ještě ne. Dnes hleď 10–20 minut,\n" +
+  "rozmysli se a vrať se se zpětnou vazbou —\n" +
+  "o čem to pro tebe bylo.\n" +
   "\n" +
-  "Voidspan — POC P1 · v0.6 · experimentální";
+  "Voidspan — FVP Observer Edition · v0.7";
 
 export function shouldShowWelcome(): boolean {
   try {
@@ -176,7 +189,7 @@ export class WelcomeDialog {
     this.bodyText = this.scene.add
       .text(scrollAreaX, scrollAreaY, WELCOME_BODY, {
         fontFamily: FONT_FAMILY,
-        fontSize: "18px", // body −2 px oproti FONT_SIZE_BODY (20)
+        fontSize: "20px", // body −2 px oproti FONT_SIZE_BODY (22)
         color: UI_TEXT_PRIMARY,
         wordWrap: { width: scrollAreaW },
         lineSpacing: 2,

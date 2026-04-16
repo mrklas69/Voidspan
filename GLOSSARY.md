@@ -142,20 +142,22 @@ Konkrétní implementace Protokolu ve FVP. **Verzovaný SW** (viz Software výš
 
 Total build cost = recipe × HP_MAX. Per-tick repair drain = recipe × hp_delta.
 
-| Item | metal | components | water | coolant |
-|---|---|---|---|---|
-| Bay skeleton | 0.05 | — | — | — |
-| Bay covered | 0.06 | 0.005 | — | — |
-| SolarArray | 0.05 | 0.03 | — | — |
-| Storage | 0.05 | 0.005 | — | — |
-| Habitat | 0.07 | 0.01 | 0.02 | — |
-| MedCore | 0.05 | 0.05 | 0.05 | 0.01 |
-| Assembler | 0.07 | 0.04 | — | 0.02 |
-| CommandPost | 0.05 | 0.06 | — | — |
-| Dock | 0.10 | 0.02 | — | — |
-| Engine | 0.12 | 0.05 | — | 0.05 |
+**S26 FVP KISS:** recepty cílí pouze dvě ploché kategorie — `solids` a `fluids` (žádné subtypy).
 
-Recipe používá jen FVP subtypy: `metal`, `components`, `water`, `coolant`. Food + air retirovány (S25 KISS).
+| Item | solids | fluids |
+|---|---|---|
+| Bay skeleton | 0.050 | — |
+| Bay covered | 0.065 | — |
+| SolarArray | 0.080 | — |
+| Storage | 0.055 | — |
+| Habitat | 0.080 | 0.02 |
+| MedCore | 0.100 | 0.06 |
+| Assembler | 0.110 | 0.02 |
+| CommandPost | 0.110 | — |
+| Dock | 0.120 | — |
+| Engine | 0.170 | 0.05 |
+
+Subtypy (metal/components/water/coolant) odloženy na P2+ — viz TODO „Resource subtypes".
 
 **Task lifecycle (S24):**
 ```
@@ -429,11 +431,9 @@ Odchod hráče = brains pokračuje podle nastaveného presetu. Offline hráč be
 
 **Skupenství axiom (S25):** 3. a 4. kategorie pokrývají **dvě fyzikální skupenství** zdrojových surovin (paralela ve dvou osách): `Pevné/Solids` (solid + granular) vs. `Tekutiny/Fluids` (gas + liquid + plasma). Gramatická paralela: oba plurály neutra.
 
-**Subtypy (FVP):**
-- Pevné (Solids): `metal`, `components`
-- Tekutiny (Fluids): `water`, `coolant`
+**FVP scope (S26 KISS):** pouze dvě ploché suroviny — `solids` a `fluids`. Bez subtypů. Recepty Modulů/Polí cílí pouze S a F per-HP rate.
 
-HUD agreguje subtypy do jednoho baru per kategorie (worst-of axiom — bar ukazuje nejnižší subtyp). Event engine pracuje s detailem (`solids.metal < 10` → trigger „nedostatek kovu"). P2+ může přidávat subtypy a item registr bez změny HUD struktury.
+**Subtypy (P2+):** metal/components (Solids), water/coolant (Fluids) — odloženo na ekonomickou fázi spolu s item registrem a rarity tiers. HUD struktura (S/F bary) zůstane stejná, subtypy se přidají do tooltipů a do receptů.
 
 **Retirované pojmy:**
 - `Slab` → **Solids** (S25 — Slab evokoval „ingot/blok kovu", neodpovídal subtypu food)
@@ -477,11 +477,13 @@ Implikuje (P2+):
 - **Storage typy:** Silo (solids bulk), Tank (fluids), Crate (small batch / mixed). Současný `Storage` modul = generic, P2+ rozdělit.
 - **Metrika v UI:** kg/t pro Solids, l/m³ pro Fluids — `formatScalar` rozšířit o jednotky?
 
-### Mapping současných FVP subtypů na taxonomii
+### FVP → P2+ rozštěpení
 
-FVP má generické subtypy per kategorie jako **placeholdery** pokrývající rarity rozsah. P2+ se rozštěpí na konkrétní items s `edible`/`rarity`/`unit` attributy.
+FVP drží **dvě ploché suroviny** (`solids`, `fluids`) — absolutní minimum pro recepty a material gate. P2+ rozštěpí na konkrétní items s `edible`/`rarity`/`unit` attributy.
 
-| FVP subtyp | Rarity bucket | Příklady ze taxonomie |
+Historický návrh subtypů (před S26 KISS, zůstává jako designová rezerva):
+
+| Subtyp (P2+ kandidát) | Rarity bucket | Příklady ze taxonomie |
 |---|---|---|
 | `solids.metal` | Uncommon | Železo, Měď, Uhlí |
 | `solids.components` | Rare | Elektronika, slitiny (Titan-bázované) |

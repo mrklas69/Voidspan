@@ -7,11 +7,13 @@ import {
   stepWorld,
   enqueueRepairTask,
   getOuterHP,
+  averageFlow,
   SKELETON_HP_MAX,
   COVERED_HP_MAX,
+  FLOW_WINDOW_GAME_DAYS,
+  TICKS_PER_GAME_DAY,
 } from "./world";
 import { MODULE_DEFS } from "./model";
-import type { World } from "./model";
 
 // === Factory ===
 
@@ -20,10 +22,8 @@ describe("createInitialWorld", () => {
     const w = createInitialWorld();
     expect(w.phase).toBe("running");
     expect(w.tick).toBe(0);
-    expect(w.resources.solids.metal).toBe(60);
-    expect(w.resources.solids.components).toBe(30);
-    expect(w.resources.fluids.water).toBe(30);
-    expect(w.resources.fluids.coolant).toBe(20);
+    expect(w.resources.solids).toBe(90);
+    expect(w.resources.fluids).toBe(50);
     expect(w.resources.coin).toBe(20);
     expect(w.resources.energy).toBe(12);
   });
@@ -34,6 +34,15 @@ describe("createInitialWorld", () => {
     expect(Object.keys(w.modules).length).toBe(7);
     expect(w.modules.engine_1?.kind).toBe("Engine");
     expect(w.modules.commandpost_1?.kind).toBe("CommandPost");
+  });
+
+  it("má 32 členů posádky v cryo (vazba: MedCore 32 cryolůžek)", () => {
+    const w = createInitialWorld();
+    expect(w.actors).toHaveLength(32);
+    expect(w.actors.every((a) => a.state === "cryo")).toBe(true);
+    expect(w.actors[0]?.id).toBe("player");
+    expect(w.actors[1]?.id).toBe("colonist_01");
+    expect(w.actors[31]?.id).toBe("colonist_31");
   });
 
   it("Engine 2×2 zabírá 4 bays (1 root + 3 ref) na fixní pozici idx 6", () => {
@@ -288,19 +297,13 @@ describe("QuarterMaster runtime", () => {
   });
 });
 
-// === S25: Solids per repair ===
+// === S25/S26: Recipe repair (FVP plochá Solids/Fluids) ===
 
-describe("Recipe-per-target repair (S25)", () => {
-  // Helper: vynuluj všechny Solids subtypy (recepty cílí různé subtypy per modul).
-  const zeroSolids = (w: World) => {
-    w.resources.solids.metal = 0;
-    w.resources.solids.components = 0;
-  };
-
-  it("repair task čerpá Solids subtyp(y) per recipe", () => {
+describe("Recipe-per-target repair (S25, S26 FVP)", () => {
+  it("repair task čerpá Solids per recipe", () => {
     const w = createInitialWorld();
     w.resources.energy = w.energyMax;
-    const metalBefore = w.resources.solids.metal;
+    const solidsBefore = w.resources.solids;
     let idx = -1;
     for (let i = 0; i < 16; i++) {
       const outer = getOuterHP(w, i);
@@ -311,11 +314,11 @@ describe("Recipe-per-target repair (S25)", () => {
 
     for (let i = 0; i < 10; i++) stepWorld(w);
 
-    // Metal je v každém recipe — musí klesnout.
-    expect(w.resources.solids.metal).toBeLessThan(metalBefore);
+    // Solids v každém recipe — musí klesnout.
+    expect(w.resources.solids).toBeLessThan(solidsBefore);
   });
 
-  it("při Solids=0 protocolTick pauzne repair task + monitor label 'no <subtype>'", () => {
+  it("při Solids=0 protocolTick pauzne repair task + monitor label 'no Solids'", () => {
     const w = createInitialWorld();
     w.resources.energy = w.energyMax;
     let idx = -1;
@@ -328,18 +331,17 @@ describe("Recipe-per-target repair (S25)", () => {
     const repair = w.tasks.find((t) => t.kind === "repair");
     expect(repair).toBeDefined();
 
-    zeroSolids(w);
+    w.resources.solids = 0;
     stepWorld(w);
     expect(repair!.status).toBe("paused");
     const monitor = w.tasks.find((t) => t.status === "eternal");
-    // Subtyp závisí na recipe target — ale „no " prefix je vždy.
-    expect(monitor?.label).toMatch(/Paused — no (food|metal|components|air|water|coolant)/);
+    expect(monitor?.label).toMatch(/Paused — no (Solids|Fluids)/);
   });
 
   it("progressTasks neprogresuje repair při Solids deficit (wd_done se nezvýší)", () => {
     const w = createInitialWorld();
     w.resources.energy = w.energyMax;
-    zeroSolids(w);
+    w.resources.solids = 0;
     let idx = -1;
     for (let i = 0; i < 16; i++) {
       const outer = getOuterHP(w, i);
@@ -367,17 +369,75 @@ describe("Recipe-per-target repair (S25)", () => {
     stepWorld(w);
     const repair = w.tasks.find((t) => t.kind === "repair")!;
 
-    // Vynuluj všechny Solids → pauza.
-    zeroSolids(w);
+    // Vynuluj Solids → pauza.
+    w.resources.solids = 0;
     stepWorld(w);
     expect(repair.status).toBe("paused");
 
     // Restock → další tick resume.
-    w.resources.solids.metal = 60;
-    w.resources.solids.components = 30;
+    w.resources.solids = 90;
     w.resources.energy = w.energyMax;
     stepWorld(w);
     expect(repair.status).toBe("active");
+  });
+});
+
+// === S26: Flow history (rolling-window KPI) ===
+
+describe("Flow history (S26)", () => {
+  it("createInitialWorld inicializuje prázdné ring bufery délky FLOW_WINDOW_GAME_DAYS", () => {
+    const w = createInitialWorld();
+    expect(w.flow.solids.inBuf).toHaveLength(FLOW_WINDOW_GAME_DAYS);
+    expect(w.flow.solids.outBuf).toHaveLength(FLOW_WINDOW_GAME_DAYS);
+    expect(w.flow.fluids.inBuf).toHaveLength(FLOW_WINDOW_GAME_DAYS);
+    expect(w.flow.filled).toBe(0);
+    expect(w.flow.lastDay).toBe(0);
+  });
+
+  it("averageFlow vrací 0 dokud není uzavřen první game day (filled=0)", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    enqueueRepairTask(w, idx);
+    for (let i = 0; i < 50; i++) stepWorld(w);
+    // Výdaje se akumulují do partial today bucket, ale filled=0 → avg=0.
+    expect(w.flow.filled).toBe(0);
+    expect(averageFlow(w, "solids", "out")).toBe(0);
+  });
+
+  it("po přechodu na nový game day se filled inkrementuje + avg reflektuje minulý den", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    enqueueRepairTask(w, idx);
+    // Tiknout přes hranici game day (960 ticků) — ale udržet E max aby repair nešel do pauzy.
+    for (let i = 0; i < TICKS_PER_GAME_DAY + 5; i++) {
+      w.resources.energy = w.energyMax;
+      stepWorld(w);
+    }
+    expect(w.flow.filled).toBeGreaterThanOrEqual(1);
+    // Výdaje Solids za uzavřený první den jsou > 0 (repair drénuje recipe).
+    expect(averageFlow(w, "solids", "out")).toBeGreaterThan(0);
+    // Income = 0 (žádný producer v FVP).
+    expect(averageFlow(w, "solids", "in")).toBe(0);
+  });
+
+  it("filled se klampuje na FLOW_WINDOW_GAME_DAYS (ring je plně nasycen)", () => {
+    const w = createInitialWorld();
+    // Simuluj tick přes WINDOW+2 game days bez aktivity (jen advance).
+    w.tick = (FLOW_WINDOW_GAME_DAYS + 2) * TICKS_PER_GAME_DAY;
+    // Přímo volání přes stepWorld je drahé; stačí jeden krok — advanceFlowDay
+    // chytí 12 dní najednou + clamp.
+    stepWorld(w);
+    expect(w.flow.filled).toBe(FLOW_WINDOW_GAME_DAYS);
   });
 });
 

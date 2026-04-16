@@ -2,7 +2,7 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně.
 
-import type { World, Bay, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode, ResourceRecipe } from "./model";
+import type { World, Bay, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode, ResourceRecipe, FlowRing } from "./model";
 import { TASK_DEFS, MODULE_DEFS, BAY_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "./model";
 import { appendEvent } from "./events";
 import {
@@ -10,11 +10,13 @@ import {
   TICKS_PER_SECOND,
   TICKS_PER_GAME_DAY,
   TICKS_PER_WALL_MINUTE,
-  SEED_METAL,
-  SEED_COMPONENTS,
-  SEED_WATER,
-  SEED_COOLANT,
+  SEED_SOLIDS,
+  SEED_FLUIDS,
   SEED_COIN,
+  SEED_CREW_CRYO,
+  SOLIDS_MAX,
+  FLUIDS_MAX,
+  FLOW_WINDOW_GAME_DAYS,
   SKELETON_HP_MAX,
   COVERED_HP_MAX,
   WD_PER_HP,
@@ -48,6 +50,9 @@ export {
   COVERED_HP_MAX,
   WD_PER_HP,
   ENERGY_SEED,
+  SOLIDS_MAX,
+  FLUIDS_MAX,
+  FLOW_WINDOW_GAME_DAYS,
 };
 
 export function formatGameTime(tick: number): string {
@@ -234,18 +239,37 @@ export function createInitialWorld(): World {
   // 7) Tři random poškození — critical / medium / minor na tři různé komponenty.
   applyRandomDamages(segment, modules);
 
+  // Posádka — SEED_CREW_CRYO aktérů v cryo (vazba: MedCore 32 cryolůžek).
+  // Hráč = id `player`, ostatní colonist_01..colonist_NN. Všichni start cryo;
+  // wake-up přijde s mechanismem (IDEAS/TODO).
   const actors: Actor[] = [
     { id: "player", kind: "player", state: "cryo", hp: ACTOR_HP_MAX, hp_max: ACTOR_HP_MAX, work: 8 },
   ];
+  for (let i = 1; i < SEED_CREW_CRYO; i++) {
+    actors.push({
+      id: `colonist_${String(i).padStart(2, "0")}`,
+      kind: "player",
+      state: "cryo",
+      hp: ACTOR_HP_MAX,
+      hp_max: ACTOR_HP_MAX,
+      work: 8,
+    });
+  }
 
   const world: World = {
     tick: 0,
     phase: "running",
     resources: {
       energy: ENERGY_SEED,
-      solids: { metal: SEED_METAL, components: SEED_COMPONENTS },
-      fluids: { water: SEED_WATER, coolant: SEED_COOLANT },
+      solids: SEED_SOLIDS,
+      fluids: SEED_FLUIDS,
       coin: SEED_COIN,
+    },
+    flow: {
+      solids: { inBuf: new Array(FLOW_WINDOW_GAME_DAYS).fill(0), outBuf: new Array(FLOW_WINDOW_GAME_DAYS).fill(0) },
+      fluids: { inBuf: new Array(FLOW_WINDOW_GAME_DAYS).fill(0), outBuf: new Array(FLOW_WINDOW_GAME_DAYS).fill(0) },
+      lastDay: 0,
+      filled: 0, // roste do WINDOW s každým uzavřeným game day
     },
     segment,
     modules,
@@ -445,6 +469,63 @@ function assignIdleActors(w: World): void {
   }
 }
 
+// === Flow history (S26) — rolling-window KPI akumulace ==================
+//
+// Per game day ring buffer. Poslední index (WINDOW-1) = aktuální (partial)
+// den, nižší indexy = předchozí uzavřené dny. advanceFlowDay volán v pipeline
+// rotuje buffer při přechodu na nový game day.
+
+export type FlowCategory = "solids" | "fluids";
+export type FlowDirection = "in" | "out";
+
+// Zaznamenej delta do aktuálního bucket (poslední index = partial today).
+// Volá se při každém consume/produce — delta je vždy kladná hodnota množství.
+function recordFlow(w: World, cat: FlowCategory, dir: FlowDirection, amount: number): void {
+  if (amount <= 0) return;
+  const ring = w.flow[cat];
+  const buf = dir === "in" ? ring.inBuf : ring.outBuf;
+  const last = buf.length - 1;
+  buf[last] = (buf[last] ?? 0) + amount;
+}
+
+// Posun na nový game day pokud tick překročil hranici. Shiftne oba buf (posune
+// nejstarší ven, push 0 na konec jako nový accumulator).
+function advanceFlowDay(w: World): void {
+  const currentDay = Math.floor(w.tick / TICKS_PER_GAME_DAY);
+  if (currentDay <= w.flow.lastDay) return;
+  const days = currentDay - w.flow.lastDay;
+  for (let i = 0; i < days; i++) {
+    shiftRing(w.flow.solids);
+    shiftRing(w.flow.fluids);
+    // `filled` roste s každým uzavřeným dnem, clamp na WINDOW (ring plně nasycen).
+    w.flow.filled = Math.min(FLOW_WINDOW_GAME_DAYS, w.flow.filled + 1);
+  }
+  w.flow.lastDay = currentDay;
+}
+
+function shiftRing(r: FlowRing): void {
+  r.inBuf.shift();
+  r.inBuf.push(0);
+  r.outBuf.shift();
+  r.outBuf.push(0);
+}
+
+// Vrátí průměr in/out per game day z window.
+// Podle @THINK A4 rozhodnutí: průměr jen přes zaplněné dny + ignoruj aktuální
+// partial den (buffer[last] se plní in-progress). Dokud není `filled >= 1`,
+// vrací 0 (nemáme data).
+export function averageFlow(w: World, cat: FlowCategory, dir: FlowDirection): number {
+  if (w.flow.filled === 0) return 0;
+  const ring = w.flow[cat];
+  const buf = dir === "in" ? ring.inBuf : ring.outBuf;
+  // Zaplněné dny jsou na koncových `filled` pozicích PŘED partial today
+  // (buf[last] = partial). Takže range [last-filled .. last-1].
+  const last = buf.length - 1;
+  let sum = 0;
+  for (let i = last - w.flow.filled; i < last; i++) sum += buf[i] ?? 0;
+  return sum / w.flow.filled;
+}
+
 // === Recipe helpers (S25) — M:N reference Module/Bay → Solids/Fluids subtypy ===
 
 // Vrátí recipe pro target tasku (bay-layered nebo modul). null = no recipe (build/demolish bez recepty zatím).
@@ -463,39 +544,33 @@ function getTaskRecipe(w: World, task: Task): ResourceRecipe | null {
   return null;
 }
 
-// Vrátí jméno první chybějící suroviny (recipe × scale > dostupnost), nebo null.
-// Sparse iterace přes všechny subtypy — undefined složka = 0, automaticky OK.
+// Vrátí jméno první chybějící kategorie ("Solids" / "Fluids") nebo null.
+// S26 FVP KISS: dvě ploché suroviny, bez subtypů.
 function whichResourceMissing(w: World, recipe: ResourceRecipe, scale: number): string | null {
-  const s = recipe.solids;
-  if (s) {
-    if ((s.metal ?? 0)      * scale > w.resources.solids.metal)      return "metal";
-    if ((s.components ?? 0) * scale > w.resources.solids.components) return "components";
-  }
-  const f = recipe.fluids;
-  if (f) {
-    if ((f.water ?? 0)   * scale > w.resources.fluids.water)   return "water";
-    if ((f.coolant ?? 0) * scale > w.resources.fluids.coolant) return "coolant";
-  }
+  if ((recipe.solids ?? 0) * scale > w.resources.solids) return "Solids";
+  if ((recipe.fluids ?? 0) * scale > w.resources.fluids) return "Fluids";
   return null;
 }
 
-// Spotřebuj recipe × scale ze zdrojů (clamp 0+).
+// Spotřebuj recipe × scale ze zdrojů (clamp 0+) + zaznamenej do flow history.
 function consumeResources(w: World, recipe: ResourceRecipe, scale: number): void {
-  const s = recipe.solids;
-  if (s) {
-    if (s.metal)      w.resources.solids.metal      = Math.max(0, w.resources.solids.metal      - s.metal      * scale);
-    if (s.components) w.resources.solids.components = Math.max(0, w.resources.solids.components - s.components * scale);
+  if (recipe.solids) {
+    const amount = recipe.solids * scale;
+    const taken = Math.min(w.resources.solids, amount);
+    w.resources.solids = Math.max(0, w.resources.solids - amount);
+    recordFlow(w, "solids", "out", taken);
   }
-  const f = recipe.fluids;
-  if (f) {
-    if (f.water)   w.resources.fluids.water   = Math.max(0, w.resources.fluids.water   - f.water   * scale);
-    if (f.coolant) w.resources.fluids.coolant = Math.max(0, w.resources.fluids.coolant - f.coolant * scale);
+  if (recipe.fluids) {
+    const amount = recipe.fluids * scale;
+    const taken = Math.min(w.resources.fluids, amount);
+    w.resources.fluids = Math.max(0, w.resources.fluids - amount);
+    recordFlow(w, "fluids", "out", taken);
   }
 }
 
-// Najde první chybějící subtyp napříč všemi non-finished repair tasky. null = vše OK.
+// Najde první chybějící kategorii napříč všemi non-finished repair tasky. null = vše OK.
 // Slouží protocolTicku pro globální material gate + monitor label důvod.
-function firstMissingRecipeSubtype(w: World): string | null {
+function firstMissingRecipeCategory(w: World): string | null {
   for (const t of w.tasks) {
     if (t.kind !== "repair") continue;
     if (t.status === "completed" || t.status === "failed") continue;
@@ -641,6 +716,7 @@ export function stepWorld(w: World): void {
   scheduledEvents(w);     // slot 9 — no-op
   recomputeStatus(w);     // slot 10 — no-op
   appendEventLog(w);      // slot 11 — no-op
+  advanceFlowDay(w);      // slot 12 (S26) — rotace rolling-window KPI bufferu
 }
 
 // === Pipeline sloty (stuby + legacy wrap) ===
@@ -704,8 +780,8 @@ function protocolTick(w: World): void {
   const hasWorkers = droneCapable || actorCapable;
 
   // Material gate (S25): kterákoli existující repair task vyžaduje recipe složky.
-  // Pokud kterákoli chybí → pause s důvodem podle subtypu.
-  const missingMaterial = firstMissingRecipeSubtype(w);
+  // Pokud Solids/Fluids chybí → pause s důvodem podle kategorie.
+  const missingMaterial = firstMissingRecipeCategory(w);
   const noMaterial = missingMaterial !== null;
 
   // QM offline → gate force pause a žádné resume/enqueue.
@@ -935,13 +1011,10 @@ function recomputeStatus(w: World): void {
   }
   const basePct = baseCount > 0 ? baseSum / baseCount : 0;
 
-  // II.1 Supplies — worst-of(metal, components, water, coolant).
-  // S25: food + air retirovány. Solids + Fluids subtypy slouží jako runway proxy.
+  // II.1 Supplies — worst-of(Solids, Fluids).
+  // S26 FVP KISS: bez subtypů, ploché S/F jako runway proxy.
   const r = w.resources;
-  const suppliesPct = Math.min(
-    r.solids.metal, r.solids.components,
-    r.fluids.water, r.fluids.coolant,
-  );
+  const suppliesPct = Math.min(r.solids, r.fluids);
 
   // II.2 Integrity — avg HP% všech vrstev (bays + moduly).
   // Energie je samostatná osa (E bar) — nemíchat do integrity.
@@ -995,14 +1068,8 @@ function recomputeStatus(w: World): void {
     }
   };
 
-  // Supplies: zobraz konkrétní worst subtyp (Metal/Components/Water/Coolant).
-  const suppliesEntries: Array<[string, number]> = [
-    ["Metal", r.solids.metal],
-    ["Components", r.solids.components],
-    ["Water", r.fluids.water],
-    ["Coolant", r.fluids.coolant],
-  ];
-  const driverLabel = suppliesEntries.reduce((min, e) => (e[1] < min[1] ? e : min))[0];
+  // Supplies: zobraz worst kategorii (Solids/Fluids). FVP KISS bez subtypů.
+  const driverLabel = r.solids <= r.fluids ? "Solids" : "Fluids";
   emitSign("crew", w.status.crew, crewPct, `${aliveActors}/${totalActors} alive`);
   emitSign("base", w.status.base, basePct, `avg HP ${Math.round(basePct)}%`);
   emitSign("supplies", w.status.supplies, suppliesPct, undefined, driverLabel);

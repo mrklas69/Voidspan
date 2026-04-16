@@ -49,9 +49,10 @@ Axiom zapsán v `IDEAS.md` → „UI Layer Stack axiom (S19)". Úkoly:
 
 ## Resource Taxonomy (P2+, S25 design prep)
 
-Rarity 5 tierů + Logistics matrix kanonizovány v GLOSSARY. FVP drží generic placeholder subtypy. P2+ rozpracování:
+Rarity 5 tierů + Logistics matrix kanonizovány v GLOSSARY. FVP (S26 KISS) drží pouze dvě ploché suroviny `solids` a `fluids`. P2+ rozpracování:
 
-- [ ] **Item registr** — každý konkrétní item má `{ name_cs, name_en, rarity, category, unit }`. Mapování FVP subtypů → konkrétní items.
+- [ ] **Resource subtypes** — rozštěpit `solids` → `{ metal, components, … }` a `fluids` → `{ water, coolant, … }`. Vrátit M:N reference Module/Bay → subtypy v `ResourceRecipe`. HUD bary zůstávají per kategorie (worst-of subtypů), tooltipy rozepíšou detail. V S25 návrh hotov, v S26 stažen do P2+ jako KISS.
+- [ ] **Item registr** — každý konkrétní item má `{ name_cs, name_en, rarity, category, unit }`. Mapování subtypů → konkrétní items.
 - [ ] **Capsule drop tabulky** — drop chance per rarity tier (Common 60% / Uncommon 25% / Rare 10% / Exclusive 4% / Epic 1%, kalibrace TBD).
 - [ ] **Market** — commodities exchange s cenami per rarity tier (volatilita Common low → Epic enormous).
 - [ ] **Conveyor / Pipeline moduly** — dedikovaná doprava per skupenství.
