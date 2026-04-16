@@ -1063,7 +1063,7 @@ function recomputeStatus(w: World): void {
       appendEvent(w, "SIGN", {
         item: name,
         amount: Math.round(pct),
-        text: `${cs} ${dir} ${prevLabel} → ${newLabel} (${Math.round(pct)}%)${extra}`,
+        text: `${cs} ${dir} ${prevLabel} > ${newLabel} (${Math.round(pct)}%)${extra}`,
       });
     }
   };

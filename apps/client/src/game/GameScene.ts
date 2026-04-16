@@ -190,9 +190,9 @@ export class GameScene extends Phaser.Scene {
         "  Kolečko / drag    scroll v panelu\n" +
         "\n" +
         "Co sleduješ:\n" +
-        "  ▤  horní pruh — pět os zdrojů\n" +
-        "  ⊙  střed — 16 políček trupu\n" +
-        "  ▨  Události — kronika kolonie\n" +
+        "  Top bar     pět os zdrojů\n" +
+        "  Střed       16 políček trupu\n" +
+        "  Události    kronika kolonie\n" +
         "\n" +
         "Kolonie běží bez tebe. Nemusíš nic řešit.\n" +
         "Pozoruj, jak autopilot drží systém naživu.\n" +

@@ -12,32 +12,35 @@ export type VerbEntry = {
   label: string;
 };
 
+// S27 Font glyph fallback fix: ASCII / Latin-1 substituce za exotické Unicode
+// glyphy, které VT323 latin-subset nemá → browser fallback na monospace rozbíjel
+// baseline. Bezpečné držet: `× · » − ↑ ↓ ¤` (Latin-1 + latin subset arrows).
 export const VERB_CATALOG: Record<EventVerb, VerbEntry> = {
-  BOOT: { icon: "◉", label: "start simulace" },
-  SPWN: { icon: "+", label: "spawn" },
-  DEAD: { icon: "†", label: "aktér umřel" },
-  ARRV: { icon: "↓", label: "landing / dokování" },
-  DPRT: { icon: "↑", label: "odlet" },
-  REPR: { icon: "✓", label: "repair" },
-  BLD:  { icon: "▲", label: "build" },
-  DEMO: { icon: "▽", label: "demolish" },
-  DMG:  { icon: "×", label: "damage" },
-  DECY: { icon: "↘", label: "decay" },
-  DRN:  { icon: "−", label: "resource drain" },
-  PROD: { icon: "*", label: "produkce" },
-  HAUL: { icon: "→", label: "transport" },
-  ASSN: { icon: "»", label: "task assigned" },
-  CMPL: { icon: "✓✓", label: "task completed" },
-  FAIL: { icon: "!", label: "task failed" },
-  IDLE: { icon: "·", label: "idle" },
-  WAKE: { icon: "☆", label: "probuzen" },
-  DOCK: { icon: "⊙", label: "dock event" },
-  TICK: { icon: "·", label: "tick marker" },
-  SIGN: { icon: "⚑", label: "signal — level change" },
-  EVNT: { icon: "◆", label: "scripted event" },
+  BOOT: { icon: "*",  label: "start simulace" },
+  SPWN: { icon: "+",  label: "spawn" },
+  DEAD: { icon: "x",  label: "aktér umřel" },
+  ARRV: { icon: "↓",  label: "landing / dokování" },
+  DPRT: { icon: "↑",  label: "odlet" },
+  REPR: { icon: "+",  label: "repair" },
+  BLD:  { icon: "+",  label: "build" },
+  DEMO: { icon: "v",  label: "demolish" },
+  DMG:  { icon: "×",  label: "damage" },
+  DECY: { icon: "\\", label: "decay" },
+  DRN:  { icon: "−",  label: "resource drain" },
+  PROD: { icon: "*",  label: "produkce" },
+  HAUL: { icon: ">",  label: "transport" },
+  ASSN: { icon: "»",  label: "task assigned" },
+  CMPL: { icon: "OK", label: "task completed" },
+  FAIL: { icon: "!",  label: "task failed" },
+  IDLE: { icon: "·",  label: "idle" },
+  WAKE: { icon: "~",  label: "probuzen" },
+  DOCK: { icon: "()", label: "dock event" },
+  TICK: { icon: "·",  label: "tick marker" },
+  SIGN: { icon: ">>", label: "signal — level change" },
+  EVNT: { icon: "<>", label: "scripted event" },
   SAY:  { icon: "\"", label: "dialog" },
   RPRT: { icon: "»»", label: "systémová zpráva" },
-  TASK: { icon: "◈", label: "změna stavu úkolu" },
+  TASK: { icon: "#",  label: "změna stavu úkolu" },
 };
 
 // === Severity lookup ===

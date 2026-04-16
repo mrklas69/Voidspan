@@ -123,7 +123,7 @@ export class HeaderPanel {
     // Nabíjení dronů — 1 dron = 1 W při práci na productive tasku.
     const droneCharge = w.tasks.some(isProductiveTask) && w.resources.energy > 0 ? w.drones : 0;
     if (droneCharge > 0) {
-      expense.push({ name: `¤ Nabíjení dronů (${w.drones}×)`, pw: -droneCharge, hpPct: 100 });
+      expense.push({ name: `Nabíjení dronů (${w.drones}×)`, pw: -droneCharge, hpPct: 100 });
     }
     // Software load — každý running SW běží kontinuálně (příkon per verze).
     if (w.resources.energy > 0) {
@@ -172,13 +172,13 @@ export class HeaderPanel {
       headerColor: RATING_COLOR[rating],
       body: [
         `${w.resources.energy.toFixed(1)} / ${w.energyMax} Wh`,
-        `▤ Kapacita ${w.energyMax} Wh:`,
+        `Kapacita ${w.energyMax} Wh:`,
         ...fmtCapList(capMods),
-        `▲ Příjmy +${totalIncome.toFixed(1)} W:`,
+        `Příjmy +${totalIncome.toFixed(1)} W:`,
         ...fmtList(income, "+"),
-        `▼ Výdaje ${totalExpense.toFixed(1)} W:`,
+        `Výdaje ${totalExpense.toFixed(1)} W:`,
         ...fmtList(expense, "-"),
-        `Σ Bilance: ${netSign}${net.toFixed(1)} W`,
+        `Bilance: ${netSign}${net.toFixed(1)} W`,
       ].join("\n"),
     };
   }
@@ -210,21 +210,21 @@ export class HeaderPanel {
       totalPlayerW += taskPlayerW;
       if (taskPlayerW > 0) {
         const pctDone = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
-        expenseLines.push(`${I}☻ ${task.kind} (${task.id})  -${taskPlayerW} W  ${pctDone}%`);
+        expenseLines.push(`${I}${task.kind} (${task.id})  -${taskPlayerW} W  ${pctDone}%`);
       }
     }
     const droneExpense = dronesWorking ? w.drones : 0;
     if (droneExpense > 0) {
       const targets = activeTasks.map(t => t.id).join(", ");
-      expenseLines.push(`${I}¤ Drony (${w.drones}×) → ${targets}  -${droneExpense} W`);
+      expenseLines.push(`${I}Drony (${w.drones}×) > ${targets}  -${droneExpense} W`);
     }
     if (expenseLines.length === 0) expenseLines.push(`${I}(žádné aktivní tasky)`);
     const totalExpense = totalPlayerW + droneExpense;
 
     // Příjmy mirror výdajů — W je flux, ne stock (hráči → HP, drony → E).
     const incomeLines: string[] = [
-      `${I}☻ Hráči ← Food: ${totalPlayerW} W${totalPlayerW > 0 ? "" : "  (nepracují)"}`,
-      `${I}¤ Drony ← E: ${droneExpense} W${dronesWorking ? "" : droneOnline ? "  (nepracují)" : "  OFFLINE"}`,
+      `${I}Hráči < Food: ${totalPlayerW} W${totalPlayerW > 0 ? "" : "  (nepracují)"}`,
+      `${I}Drony < E: ${droneExpense} W${dronesWorking ? "" : droneOnline ? "  (nepracují)" : "  OFFLINE"}`,
     ];
     const totalIncome = totalPlayerW + droneExpense;
 
@@ -234,14 +234,14 @@ export class HeaderPanel {
       body: [
         `Výkon: ${work.powerAvailable}/${work.powerMax} W  využito: ${work.powerUsed} W`,
         `Kapacita: ${work.capMax} Wh  (hráči ${work.capPlayer} + drony ${work.capDrone})`,
-        `▤ Kapacita ${work.capMax} Wh:`,
-        `${I}☻ Hráči: ${work.capPlayer} Wh  (${playerCount}×)`,
-        `${I}¤ Drony: ${work.capDrone} Wh  (${w.drones}×)`,
-        `▲ Příjmy +${totalIncome} W:`,
+        `Kapacita ${work.capMax} Wh:`,
+        `${I}Hráči: ${work.capPlayer} Wh  (${playerCount}×)`,
+        `${I}Drony: ${work.capDrone} Wh  (${w.drones}×)`,
+        `Příjmy +${totalIncome} W:`,
         ...incomeLines,
-        `▼ Výdaje -${totalExpense} W:`,
+        `Výdaje -${totalExpense} W:`,
         ...expenseLines,
-        `Σ Bilance: +${totalIncome}-${totalExpense} = ${totalIncome >= totalExpense ? "+" : ""}${totalIncome - totalExpense} W`,
+        `Bilance: +${totalIncome}-${totalExpense} = ${totalIncome >= totalExpense ? "+" : ""}${totalIncome - totalExpense} W`,
       ].join("\n"),
     };
   }
@@ -276,7 +276,7 @@ export class HeaderPanel {
 
     const windowLabel = w.flow.filled === 0
       ? `(zatím bez dat)`
-      : `(∅ ${w.flow.filled}/${FLOW_WINDOW_GAME_DAYS}d)`;
+      : `(avg ${w.flow.filled}/${FLOW_WINDOW_GAME_DAYS}d)`;
 
     const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
     const I = "   ";
@@ -306,8 +306,8 @@ export class HeaderPanel {
       expenseLines.push(`${I}(žádné aktivní výdaje)`);
     } else {
       const repairLabel = activeRepairs > 0
-        ? `✓ Opravy (${activeRepairs}×): per recipe`
-        : `✓ Opravy: per recipe (průměr z okna)`;
+        ? `Opravy (${activeRepairs}×): per recipe`
+        : `Opravy: per recipe (průměr z okna)`;
       expenseLines.push(`${I}${repairLabel}  -${avgOut.toFixed(2)} ${unit}/d`);
     }
 
@@ -318,12 +318,12 @@ export class HeaderPanel {
       headerColor: RATING_COLOR[rating],
       body: [
         `${formatScalar(current)} / ${max} ${unit}`,
-        `▤ Kapacita ${max} ${unit}  (FVP fix)`,
-        `▲ Příjmy ${windowLabel}: +${avgIn.toFixed(2)} ${unit}/d`,
+        `Kapacita ${max} ${unit}  (FVP fix)`,
+        `Příjmy ${windowLabel}: +${avgIn.toFixed(2)} ${unit}/d`,
         ...incomeLines,
-        `▼ Výdaje ${windowLabel}: -${avgOut.toFixed(2)} ${unit}/d`,
+        `Výdaje ${windowLabel}: -${avgOut.toFixed(2)} ${unit}/d`,
         ...expenseLines,
-        `Σ Bilance: ${netSign}${net.toFixed(2)} ${unit}/d`,
+        `Bilance: ${netSign}${net.toFixed(2)} ${unit}/d`,
         runwayLine,
       ].join("\n"),
     };
@@ -334,7 +334,7 @@ export class HeaderPanel {
     const time = formatGameTime(w.tick);
 
     // --- 1) Nejdřív nastavit texty, aby měřené šířky odpovídaly aktuálnímu obsahu ---
-    this.iconText.setText("⊙");
+    this.iconText.setText("O");
     this.appText.setText("VOIDSPAN");
     this.metaText.setText(
       `v${pkg.version} Teegarden.Belt1.Seg042 ${time}`,

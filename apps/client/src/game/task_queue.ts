@@ -81,12 +81,12 @@ function formatTaskRow(w: World, task: Task): string {
 
   if (task.status === "completed") {
     const t = task.completedAt != null ? formatGameTime(task.completedAt) : "—";
-    return `[${t}] ${name} ✓`;
+    return `[${t}] ${name} OK`;
   }
 
   if (task.status === "failed") {
     const t = task.completedAt != null ? formatGameTime(task.completedAt) : "—";
-    return `[${t}] ${name} ✕ FAILED`;
+    return `[${t}] ${name} X FAILED`;
   }
 
   // pending / active / paused — progres + ETA.
@@ -158,7 +158,7 @@ export class TaskQueuePanel {
     this.container.add(this.titleText);
 
     this.closeBtn = this.scene.add
-      .text(PANEL_W - PADDING, PADDING, "✕", {
+      .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
         fontSize: FONT_SIZE_LABEL,
         color: UI_TEXT_ACCENT,

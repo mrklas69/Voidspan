@@ -77,7 +77,7 @@ export const UI_TEXT_HEADING   = HEX_TEXT_WHITE;        // synonym, readability
 
 export const UI_SELECT_STROKE  = COL_AMBER_BRIGHT;      // klik výběr
 export const UI_BAY_DAMAGED   = COL_ALERT_RED;         // damaged bay fill (alpha < 1)
-export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // ⊙ ikona AppName — křiklavá oranžová
+export const UI_BRAND_ICON     = HEX_WARN_ORANGE;       // O ikona AppName — křiklavá oranžová (S27: ⊙ → O, font fix)
 
 // Overlay axiom (S19) — modální dim + bay trajectory overlay.
 // Černá zatmívací vrstva pod modalem/dialogem (alpha se nastavuje v modal.ts).

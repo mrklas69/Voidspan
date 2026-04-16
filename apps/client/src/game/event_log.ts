@@ -74,7 +74,7 @@ function formatEventRow(ev: Event): string {
   const verb = `${entry.icon} ${ev.verb}${csqTag}`;
   const amount = ev.amount != null ? `${ev.amount}` : "";
   const item = ev.item ?? "";
-  const target = ev.target ? `→ ${ev.target}` : "";
+  const target = ev.target ? `> ${ev.target}` : "";
 
   return [spacetime, actor, verb, amount, item, target].filter(Boolean).join(" ");
 }
@@ -147,9 +147,9 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(this.titleText);
 
-    // Close button ✕.
+    // Close button X.
     this.closeBtn = this.scene.add
-      .text(PANEL_W - PADDING, PADDING, "✕", {
+      .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
         fontSize: FONT_SIZE_LABEL,
         color: UI_TEXT_ACCENT,

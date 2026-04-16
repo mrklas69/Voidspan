@@ -2,6 +2,22 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-16 (Sezení 27 — Font glyph fallback fix)
+
+- [x] **Font glyph fallback fix (MINDMAP „Další bagr" #12)** — VT323 latin-subset z Google Fonts nemá geometric/dingbats/exotické arrows → browser fallback rozbíjel baseline. KISS ASCII substituce napříč rendered code.
+- [x] **events.ts VERB_CATALOG** — 24 entries přepsáno na ASCII (◉→`*`, †→`x`, ▽→`v`, ↘→`\`, →→`>`, ☆→`~`, ⊙→`()`, ⚑→`>>`, ◆→`<>`, ◈→`#`, ✓✓→`OK`, ✓→`+`, ▲→`+`). Zachováno: `↑↓ × » · −` (latin subset/Latin-1 OK).
+- [x] **header.ts** — E/W/S/F tooltipy ▤▲▼Σ ☻¤ ✓ dropnuty (label nese význam), `→`/`←`/`∅` substituty (`>`/`<`/`avg`), brand `⊙`→`O`.
+- [x] **info_panel.ts** — close `✕`→`X` + ☻⌂ ikony dropnuty.
+- [x] **modules_panel.ts** — statusIcon ASCII (●→`o`, ○→`_`, ▯→`^`, ▼→`v`, ✕→`X`) + close.
+- [x] **task_queue.ts** — completed `✓`→`OK`, failed `✕`→`X FAILED` + close.
+- [x] **event_log.ts** — close `✕`→`X` + target `→`→`>`.
+- [x] **welcome.ts** — `OBS-∷-042`→`OBS-··-042` (Latin-1 middle dots).
+- [x] **GameScene.ts help modal** — sekce „Co sleduješ" ▤⊙▨ nahrazeno plain textovými labely (Top bar / Střed / Události).
+- [x] **world.ts** — SIGN event text `→`→`>`.
+- [x] **palette.ts** — UI_BRAND_ICON komentář aktualizován.
+
+**53/53 testů zelených. TS strict čistý. Dev server běží — hot reload promítá fix napříč UI.**
+
 ## 2026-04-16 (Sezení 26 — FVP KISS + KPI controlling + 32 crew + ModulesPanel + VT323 + Observer release prep)
 
 - [x] **FVP resources ploché** — `World.resources.solids/fluids: number` (subtypy metal/components/water/coolant → P2+ `Resource subtypes` v TODO). `ResourceRecipe = { solids?, fluids? }` ploché per-HP rates. `SEED_SOLIDS = 90`, `SEED_FLUIDS = 50` (suma dřívějších subtypů).

@@ -27,9 +27,9 @@ import {
 const DISMISS_KEY = "voidspan.welcome.dismissed";
 
 // Observer session ID — sdílený identifier mezi Welcome headerem a Top Bar
-// identity tooltipem. Statický pro FVP (všichni hráči sdílí stejný OBS-∷-042);
-// P2+ bude per-session unikátní.
-export const OBSERVER_ID = "OBS-∷-042";
+// identity tooltipem. Statický pro FVP (všichni hráči sdílí stejný OBS-··-042);
+// P2+ bude per-session unikátní. S27 font fix: ∷ (U+2237) → ·· (Latin-1 dvě middle dots).
+export const OBSERVER_ID = "OBS-··-042";
 
 // Header — title + metadata zobrazené nahoře mimo scrollable area (vždy vidět).
 const HEADER_TITLE = "TEEGARDEN.BELT1 — OBSERVER ACCESS";

@@ -46,12 +46,14 @@ function saveVisiblePref(v: boolean): void {
 }
 
 // Status ikona per modul. Hraje roli „lampička" — rating barví HP text.
+// S27 font fix: ASCII glyphy (VT323 latin-subset nemá ●○▯▼✕ → fallback rozbíjel
+// baseline). · zachováno (Latin-1 middle dot je v subsetu).
 function statusIcon(mod: Module): string {
-  if (mod.hp <= 0) return "✕";
-  if (mod.status === "online") return "●";
-  if (mod.status === "offline") return "○";
-  if (mod.status === "building") return "▯";
-  if (mod.status === "demolishing") return "▼";
+  if (mod.hp <= 0) return "X";
+  if (mod.status === "online") return "o";
+  if (mod.status === "offline") return "_";
+  if (mod.status === "building") return "^";
+  if (mod.status === "demolishing") return "v";
   return "·";
 }
 
@@ -113,7 +115,7 @@ export class ModulesPanel {
     this.container.add(titleText);
 
     const closeBtn = this.scene.add
-      .text(PANEL_W - PADDING, PADDING, "✕", {
+      .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
         fontSize: FONT_SIZE_LABEL,
         color: UI_TEXT_ACCENT,

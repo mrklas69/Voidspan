@@ -109,9 +109,9 @@ export class InfoPanel {
       .setOrigin(0, 0);
     this.container.add(titleText);
 
-    // Close button ✕.
+    // Close button X.
     const closeBtn = this.scene.add
-      .text(PANEL_W - PADDING, PADDING, "✕", {
+      .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
         fontSize: FONT_SIZE_LABEL,
         color: UI_TEXT_ACCENT,
@@ -349,8 +349,10 @@ export class InfoPanel {
     const lines: string[] = [];
 
     // I. Aktuální stav (Zásoby + Energie — viz Top Bar infotipy)
-    icons.push("☻"); lines.push(`Posádka:  ${cryo} cryo / ${alive} alive / ${dead} dead`);
-    icons.push("⌂"); lines.push(`Základna: ${online} online / ${offline} offline / ${destroyed} destroyed`);
+    // S27 font fix: ☻⌂ ikony dropnuté (VT323 latin-subset je nemá → fallback rozbíjel
+    // baseline). Labely "Posádka:" / "Základna:" nesou význam samy o sobě.
+    icons.push(""); lines.push(`Posádka:  ${cryo} cryo / ${alive} alive / ${dead} dead`);
+    icons.push(""); lines.push(`Základna: ${online} online / ${offline} offline / ${destroyed} destroyed`);
 
     this.iconText.setText(icons.join("\n"));
     this.bodyText.setText(lines.join("\n"));
