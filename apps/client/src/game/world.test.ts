@@ -161,9 +161,10 @@ describe("enqueueRepairTask (generalized)", () => {
       }
     }
     expect(targetIdx).toBeGreaterThanOrEqual(0);
+    const before = w.tasks.filter((t) => t.kind === "repair").length;
     const ok = enqueueRepairTask(w, targetIdx);
     expect(ok).toBe(true);
-    expect(w.tasks.length).toBe(1);
+    expect(w.tasks.filter((t) => t.kind === "repair").length).toBe(before + 1);
   });
 
   it("idempotent — druhé volání na stejný target nic nepřidá", () => {
@@ -177,9 +178,69 @@ describe("enqueueRepairTask (generalized)", () => {
       }
     }
     enqueueRepairTask(w, targetIdx);
+    const afterFirst = w.tasks.filter((t) => t.kind === "repair").length;
     const ok2 = enqueueRepairTask(w, targetIdx);
     expect(ok2).toBe(false);
-    expect(w.tasks.length).toBe(1);
+    expect(w.tasks.filter((t) => t.kind === "repair").length).toBe(afterFirst);
+  });
+});
+
+// === QuarterMaster (S24) ===
+
+describe("QuarterMaster runtime", () => {
+  it("createInitialWorld vytváří eternal service task", () => {
+    const w = createInitialWorld();
+    const eternal = w.tasks.filter((t) => t.status === "eternal");
+    expect(eternal).toHaveLength(1);
+    expect(eternal[0]!.kind).toBe("service");
+    expect(eternal[0]!.label).toContain("QuarterMaster");
+  });
+
+  it("má protocolVersion", () => {
+    const w = createInitialWorld();
+    expect(w.protocolVersion).toBe("v2.3");
+  });
+
+  it("při energy=0 pause-uje active repair tasks", () => {
+    const w = createInitialWorld();
+    // Najdi poškozený target + enqueue repair.
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    expect(idx).toBeGreaterThanOrEqual(0);
+    enqueueRepairTask(w, idx);
+
+    // Jeden tick s plnou energii → task se aktivuje.
+    stepWorld(w);
+    const repair = w.tasks.find((t) => t.kind === "repair");
+    expect(repair).toBeDefined();
+
+    // Shodím energii na 0 → další tick pause (E rating = 1 = selhání).
+    w.resources.energy = 0;
+    stepWorld(w);
+    expect(repair!.status).toBe("paused");
+  });
+
+  it("při ready stavu auto-enqueue repair pro poškozený target", () => {
+    const w = createInitialWorld();
+    // Odstranit všechny repair tasks (pokud nějaké jsou od initial setup).
+    w.tasks = w.tasks.filter((t) => t.kind !== "repair");
+    const before = w.tasks.filter((t) => t.kind === "repair").length;
+
+    // Dotáhni energii na plno (100%) — guaranteed zelená.
+    w.resources.energy = w.energyMax;
+    stepWorld(w);
+
+    const after = w.tasks.filter((t) => t.kind === "repair").length;
+    // Pokud je něco poškozeného (a v initial worldu random damages jsou), enqueue by měl vytvořit task.
+    const damagedExists = w.segment.some(
+      (b) => (b.kind === "skeleton" || b.kind === "covered") && b.hp < b.hp_max,
+    ) || Object.values(w.modules).some((m) => m.hp < m.hp_max);
+    if (damagedExists) {
+      expect(after).toBeGreaterThan(before);
+    }
   });
 });
 

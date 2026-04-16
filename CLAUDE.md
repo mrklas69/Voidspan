@@ -22,6 +22,16 @@ Projektové instrukce. Rozšiřují globální `~/.claude/CLAUDE.md`.
 5. `git add -A` + `git commit` se smysluplnou zprávou (navrhni a použij bez schválení, spolupodpis Claude)
 6. `git push`
 
+## Design principy
+
+Platí pro kód i design. Detail v IDEAS.md T3 a MINDMAP §7.5.
+
+- **KISS** — nejjednodušší funkční řešení. Pro adaptivní/responzivní UI začni fix hodnotami + center/reposition; min/max/lerp/breakpointy přidávej až na explicit žádost.
+- **DRY** — jeden zdroj pravdy per koncept. Když se duplikuje hodnota nebo logika, extrahuj.
+- **SLAP** — jedna funkce, jedna úroveň abstrakce.
+- **Izomorfismus** — stejný vizuál / stejná mechanika = stejná sémantika (viz damage overlay, status semafor).
+- **Foundations before curtains** — základy před detaily. Model-first: nejdřív datový model, pak UI projekce.
+
 ## Sessions log
 - Cesta: `.claude/sessions/YYYY-MM-DD.md`
 - Jeden soubor za den, víc sezení = víc sekcí v témže souboru

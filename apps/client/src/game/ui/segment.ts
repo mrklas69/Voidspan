@@ -82,6 +82,20 @@ export class SegmentPanel {
       .setVisible(false);
   }
 
+  // S24 KISS: BAY_PX je fix, velikost rects/overlays se nemění.
+  // Při resize jen re-centrujeme BELT (SEGMENT_X/Y se mění).
+  relayout(): void {
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 8; col++) {
+        const idx = row * 8 + col;
+        const x = SEGMENT_X + col * BAY_PX;
+        const y = SEGMENT_Y + row * BAY_PX;
+        this.bayRects[idx]?.setPosition(x, y);
+        this.damageOverlays[idx]?.setPosition(x, y);
+      }
+    }
+  }
+
   attachTooltips(tooltips: TooltipManager): void {
     for (let i = 0; i < this.bayRects.length; i++) {
       const rect = this.bayRects[i];
@@ -113,6 +127,28 @@ export class SegmentPanel {
     this.selectedBayIdx = idx;
   }
 
+  // S24: vrátí lidský stav repair tasku na dané bay/modul (Observer mode — bez klik akce).
+  // Příklady: „Probíhá oprava (30%)", „Oprava pozastavena", „Oprava ve frontě", null = nic.
+  private repairStateText(idx: number, moduleId?: string): string | null {
+    const w = this.getWorld();
+    const task = w.tasks.find((t) =>
+      t.kind === "repair" &&
+      (moduleId !== undefined
+        ? t.target.moduleId === moduleId
+        : t.target.bayIdx === idx),
+    );
+    if (!task) return null;
+    const pct = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
+    switch (task.status) {
+      case "active":    return `Probíhá oprava (${pct}%)`;
+      case "paused":    return `Oprava pozastavena (${pct}%)`;
+      case "pending":   return `Oprava ve frontě`;
+      case "completed": return `Oprava dokončena`;
+      case "failed":    return `Oprava selhala`;
+      default: return null;
+    }
+  }
+
   private bayTooltipText(idx: number): string | null {
     const w = this.getWorld();
     const bay = w.segment[idx];
@@ -126,25 +162,29 @@ export class SegmentPanel {
     }
     if (bay.kind === "skeleton") {
       const missing = bay.hp_max - bay.hp;
+      const state = missing > 0 ? (this.repairStateText(idx) ?? "Poškozeno") : "(bez poškození)";
       return (
         `${pos}\n\nSkeleton (kostra)\n` +
         `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
-        (missing > 0 ? `Klik = enqueue repair task` : `(bez poškození)`)
+        state
       );
     }
     if (bay.kind === "covered") {
       const missing = bay.hp_max - bay.hp;
+      const state = missing > 0 ? (this.repairStateText(idx) ?? "Poškozeno") : "(vzduchotěsné, bez poškození)";
       return (
         `${pos}\n\nCovered v${bay.variant} (plášť)\n` +
         `HP: ${bay.hp.toFixed(0)} / ${bay.hp_max}\n` +
-        (missing > 0 ? `Klik = enqueue repair task` : `(vzduchotěsné, bez poškození)`)
+        state
       );
     }
     // module_root / module_ref
     const mod = w.modules[bay.moduleId];
     const modName = mod?.kind ?? "?";
     const hp = mod ? `${mod.hp.toFixed(0)} / ${mod.hp_max}` : "?";
-    return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}\nHP: ${hp}`;
+    const missing = mod ? mod.hp_max - mod.hp : 0;
+    const state = missing > 0 ? (this.repairStateText(idx, bay.moduleId) ?? "Poškozeno") : "";
+    return `${pos}\n\nModule: ${modName}\nStatus: ${mod?.status ?? "?"}\nHP: ${hp}${state ? `\n${state}` : ""}`;
   }
 
   render(): void {

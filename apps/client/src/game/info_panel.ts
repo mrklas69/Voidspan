@@ -20,7 +20,7 @@ import {
   FONT_SIZE_LABEL,
   RATING_COLOR,
 } from "./palette";
-import { CANVAS_H, HUD_H, LOG_H } from "./ui/layout";
+import { HUD_H } from "./ui/layout";
 
 const DEPTH = 1500;
 const PANEL_W = 420;
@@ -29,7 +29,8 @@ const PADDING = 12;
 const PANEL_BG_ALPHA = 0.9;
 const HEADER_H = 40;
 
-const PANEL_H = CANVAS_H - HUD_H - LOG_H - 2 * MARGIN;
+// S24 KISS: pevná velikost panelu (baseline 720 - 60 - 60 - 24 = 576).
+const PANEL_H = 576;
 
 // Scroll area — starts below rating row, ends at panel bottom.
 const SCROLL_TOP = HEADER_H + 28;
@@ -244,6 +245,9 @@ export class InfoPanel {
     this.scrollContent.y = SCROLL_TOP - this.scrollOffset;
     this.updateScrollbar();
   }
+
+  // S24 KISS: InfoPanel je v levém horním rohu — x = MARGIN, y = HUD_H + MARGIN
+  // jsou fix hodnoty, nemění se při resize. Žádný relayout není potřeba.
 
   private updateScrollbar(): void {
     if (this.maxScroll <= 0) {

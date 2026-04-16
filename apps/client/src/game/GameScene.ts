@@ -19,14 +19,10 @@ import type { World } from "./model";
 import { MODULE_DEFS } from "./model";
 import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
+import { TaskQueuePanel } from "./task_queue";
 import { FONT_FAMILY, FONT_SIZE_CMD } from "./palette";
-import {
-  CANVAS_W,
-  CANVAS_H,
-  MID_H,
-  LOG_H,
-  COL_TEXT_DIM,
-} from "./ui/layout";
+import * as L from "./ui/layout";
+import { COL_TEXT_DIM, recomputeLayout } from "./ui/layout";
 import { HeaderPanel } from "./ui/header";
 import { SegmentPanel } from "./ui/segment";
 // S19: ActorsPanel (vlevo) a SideRightPanel (Task Queue + Inspector vpravo)
@@ -47,7 +43,11 @@ export class GameScene extends Phaser.Scene {
   private header!: HeaderPanel;
   private segment!: SegmentPanel;
   private eventLog!: EventLogPanel;
+  private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
+
+  // S24: Bottom Bar command buttons — drženy jako array, re-pozicovatelné při resize.
+  private logCmdTexts: Phaser.GameObjects.Text[] = [];
 
   constructor() {
     super({ key: "game" });
@@ -90,8 +90,10 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.world = createInitialWorld();
 
+    // S24: spočítej responsive layout podle aktuálního viewportu PŘED vytvořením panelů.
+    recomputeLayout(this.scale.width, this.scale.height);
+
     // Dev-only: vystav world do window, ať jde debugovat v DevTools (Console: __world).
-    // Vite `import.meta.env.DEV` je true jen při `pnpm dev`, v prod buildu se blok odstraní (tree-shake).
     if (import.meta.env.DEV) {
       (window as unknown as { __world: World }).__world = this.world;
     }
@@ -99,16 +101,16 @@ export class GameScene extends Phaser.Scene {
     this.tooltips = new TooltipManager(this);
     this.modal = new ModalManager(this);
 
-    // Hvězdné pozadí — samostatný Container, scroll po ose Y nezávisle na UI.
-    this.background = new BackgroundSystem(this, CANVAS_W, MID_H);
+    // Hvězdné pozadí — samostatný Container, 2D chunks, reaktivní setSize při resize.
+    this.background = new BackgroundSystem(this, L.CANVAS_W, L.CANVAS_H);
     this.background.update(0);
 
     // Asteroid v orbitě — střed horizontálně, dlouhý oběh.
-    createAsteroidOrbit(this, CANVAS_W / 2, CANVAS_H);
+    createAsteroidOrbit(this, L.CANVAS_W / 2, L.CANVAS_H);
 
     // Start game: vypustit N asteroidů (S16). Každý má náhodnou dráhu/rychlost/scale.
     for (let i = 0; i < INITIAL_ASTEROID_COUNT; i++) {
-      launchRandomAsteroid(this, CANVAS_W / 2);
+      launchRandomAsteroid(this, L.CANVAS_W / 2);
     }
 
     // --- Panely ---
@@ -116,7 +118,12 @@ export class GameScene extends Phaser.Scene {
     this.header = new HeaderPanel(this, getWorld);
     this.segment = new SegmentPanel(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
+    this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);
+
+    // S24: radio mutex mezi EventLog a TaskQueue (sdílí pravý roh).
+    this.eventLog.setOnToggleOpen(() => this.taskQueue.close());
+    this.taskQueue.setOnToggleOpen(() => this.eventLog.close());
 
     this.createLog();
     this.bindDebugKeys();
@@ -126,12 +133,31 @@ export class GameScene extends Phaser.Scene {
     this.segment.attachTooltips(this.tooltips);
     this.infoPanel.attachTooltips(this.tooltips);
 
+    // S24: resize handler — recomputeLayout + relayout všech panelů.
+    this.scale.on("resize", this.handleResize, this);
+
     // Welcome dialog — jen pro prvního návštěvníka (nebo dokud nezaškrtne
     // "Již nezobrazovat"). Otevírá se po vytvoření všech panelů, aby dialog
     // překryl už rozeběhnutou scénu (nezastavuje čas — axiom S19).
     if (shouldShowWelcome()) {
       new WelcomeDialog(this).open();
     }
+  }
+
+  // S24: resize handler. Jen ty panely, které reálně přesouvají něco dle CANVAS_W/H:
+  // - background: dogenerujeme chunks do nové plochy
+  // - segment: BELT se re-centruje (SEGMENT_X/Y se mění)
+  // - eventLog: je v pravém rohu (CANVAS_W se mění)
+  // - bottom command bar: je centrovaný (CANVAS_W se mění)
+  // HeaderPanel render() čte CANVAS_W každý frame → nepotřebuje relayout.
+  // InfoPanel je v levém rohu (x = MARGIN fix) → nepotřebuje relayout.
+  private handleResize(gameSize: Phaser.Structs.Size): void {
+    recomputeLayout(gameSize.width, gameSize.height);
+    this.background.setSize(L.CANVAS_W, L.CANVAS_H);
+    this.segment.relayout();
+    this.eventLog.relayout();
+    this.taskQueue.relayout();
+    this.layoutLogCommands();
   }
 
   // === Help modal trigger (Top Bar) ========================================
@@ -160,8 +186,6 @@ export class GameScene extends Phaser.Scene {
   // === Log (Bottom Bar) ====================================================
 
   private createLog(): void {
-    const logY = CANVAS_H - LOG_H;
-    const btnY = logY + LOG_H / 2;
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_CMD,
@@ -172,23 +196,31 @@ export class GameScene extends Phaser.Scene {
     const commands: Array<{ text: string; action: () => void }> = [
       { text: "[I] info", action: () => this.infoPanel.toggle() },
       { text: "[E] events", action: () => this.eventLog.toggle() },
+      { text: "[T] tasks", action: () => this.taskQueue.toggle() },
       { text: "[H] help", action: () => this.openHelpModal() },
     ];
 
-    // Vytvoř texty, změř šířky, vycentruj blok.
-    const gap = 32;
-    const texts = commands.map((cmd) =>
-      this.add.text(0, btnY, cmd.text, style).setOrigin(0, 0.5),
-    );
-    const totalW =
-      texts.reduce((sum, t) => sum + t.width, 0) + gap * (texts.length - 1);
-    let x = (CANVAS_W - totalW) / 2;
-
-    for (let i = 0; i < texts.length; i++) {
-      const t = texts[i]!;
-      t.setX(x);
+    this.logCmdTexts = commands.map((cmd) => {
+      const t = this.add.text(0, 0, cmd.text, style).setOrigin(0, 0.5);
       t.setInteractive({ useHandCursor: true });
-      t.on("pointerdown", commands[i]!.action);
+      t.on("pointerdown", cmd.action);
+      return t;
+    });
+    this.layoutLogCommands();
+  }
+
+  // S24: pozice Bottom Bar tlačítek — přepočítat při vzniku i při resize.
+  private layoutLogCommands(): void {
+    if (this.logCmdTexts.length === 0) return;
+    const logY = L.CANVAS_H - L.LOG_H;
+    const btnY = logY + L.LOG_H / 2;
+    const gap = 32;
+    const totalW =
+      this.logCmdTexts.reduce((sum, t) => sum + t.width, 0) +
+      gap * (this.logCmdTexts.length - 1);
+    let x = (L.CANVAS_W - totalW) / 2;
+    for (const t of this.logCmdTexts) {
+      t.setPosition(x, btnY);
       x += t.width + gap;
     }
   }
@@ -215,6 +247,9 @@ export class GameScene extends Phaser.Scene {
           break;
         case "e":
           this.eventLog.toggle();
+          break;
+        case "t":
+          this.taskQueue.toggle();
           break;
         case "i":
           this.infoPanel.toggle();
@@ -250,6 +285,7 @@ export class GameScene extends Phaser.Scene {
     this.header.render();
     this.segment.render();
     this.eventLog.render();
+    this.taskQueue.render();
     this.infoPanel.render();
   }
 }

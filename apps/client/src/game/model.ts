@@ -18,9 +18,10 @@ export type EventVerb =
   | "REPR" | "BLD"  | "DEMO" | "DMG"  | "DECY"
   | "DRN"  | "PROD" | "HAUL" | "ASSN" | "CMPL"
   | "FAIL" | "IDLE" | "WAKE" | "DOCK" | "TICK"
-  | "SIGN" | "EVNT" | "SAY"  | "RPRT";
+  | "SIGN" | "EVNT" | "SAY"  | "RPRT"
+  | "TASK"; // S24 — task status change (START/PAUSE/RESUME), QuarterMaster
 
-export type EventCsq = "OK" | "FAIL" | "PARTIAL" | "CRIT" | "START";
+export type EventCsq = "OK" | "FAIL" | "PARTIAL" | "CRIT" | "START" | "PAUSE" | "RESUME";
 
 export type EventSeverity = "crit" | "warn" | "pos" | "neutral";
 
@@ -137,7 +138,17 @@ export type Actor = {
 
 // === Task ===
 
-export type TaskKind = "repair" | "demolish" | "build";
+export type TaskKind = "repair" | "demolish" | "build" | "service";
+
+// S24 QuarterMaster: task lifecycle status.
+//   pending   — vytvořený, čeká na start (Protokol může držet v gate)
+//   active    — běží, čerpá work (drony + hráči)
+//   paused    — přerušený Protokolem (E nebo W v červené)
+//   completed — dokončený (wd_done >= wd_total)
+//   failed    — neproveditelný (target zmizel, resource missing, …)
+//   eternal   — service task (QuarterMaster monitor), nedokončí se
+export type TaskStatus =
+  | "pending" | "active" | "paused" | "completed" | "failed" | "eternal";
 
 export type TaskDef = {
   kind: TaskKind;
@@ -158,6 +169,11 @@ export type Task = {
   assigned: string[];
   priority: number;
   cost_coin?: number;
+  // S24 QuarterMaster lifecycle:
+  status: TaskStatus;
+  createdAt: number;          // tick vzniku (pro řazení + ETA)
+  completedAt?: number;       // tick dokončení (completed/failed)
+  label?: string;             // override label (pro service tasky — „QuarterMaster v2.3 — Idle")
 };
 
 // === Status tree (S20/S21) ===
@@ -186,7 +202,7 @@ export function statusRating(pct: number): StatusRating {
 
 // Pyramida vitality (Maslow axiom S20):
 //   I.  Aktuální stav    ×8   (crew + base)
-//   II. Udržitelnost     ×4   (supplies + entropy)
+//   II. Udržitelnost     ×4   (supplies + integrity)
 //   III. Rozvoj          ×2   [P2+ pahýl = 100%]
 //   IV. Společnost       ×1   [P2+ pahýl = 100%]
 // overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15
@@ -201,12 +217,12 @@ export type Status = {
   overall: StatusNode;
   // Patra pyramidy:
   tier1: StatusNode;       // I.  Aktuální stav = min(crew, base)
-  tier2: StatusNode;       // II. Udržitelnost = min(supplies, entropy)
+  tier2: StatusNode;       // II. Udržitelnost = min(supplies, integrity)
   // Listy:
   crew: StatusNode;        // I.1 — posádka (alive / total)
   base: StatusNode;        // I.2 — základna (avg HP modulů)
   supplies: StatusNode;    // II.1 — zásoby (runway)
-  entropy: StatusNode;     // II.2 — entropie (avg HP + energy bilance)
+  integrity: StatusNode;   // II.2 — integrita (avg HP všech vrstev — bays + moduly)
 };
 
 // === Root state ===
@@ -229,6 +245,8 @@ export type World = {
   energyMax: number; // Σ capacity_wh online modulů — dynamická kapacita baterie
   drones: number;    // počet pracovních dronů — převodník E→WD, žádný HP
   next_task_id: number;
+  // S24 QuarterMaster — autopilot kolonie (runtime Protokolu, GLOSSARY §Protocol).
+  protocolVersion: string;   // „v2.3" startovní — upgrade přes výzkum (P2+)
 };
 
 // ============================================================================
@@ -377,4 +395,5 @@ export const TASK_DEFS: Record<TaskKind, TaskDef> = {
   repair: { kind: "repair", label: "Repair", allowed_actors: ["player"] },
   demolish: { kind: "demolish", label: "Demolish", allowed_actors: ["player"] },
   build: { kind: "build", label: "Build", allowed_actors: ["player"] },
+  service: { kind: "service", label: "Service", allowed_actors: [] }, // eternal, nemá allowed actors
 };

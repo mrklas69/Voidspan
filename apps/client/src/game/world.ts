@@ -28,6 +28,10 @@ import {
   ACTOR_HP_DRAIN_PER_TICK,
   THRESHOLD_CRIT_PCT,
   THRESHOLD_WARN_PCT,
+  PROTOCOL_VERSION,
+  PROTOCOL_RESUME_RATING,
+  PROTOCOL_PAUSE_RATING,
+  TASK_AUTOCLEAN_TICKS,
 } from "./tuning";
 
 // Re-export tuning konstant — drží stabilní API pro stávající konzumenty
@@ -50,6 +54,65 @@ export function formatGameTime(tick: number): string {
   const hh = String(Math.floor(minInDay / 60)).padStart(2, "0");
   const mm = String(minInDay % 60).padStart(2, "0");
   return `T:${day}.${hh}:${mm}`;
+}
+
+// S24: ETA formát "12d14h12m" — herní dny/hodiny/minuty.
+// 1 game minute = 1 wall minute (TIME_COMPRESSION 1×); 1 tick = TICKS_PER_WALL_MINUTE / 60 wall min.
+// Přeloženo: 1 tick = 1/TICKS_PER_WALL_MINUTE wall min = 1/TICKS_PER_WALL_MINUTE game min.
+export function formatEta(ticks: number): string {
+  if (!Number.isFinite(ticks) || ticks <= 0) return "—";
+  const gameMin = Math.floor(ticks / TICKS_PER_WALL_MINUTE);
+  const days = Math.floor(gameMin / (16 * 60));
+  const remMin = gameMin - days * 16 * 60;
+  const hours = Math.floor(remMin / 60);
+  const mins = remMin % 60;
+  if (days > 0) return `${days}d${hours}h${mins}m`;
+  if (hours > 0) return `${hours}h${mins}m`;
+  return `${mins}m`;
+}
+
+// S24: ETA ticků pro task (zbývající WD / current power). ∞ (Infinity) když paused/no power.
+export function taskEtaTicks(w: World, task: Task): number {
+  if (task.status !== "active") return Infinity;
+  let playerPower = 0;
+  for (const aid of task.assigned) {
+    const a = w.actors.find((x) => x.id === aid);
+    if (a && a.state === "working") playerPower += a.work;
+  }
+  const dronePower = w.resources.energy > 0 ? w.drones : 0;
+  const powerSum = playerPower + dronePower;
+  if (powerSum <= 0) return Infinity;
+  const remainingWd = Math.max(0, task.wd_total - task.wd_done);
+  return (remainingWd * TICKS_PER_GAME_DAY) / powerSum;
+}
+
+// S24: lidský popis task targetu pro UI řádek.
+// „SolarArray (m_solar_1)" / „Bay [1,3]" / „QuarterMaster v2.3 — Active" (eternal).
+export function describeTaskTarget(w: World, task: Task): string {
+  if (task.label) return task.label;
+  if (task.kind === "service") return `Service ${task.id}`;
+  if (task.target.moduleId !== undefined) {
+    const mod = w.modules[task.target.moduleId];
+    return mod ? `${mod.kind} (${mod.id})` : `Module ${task.target.moduleId}`;
+  }
+  if (task.target.bayIdx !== undefined) {
+    const row = Math.floor(task.target.bayIdx / 8);
+    const col = task.target.bayIdx % 8;
+    return `Bay [${row},${col}]`;
+  }
+  if (task.target.buildSpec) return `Build ${task.target.buildSpec}`;
+  return task.id;
+}
+
+// S24: český infinitiv slovesa pro task kind — do event textu.
+const TASK_VERB_CS: Record<string, string> = {
+  repair: "Opravit",
+  demolish: "Demolovat",
+  build: "Postavit",
+  service: "Sledovat",
+};
+function taskActionCs(task: Task): string {
+  return TASK_VERB_CS[task.kind] ?? task.kind;
 }
 
 // === Random helpers (lokální — Math.random, deterministic seed P2+) ===
@@ -193,15 +256,32 @@ export function createInitialWorld(): World {
       crew: { pct: 100, level: "ok" },
       base: { pct: 100, level: "ok" },
       supplies: { pct: 100, level: "ok" },
-      entropy: { pct: 100, level: "ok" },
+      integrity: { pct: 100, level: "ok" },
     },
     energyMax: 0, // přepočte se v recomputeStatus níže
     drones: 23,   // počet pracovních dronů — převodník E→WD
     next_task_id: 1,
+    protocolVersion: PROTOCOL_VERSION,
   };
 
   world.energyMax = computeEnergyMax(world);
   recomputeStatus(world); // seed reálný status, aby první tick neemitoval falešný STAT
+
+  // S24 QuarterMaster — eternal service task (monitor autopilota).
+  // Zůstává v seznamu vždy; label se přepisuje podle stavu v protocolTick.
+  world.tasks.push({
+    id: `task_${world.next_task_id++}`,
+    kind: "service",
+    target: {},
+    wd_total: 0,
+    wd_done: 0,
+    assigned: [],
+    priority: 0,
+    status: "eternal",
+    createdAt: 0,
+    label: `QuarterMaster ${PROTOCOL_VERSION} — Idle`,
+  });
+
   appendEvent(world, "BOOT", { text: "Simulace spuštěna" });
   return world;
 }
@@ -310,6 +390,8 @@ export function enqueueRepairTask(w: World, bayIdx: number): boolean {
       wd_done: 0,
       assigned: [],
       priority: 1,
+      status: "pending",
+      createdAt: w.tick,
     });
     return true;
   }
@@ -329,6 +411,8 @@ export function enqueueRepairTask(w: World, bayIdx: number): boolean {
     wd_done: 0,
     assigned: [],
     priority: 1,
+    status: "pending",
+    createdAt: w.tick,
   });
   return true;
 }
@@ -336,13 +420,16 @@ export function enqueueRepairTask(w: World, bayIdx: number): boolean {
 function assignIdleActors(w: World): void {
   for (const actor of w.actors) {
     if (actor.state !== "idle") continue;
+    // S24: přiřazuj jen na pending/active tasks (ne paused/completed/failed/eternal).
     const task = w.tasks.find((t) =>
+      (t.status === "pending" || t.status === "active") &&
       TASK_DEFS[t.kind].allowed_actors.includes(actor.kind as ActorKind),
     );
     if (!task) continue;
     actor.state = "working";
     actor.taskId = task.id;
     task.assigned.push(actor.id);
+    if (task.status === "pending") task.status = "active";
     appendEvent(w, "ASSN", { actor: actor.id, item: task.kind, target: task.id, text: `${actor.id} přiřazen k ${task.kind} (${task.id})` });
   }
 }
@@ -350,8 +437,9 @@ function assignIdleActors(w: World): void {
 // Posun progresu tasků + spojitá HP synchronizace vnější vrstvy.
 // Hráči spotřebovávají HP prací. Drony spotřebovávají E.
 function progressTasks(w: World): void {
-  for (let i = w.tasks.length - 1; i >= 0; i--) {
-    const task = w.tasks[i]!;
+  for (const task of w.tasks) {
+    // S24: skip paused/completed/failed/eternal/pending bez assignu. Jen active.
+    if (task.status !== "active") continue;
     if (task.assigned.length === 0 && w.drones === 0) continue;
 
     // Hráčský příspěvek — work = výkon ve W.
@@ -381,6 +469,26 @@ function progressTasks(w: World): void {
 
     if (task.wd_done >= task.wd_total) {
       completeTask(w, task);
+      task.status = "completed";
+      task.completedAt = w.tick;
+      // Uvolni assignees.
+      for (const aid of task.assigned) {
+        const a = w.actors.find((x) => x.id === aid);
+        if (a) { a.state = "idle"; a.taskId = undefined; }
+      }
+      task.assigned = [];
+    }
+  }
+}
+
+// S24: autoclean starších completed/failed tasks (po TASK_AUTOCLEAN_TICKS ≈ 1 h wall).
+// Eternal + active/paused/pending zůstávají.
+function cleanupOldTasks(w: World): void {
+  for (let i = w.tasks.length - 1; i >= 0; i--) {
+    const task = w.tasks[i]!;
+    if (task.status !== "completed" && task.status !== "failed") continue;
+    if (task.completedAt === undefined) continue;
+    if (w.tick - task.completedAt >= TASK_AUTOCLEAN_TICKS) {
       w.tasks.splice(i, 1);
     }
   }
@@ -441,9 +549,11 @@ export function stepWorld(w: World): void {
 
   decayTick(w);           // slot 1
   resourceDrain(w);       // slot 2 — TODO: per-capita drain
-  autoEnqueueTasks(w);    // slot 3 — no-op; dnes enqueuje hráč klikem
+  protocolTick(w);        // slot 3a (S24) — QuarterMaster: gate + enqueue repairs
+  autoEnqueueTasks(w);    // slot 3 — no-op; dnes řeší protocolTick
   assignIdleActors(w);    // slot 4
   progressTasks(w);       // slot 5
+  cleanupOldTasks(w);     // slot 5b (S24) — autoclean completed/failed po TASK_AUTOCLEAN_TICKS
   actorLifeTick(w);       // slot 6 — no-op do implementace actor HP
   productionTick(w);      // slot 7 — no-op
   arrivalsTick(w);        // slot 8 — no-op
@@ -482,7 +592,142 @@ function decayTick(w: World): void {
     }
   }
 }
-function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue */ }
+function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue — dnes řeší protocolTick */ }
+
+// === QuarterMaster runtime (S24, GLOSSARY §Protocol) =======================
+//
+// Jednoduchý autopilot kolonie. Runtime Protokolu, verze PROTOCOL_VERSION.
+//
+// Gate logic (S24 Censure fix):
+//   Protocol používá **kapacitní** check (ne semaforový W rating), aby se zabránilo
+//   flappingu. W rating semaforu teď reflektuje availability (0/23 = červená), ale
+//   ta by způsobila cyklus: active → 0 avail → pause → 100 avail → resume → …
+//   Místo toho Protocol kontroluje: je E dostupná + máme fyzicky kdo pracovat?
+//   1) Gate ready: E rating ≥ RESUME && (drony online nebo alive aktéři)
+//   2) Gate paused: E rating ≤ PAUSE || nic nemůže pracovat
+//   3) Hystereze drží hranice pause ≤ 2 vs. resume ≥ 3.
+
+function protocolTick(w: World): void {
+  const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
+  const eRating = statusRating(energyPct);
+
+  // Kapacitní check: je kdo pracovat?
+  const droneCapable = w.drones > 0 && w.resources.energy > 0;
+  const actorCapable = w.actors.some(
+    (a) => a.state !== "dead" && a.state !== "cryo" && a.hp > 0,
+  );
+  const hasWorkers = droneCapable || actorCapable;
+
+  const gated = eRating <= PROTOCOL_PAUSE_RATING || !hasWorkers;
+  const ready = eRating >= PROTOCOL_RESUME_RATING && hasWorkers;
+
+  const reason = eRating <= PROTOCOL_PAUSE_RATING ? "low Energy" : "no workers";
+
+  if (gated) {
+    // Pause všechny active/pending repair tasks. Emit TASK:PAUSE.
+    for (const t of w.tasks) {
+      if (t.kind !== "repair") continue;
+      if (t.status === "active" || t.status === "pending") {
+        t.status = "paused";
+        for (const aid of t.assigned) {
+          const a = w.actors.find((x) => x.id === aid);
+          if (a) { a.state = "idle"; a.taskId = undefined; }
+        }
+        t.assigned = [];
+        appendEvent(w, "TASK", {
+          csq: "PAUSE",
+          target: t.id,
+          item: t.kind,
+          text: `Pozastaveno: ${taskActionCs(t)} ${describeTaskTarget(w, t)} — ${reason}`,
+        });
+      }
+    }
+  } else if (ready) {
+    // Resume/activate: paused i pending repair → active. Drony automaticky progresují.
+    for (const t of w.tasks) {
+      if (t.kind !== "repair") continue;
+      if (t.status === "paused") {
+        t.status = "active";
+        appendEvent(w, "TASK", {
+          csq: "RESUME",
+          target: t.id,
+          item: t.kind,
+          text: `Obnoveno: ${taskActionCs(t)} ${describeTaskTarget(w, t)}`,
+        });
+      } else if (t.status === "pending") {
+        t.status = "active";
+        appendEvent(w, "TASK", {
+          csq: "START",
+          target: t.id,
+          item: t.kind,
+          text: `Zahájeno: ${taskActionCs(t)} ${describeTaskTarget(w, t)}`,
+        });
+      }
+    }
+    // Enqueue repair pro min-HP-ratio target, pokud žádný active nečeká.
+    const hasActiveRepair = w.tasks.some(
+      (t) => t.kind === "repair" && t.status === "active",
+    );
+    if (!hasActiveRepair) {
+      const target = findMinHpRatioTarget(w);
+      if (target !== null) {
+        if (enqueueRepairTask(w, target)) {
+          // Nový task byl pending — rovnou aktivuj.
+          const last = w.tasks[w.tasks.length - 1];
+          if (last && last.kind === "repair") {
+            last.status = "active";
+            appendEvent(w, "TASK", {
+              csq: "START",
+              target: last.id,
+              item: last.kind,
+              text: `Zahájeno: ${taskActionCs(last)} ${describeTaskTarget(w, last)}`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Update eternal monitor task label.
+  const monitor = w.tasks.find((t) => t.kind === "service" && t.status === "eternal");
+  if (monitor) {
+    let state: string;
+    if (gated) state = eRating <= PROTOCOL_PAUSE_RATING ? "Paused — low Energy" : "Paused — no workers";
+    else if (ready) {
+      const hasActive = w.tasks.some((t) => t.kind === "repair" && t.status === "active");
+      state = hasActive ? "Active" : "Idle — nothing to repair";
+    } else state = "Standby"; // rating mezi PAUSE a RESUME (hystereze)
+    monitor.label = `QuarterMaster ${w.protocolVersion} — ${state}`;
+  }
+}
+
+// Najdi bay / modul s nejnižším HP ratio (HP/HP_MAX). null = vše na max.
+// Vrací bayIdx (pro enqueueRepairTask, který si sám odvodí typ targetu).
+function findMinHpRatioTarget(w: World): number | null {
+  let bestIdx: number | null = null;
+  let bestRatio = 1.0;
+
+  // Bays (skeleton/covered) — vnější vrstva s HP.
+  for (let i = 0; i < w.segment.length; i++) {
+    const bay = w.segment[i];
+    if (!bay) continue;
+    let ratio = 1.0;
+    if (bay.kind === "skeleton" || bay.kind === "covered") {
+      if (bay.hp < bay.hp_max) ratio = bay.hp / bay.hp_max;
+    } else if (bay.kind === "module_root") {
+      const mod = w.modules[bay.moduleId];
+      if (mod && mod.hp < mod.hp_max) ratio = mod.hp / mod.hp_max;
+    } else {
+      continue; // void, module_ref (skryté)
+    }
+    if (ratio < bestRatio) {
+      bestRatio = ratio;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 function actorLifeTick(w: World): void {
   const airZero = w.resources.flux.air <= 0;
   const foodZero = w.resources.slab.food <= 0;
@@ -544,7 +789,7 @@ function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály 
 function scheduledEvents(_w: World): void { /* TODO: events bank trigger */ }
 // Slot 10 — Pyramida vitality (Maslow axiom S20, S21).
 //   I.  Aktuální stav    ×8   crew=I.1, base=I.2
-//   II. Udržitelnost     ×4   supplies=II.1, entropy=II.2
+//   II. Udržitelnost     ×4   supplies=II.1, integrity=II.2
 //   III. Rozvoj          ×2   [P2+ pahýl = 100%]
 //   IV. Společnost       ×1   [P2+ pahýl = 100%]
 // Patro = min(children). Overall = vážený průměr (I×8 + II×4 + III×2 + IV×1) / 15.
@@ -573,8 +818,9 @@ function recomputeStatus(w: World): void {
   const airPct = w.resources.flux.air;
   const suppliesPct = Math.min(foodPct, airPct);
 
-  // II.2 Entropy — avg HP% všech vrstev (bays + moduly) + energy bilance.
-  // Energie je provozní metrika základny: energy/energyMax váží 50% s HP avg.
+  // II.2 Integrity — avg HP% všech vrstev (bays + moduly).
+  // Energie je samostatná osa (E bar) — nemíchat do integrity.
+  // TODO (v budoucnu): přepsat na rate (Δ HP / game day) — repair vs. decay trajektorie.
   let hpSum = 0;
   let hpCount = 0;
   for (const bay of w.segment) {
@@ -588,13 +834,11 @@ function recomputeStatus(w: World): void {
     hpSum += (mod.hp / mod.hp_max) * 100;
     hpCount++;
   }
-  const hpAvgPct = hpCount > 0 ? hpSum / hpCount : 0;
-  const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
-  const entropyPct = (hpAvgPct + energyPct) / 2;
+  const integrityPct = hpCount > 0 ? hpSum / hpCount : 0;
 
   // Patra — worst child uvnitř patra.
   const tier1Pct = Math.min(crewPct, basePct);
-  const tier2Pct = Math.min(suppliesPct, entropyPct);
+  const tier2Pct = Math.min(suppliesPct, integrityPct);
   const tier3Pct = 100; // P2+ pahýl
   const tier4Pct = 100; // P2+ pahýl
 
@@ -606,7 +850,7 @@ function recomputeStatus(w: World): void {
   // Text = lidská věta: KDO ↑/↓ ODKUD → KAM (KOLIK%) — PROČ (axiom S22).
   const AXIS_CS: Record<string, string> = {
     crew: "Posádka", base: "Základna", supplies: "Zásoby",
-    entropy: "Entropie", overall: "Celkový stav",
+    integrity: "Integrita", overall: "Celkový stav",
   };
   const emitSign = (name: string, prev: StatusNode, pct: number, detail?: string, displayName?: string) => {
     const newLevel = toLevel(pct);
@@ -632,13 +876,13 @@ function recomputeStatus(w: World): void {
   emitSign("crew", w.status.crew, crewPct, `${aliveActors}/${totalActors} alive`);
   emitSign("base", w.status.base, basePct, `avg HP ${Math.round(basePct)}%`);
   emitSign("supplies", w.status.supplies, suppliesPct, undefined, driverLabel);
-  emitSign("entropy", w.status.entropy, entropyPct);
+  emitSign("integrity", w.status.integrity, integrityPct);
   emitSign("overall", w.status.overall, overallPct);
 
   w.status.crew = { pct: crewPct, level: toLevel(crewPct) };
   w.status.base = { pct: basePct, level: toLevel(basePct) };
   w.status.supplies = { pct: suppliesPct, level: toLevel(suppliesPct) };
-  w.status.entropy = { pct: entropyPct, level: toLevel(entropyPct) };
+  w.status.integrity = { pct: integrityPct, level: toLevel(integrityPct) };
   w.status.tier1 = { pct: tier1Pct, level: toLevel(tier1Pct) };
   w.status.tier2 = { pct: tier2Pct, level: toLevel(tier2Pct) };
   w.status.overall = { pct: overallPct, level: toLevel(overallPct) };
@@ -650,9 +894,14 @@ function appendEventLog(_w: World): void { /* Events se emitují in-place přes 
 // Work: dvě osy — kapacita (Wh, jak dlouho vydržíme) a výkon (W, jak rychle).
 // Hráči: kapacita = HP, výkon = actor.work.
 // Drony: kapacita = E základny, výkon = 1 W/dron. Funkční jen pokud E > 0.
+//
+// S24 ladění: powerAvailable/Used/Total — aktuálně disponibilní vs. čerpaný výkon.
+// Top Bar W ukazuje „available / total" (kolik právě mám / kolik celkem) — 0/23
+// při plně pracujících dronech, 23/23 když nepracují.
 export function computeWork(w: World): {
   capMax: number; capPlayer: number; capDrone: number;
   powerMax: number; powerPlayer: number; powerDrone: number;
+  powerUsed: number; powerAvailable: number;
 } {
   let capPlayer = 0;
   let powerPlayer = 0;
@@ -664,13 +913,29 @@ export function computeWork(w: World): {
   const droneOnline = w.resources.energy > 0;
   const capDrone = droneOnline ? w.drones : 0;
   const powerDrone = droneOnline ? w.drones : 0;
+  const powerMax = Math.round(powerPlayer + powerDrone);
+
+  // Kolik W se reálně čerpá na aktivních tascích.
+  // Hráčský příspěvek: actors ve state "working". Dronový: w.drones pokud E > 0
+  // a existuje aspoň jeden active task (FVP: jeden active task čerpá celou kapacitu 23 W).
+  let playerUsed = 0;
+  for (const a of w.actors) {
+    if (a.state === "working") playerUsed += a.work;
+  }
+  const hasActiveTask = w.tasks.some((t) => t.status === "active" && t.kind !== "service");
+  const droneUsed = droneOnline && hasActiveTask ? w.drones : 0;
+  const powerUsed = playerUsed + droneUsed;
+  const powerAvailable = Math.max(0, powerMax - powerUsed);
+
   return {
     capMax: Math.round(capPlayer + capDrone),
     capPlayer: Math.round(capPlayer),
     capDrone,
-    powerMax: Math.round(powerPlayer + powerDrone),
+    powerMax,
     powerPlayer: Math.round(powerPlayer),
     powerDrone,
+    powerUsed,
+    powerAvailable,
   };
 }
 

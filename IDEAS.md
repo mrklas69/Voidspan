@@ -71,6 +71,23 @@ Raw zápis diskuse ze sezení 20. Uzavře se **jiným přístupem** (user TBD); 
 
 ---
 
+## QuarterMaster upgrade path (S24)
+
+QuarterMaster je **verzovaný SW** autopilota (runtime Protokolu). Startovní verze `v2.3`. Upgrade přes výzkum (Q6 Vědění, 3.3.6).
+
+**Uvažované verze:**
+- **v2.3 (FVP)** — auto-repair orchestrace, E/W gate, eternal monitor task, paused/resume. Implementováno.
+- **v3.x — Integrated Defense:** koordinace Combat dronů (asteroidy, piráti, sabotáž). Napojení na T2 axiom (drones ≠ players ofenziva) — Protokol smí defenziva, ofenziva jen hráč.
+- **v4.x — Energy-aware balancing:** predictive load management. Protokol plánuje repair/build/service dle přicházejícího světla (solar forecast).
+- **v5.x — Multi-colony coordination:** Belt Network R1. Protokoly sousedních beltů si vyměňují signály (obchod, alarm, migrace).
+- **v6.x — Cultural reflexes:** Protokol reaguje na Vyhlášky a Plány z knowledge base přímo (dnes je jen implicit přes pravidla).
+
+Aktuální verze se zobrazuje v headeru eternal service tasku: `QuarterMaster v2.3 — Active/Paused/Idle/Standby`. Upgrade = změna `World.protocolVersion` + rozšíření kódu.
+
+**Otevřené:** Q-Protocol-Upgrade-Cost (co stojí upgrade v Coin / Slab / výzkumných bodech), Q-Protocol-Downgrade (lze se vrátit k starší verzi při poruše?).
+
+---
+
 ## Drone capacity types (S23)
 
 Drony = nakoupená kapacita, přeměňující E (energii) na specifický typ výkonu. Player není dron — je to hráčův avatar (kolonista).

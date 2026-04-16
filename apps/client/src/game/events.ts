@@ -37,6 +37,7 @@ export const VERB_CATALOG: Record<EventVerb, VerbEntry> = {
   EVNT: { icon: "◆", label: "scripted event" },
   SAY:  { icon: "\"", label: "dialog" },
   RPRT: { icon: "»»", label: "systémová zpráva" },
+  TASK: { icon: "◈", label: "změna stavu úkolu" },
 };
 
 // === Severity lookup ===
@@ -62,6 +63,13 @@ export function severity(verb: EventVerb, csq?: EventCsq): EventSeverity {
   if (WARN_VERBS.has(verb)) return "warn";
   if (POS_VERBS.has(verb)) return "pos";
   if (POS_ON_OK.has(verb) && csq === "OK") return "pos";
+  // S24 TASK: START/RESUME = pos, PAUSE = warn, FAIL = crit.
+  if (verb === "TASK") {
+    if (csq === "FAIL") return "crit";
+    if (csq === "PAUSE") return "warn";
+    if (csq === "START" || csq === "RESUME" || csq === "OK") return "pos";
+    return "neutral";
+  }
   return "neutral";
 }
 

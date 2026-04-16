@@ -13,3 +13,4 @@ Feedback a konvence sdílené přes git mezi stroji. Strojově-specifický konte
 - [Číslované otázky](feedback_numbered_questions.md) — Q1, Q2... ne bullety
 - [HP ratio axiom](feedback_hp_ratio_axiom.md) — výkon × HP/HP_MAX, 100% jen bezvadný
 - [Event = věta](feedback_event_is_sentence.md) — kdo/co/kdy/kde/kolik, žádné abstraktní statusy
+- [Ukazatel a barva sdílí metriku](feedback_indicator_color_same_metric.md) — UI disconnect (displej X, barva Y) je nepřípustný; flapping řeš v controlleru, ne v UI

@@ -120,3 +120,20 @@ export const EVENT_LOG_CAPACITY = 500;
 // Max položek v tooltip rozpisech (Energie příjmy/výdaje, atd.).
 // Delší seznamy se oříznou na N prvních + "... +M dalších".
 export const TOOLTIP_LIST_MAX_ITEMS = 5;
+
+// ============================================================================
+// §10 QuarterMaster (S24) — autopilot kolonie
+// ============================================================================
+
+// Startovní verze Protokolu. Upgrade přes výzkum (P2+).
+export const PROTOCOL_VERSION = "v2.3";
+
+// Rating prahy pro Protokol gate.
+// Start / resume: E a W rating ≥ PROTOCOL_RESUME_RATING (= 3 Dostačující, ≥ 40%).
+// Pause:         E nebo W rating ≤ PROTOCOL_PAUSE_RATING (= 2 Slabá, < 40%).
+// Hystereze zabrání flapping (start ≥3 vs. pause ≤2 = gap 40-60% nebo 15-40%).
+export const PROTOCOL_RESUME_RATING = 3;
+export const PROTOCOL_PAUSE_RATING = 2;
+
+// Autoclean completed/failed tasks — 1 h wall = 14400 ticků (při TICK_MS 250).
+export const TASK_AUTOCLEAN_TICKS = TICKS_PER_SECOND * 3600;

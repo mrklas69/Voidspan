@@ -23,7 +23,7 @@ import {
   HEX_OK_GREEN,
   RATING_COLOR,
 } from "./palette";
-import { CANVAS_W, CANVAS_H, HUD_H, LOG_H } from "./ui/layout";
+import { CANVAS_W, HUD_H } from "./ui/layout";
 
 const DEPTH = 1500; // nad segment (0), pod modal (2000)
 const PANEL_W = 420;
@@ -34,8 +34,9 @@ const ROW_H = 20;
 const HEADER_H = 40;
 const FOOTER_H = 28;
 
-// Max visible rows (dynamicky z výšky panelu).
-const PANEL_H = CANVAS_H - HUD_H - LOG_H - 2 * MARGIN;
+// S24 KISS: PANEL_H fix (baseline 720 - 60 - 60 - 24 = 576). Při malém okně
+// panel přetéká — user zvětší okno. Počet řádků (MAX_VISIBLE) spočten jednou.
+const PANEL_H = 576;
 const BODY_H = PANEL_H - HEADER_H - FOOTER_H;
 const MAX_VISIBLE = Math.floor(BODY_H / ROW_H);
 
@@ -264,7 +265,14 @@ export class EventLogPanel {
     });
   }
 
+  // S24: radio callback — zavře jiné panely (TaskQueue) před otevřením.
+  private onToggleOpen?: () => void;
+  setOnToggleOpen(cb: () => void): void {
+    this.onToggleOpen = cb;
+  }
+
   toggle(): void {
+    if (!this.visible && this.onToggleOpen) this.onToggleOpen();
     this.visible = !this.visible;
     this.container.setVisible(this.visible);
     saveVisiblePref(this.visible);
@@ -278,6 +286,13 @@ export class EventLogPanel {
 
   isOpen(): boolean {
     return this.visible;
+  }
+
+  close(): void {
+    if (!this.visible) return;
+    this.visible = false;
+    this.container.setVisible(false);
+    saveVisiblePref(false);
   }
 
   // Called every frame from GameScene.update() — lightweight, only re-renders on change.
@@ -336,5 +351,12 @@ export class EventLogPanel {
       this.scrollThumb.setVisible(false);
       this.scrollTrack.setVisible(false);
     }
+  }
+
+  // S24 KISS: panel má pevnou velikost (PANEL_H), resize jen posune container do rohu.
+  relayout(): void {
+    const x = CANVAS_W - PANEL_W - MARGIN;
+    const y = HUD_H + MARGIN;
+    this.container.setPosition(x, y);
   }
 }

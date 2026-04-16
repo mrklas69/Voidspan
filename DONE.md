@@ -2,6 +2,21 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-16 (Sezení 24 — Integrita + Protocol + Responsive Layout + QuarterMaster)
+
+- [x] **Integrita (II.2)** — `entropy` → `integrity` v kódu, E vyjmuta z výpočtu (jen hpAvgPct), label „Integrita". TODO rate do budoucna.
+- [x] **Protocol (GLOSSARY)** — nová sekce, 8 vrstev knowledge base, 8 otevřených Q, uzel 3.4 v MINDMAP.
+- [x] **Responsive Layout (KISS)** — `Phaser.Scale.RESIZE`, fix velikosti panelů, canvas = viewport, 2D chunk pozadí, relayout jen kde se něco mění.
+- [x] **Design principy sekce do CLAUDE.md** — KISS / DRY / SLAP / izomorfismus / foundations-before-curtains autoloaduje se do sezení.
+- [x] **QuarterMaster v2.3** — autopilot kolonie: E gate, kapacitní check, min-HP target selection, eternal monitor task, cleanupOldTasks (1 h wall autoclean).
+- [x] **Task lifecycle** — pending / active / paused / completed / failed / eternal; `createdAt`, `completedAt`; TaskKind += service.
+- [x] **Task Queue Panel [T]** — 5-color semafor, sekce Eternal/Active/Paused/Pending/Completed/Failed, radio mutex s [E], bottom bar button.
+- [x] **TASK event verb (◈)** — START/PAUSE/RESUME/FAIL emity v protocolTick.
+- [x] **Progress bar `███░░░░░░░`** — block full/empty bez závorek.
+- [x] **W rating = availability** (Censure fix) — semafor sdílí metriku s ukazatelem 0/23. Protocol gate přesunut z W rating na kapacitní check.
+- [x] **Bay tooltip** — „Probíhá oprava (30%)" místo „Klik = enqueue" v Observer módu.
+- [x] **Floating panels internal geometry** (S24) — EventLog + InfoPanel relayout (redukováno na KISS → container.setPosition stačí).
+
 ## 2026-04-16 (Sezení 23 — Kvintet infotipy + Phase retirement + Work model)
 
 - [x] **Tooltip barevný header** — `TooltipContent` typ, `headerText` objekt, 5stavový semafor v tooltipech.

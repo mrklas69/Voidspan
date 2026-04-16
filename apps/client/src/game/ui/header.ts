@@ -170,11 +170,8 @@ export class HeaderPanel {
   private workTooltip(): TooltipContent {
     const w = this.getWorld();
     const work = computeWork(w);
-    // Rating = náboj baterek: Σ HP / Σ HP_MAX hráčů + idle drony / drony celkem.
-    const hpSum = w.actors.filter(a => a.state !== "dead").reduce((s, a) => s + a.hp, 0);
-    const hpMaxSum = w.actors.filter(a => a.state !== "dead").reduce((s, a) => s + a.hp_max, 0);
-    const totalFull = hpMaxSum + w.drones;
-    const pct = totalFull > 0 ? Math.round(((hpSum + work.capDrone) / totalFull) * 100) : 0;
+    // S24 Censure fix: rating = availability/max (sdílí metriku s Top Bar ukazatelem).
+    const pct = work.powerMax > 0 ? Math.round((work.powerAvailable / work.powerMax) * 100) : 0;
     const rating = statusRating(pct);
     const ratingLabel = STATUS_LABELS[rating];
 
@@ -216,11 +213,13 @@ export class HeaderPanel {
       header: `Práce — ${ratingLabel.cs} (${pct}%)`,
       headerColor: RATING_COLOR[rating],
       body: [
-        `Výkon: ${work.powerMax} W  Kapacita: ${work.capMax} Wh`,
+        // S24: rating sdílí metriku s Top Bar ukazatelem (availability/max).
+        `Výkon: ${work.powerAvailable}/${work.powerMax} W  využito: ${work.powerUsed} W`,
+        `Kapacita: ${work.capMax} Wh  (hráči ${work.capPlayer} + drony ${work.capDrone})`,
         `▤ Kapacita ${work.capMax} Wh:`,
         `${I}☻ Hráči: ${work.capPlayer} Wh  (${playerCount}×)`,
         `${I}¤ Drony: ${work.capDrone} Wh  (${w.drones}×)`,
-        `▲ Příjmy +${totalIncome} Wh:`,
+        `▲ Příjmy +${totalIncome} W:`,
         ...incomeLines,
         `▼ Výdaje -${totalExpense} W:`,
         ...expenseLines,
@@ -295,18 +294,17 @@ export class HeaderPanel {
     const work = computeWork(w);
     const parts: string[] = [
       formatResource(w.resources.energy, w.energyMax, "E"),
-      `${work.powerMax}/${work.capMax} W`,
+      // S24: available/total W — 0/23 při práci dronů, 23/23 při idle.
+      `${work.powerAvailable}/${work.powerMax} W`,
       formatResource(w.resources.slab.food, 100, "S"),
       formatResource(w.resources.flux.air, 100, "F"),
       `◎ ${formatScalar(w.resources.coin)}`,
     ];
     // Dashboard semafor (S18) — barva podle prahu metricColor(pct, inverted?).
     // Index pořadí drží pořadí parts[]: 0=E, 1=W, 2=S, 3=F, 4=Coin.
+    // S24 Censure fix: W pct = availability/max (sdílí metriku s ukazatelem 0/23).
     const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
-    const hpSumAll = w.actors.filter(a => a.state !== "dead").reduce((s, a) => s + a.hp, 0);
-    const hpMaxAll = w.actors.filter(a => a.state !== "dead").reduce((s, a) => s + a.hp_max, 0);
-    const workFullCap = hpMaxAll + w.drones;
-    const workPct = workFullCap > 0 ? ((hpSumAll + work.capDrone) / workFullCap) * 100 : 0;
+    const workPct = work.powerMax > 0 ? (work.powerAvailable / work.powerMax) * 100 : 0;
     const foodPct = w.resources.slab.food; // max 100 → pct = value
     const airPct = w.resources.flux.air;   // max 100 → pct = value
     const colors: string[] = [

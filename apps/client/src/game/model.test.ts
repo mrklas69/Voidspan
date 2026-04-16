@@ -74,8 +74,9 @@ describe("TASK_DEFS catalog invariants", () => {
     }
   });
 
-  it("každý task má alespoň jednoho povoleného aktéra", () => {
+  it("každý task (kromě service) má alespoň jednoho povoleného aktéra", () => {
     for (const def of Object.values(TASK_DEFS)) {
+      if (def.kind === "service") continue; // S24: eternal monitor, neběží na aktérech
       expect(def.allowed_actors.length).toBeGreaterThan(0);
     }
   });
