@@ -107,37 +107,34 @@ export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
 export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / štíty (Flux.water/coolant)
 
 // ============================================================================
-// 2b. Dashboard semafor (S18) — globální prahy pro metriky v Top Baru a panelech
+// 2b. Dashboard semafor (S25) — 5-color rating pro UI metriky
 // ============================================================================
-// Tříbarevný indikátor: red < CRIT ≤ orange < WARN ≤ green.
-// Sjednoceno pro všechny metriky (Energy/Work/Slab/Flux/Coin atd.). Pro
-// invertované metriky (utilizace, kde "vysoké = problém", např. Work)
-// použij `metricColor(pct, true)` — interně přepočítá na 100-pct.
+// Kánon: UI ukazatel s barvou odvozuje barvu ze stejné metriky, kterou zobrazuje
+// (feedback_indicator_color_same_metric). Pět kbelíků dle `statusRating(pct)`:
+// < 15 % red, < 40 % orange, < 60 % amber, < 80 % cyan, ≥ 80 % green.
+// Tooltip headery (TooltipContent.headerColor) i Top Bar dashboard bary čerpají
+// stejnou mapu — barva v baru = barva v headeru.
 //
-// Kompoziční pravidlo: parent metric color = nejhorší child (red > orange > green).
+// Re-export prahů z tuning.ts pro world.ts toLevel() (3-state status node level).
 
-// Re-export z tuning.ts (single source of truth).
 import { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT } from "./tuning";
+import { statusRating, type StatusRating } from "./model";
 export { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT };
 
-// Helper: podle pct (0..100) vrátí HEX barvu pro Phaser Text.
-// `inverted` = true pro utilizační metriky (Work) — vysoké pct = červeně.
-export function metricColor(pct: number, inverted = false): string {
-  const p = inverted ? 100 - pct : pct;
-  if (p < THRESHOLD_CRIT_PCT) return HEX_ALERT_RED;
-  if (p < THRESHOLD_WARN_PCT) return HEX_WARN_ORANGE;
-  return HEX_OK_GREEN;
-}
-
 // 5stavový semafor hodnocení (S23). Izomorfní s StatusRating z model.ts.
-// Sdíleno mezi InfoPanel, Tooltips a dalšími UI komponentami.
-export const RATING_COLOR: Record<number, string> = {
+// Sdíleno mezi Top Bar, InfoPanel, Tooltips, Event Log (SIGN).
+export const RATING_COLOR: Record<StatusRating, string> = {
   5: HEX_OK_GREEN,       // Excellent — zelená
   4: HEX_COOLANT_CYAN,   // Good — cyan
   3: HEX_WARN_AMBER,     // Fair — amber
   2: HEX_WARN_ORANGE,    // Poor — oranžová
   1: HEX_ALERT_RED,      // Failure — červená
 };
+
+// Přímá pct→color projekce pro místa, kde nepotřebujeme zvlášť rating label.
+export function ratingColor(pct: number): string {
+  return RATING_COLOR[statusRating(pct)];
+}
 
 // ============================================================================
 // 3. Typografie — Jersey 25 size scale (style-guide §2)

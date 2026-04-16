@@ -324,12 +324,10 @@ export class InfoPanel {
     const net = production + consumption;
     const netSign = net >= 0 ? "+" : "";
 
-    // Zásoby — runway.
-    let runway = "∞";
-    if (alive > 0) {
-      const foodDays = w.resources.slab.food > 0 ? Math.floor(w.resources.slab.food / alive) : 0;
-      runway = `~${foodDays} dní food`;
-    }
+    // Zásoby — runway. S25: food/air retired, runway = jak dlouho vydrží
+    // worst Solids/Fluids subtyp při aktuální drain rate (placeholder dokud
+    // nebude per-subtype consumption rate; FVP = ∞ — žádný drain bez wake-up).
+    const runway = "∞ (no consumers in FVP)";
 
     // Základna.
     let online = 0;
@@ -370,7 +368,7 @@ export class InfoPanel {
     icons.push("⌂"); lines.push(`Základna: ${online} online / ${offline} offline / ${destroyed} destroyed`);
     icons.push(" "); lines.push(`          HP avg ${hpAvg}% / nejhorší: ${worstName} ${Math.round(worstPct)}%`);
     // II. Udržitelnost
-    icons.push("≡"); lines.push(`Zásoby:   ${w.resources.slab.food.toFixed(0)} food / ${w.resources.flux.air.toFixed(0)} air`);
+    icons.push("≡"); lines.push(`Zásoby:   S ${Math.round(Math.min(w.resources.solids.metal, w.resources.solids.components))} / F ${Math.round(Math.min(w.resources.fluids.water, w.resources.fluids.coolant))} (worst-of)`);
     icons.push(" "); lines.push(`          runway: ${runway}`);
     icons.push("↯"); lines.push(`Energie:  ${w.resources.energy.toFixed(1)} / ${w.energyMax} Wh`);
     icons.push(" "); lines.push(`          +${production.toFixed(0)} prod / ${consumption.toFixed(0)} spotř = ${netSign}${net.toFixed(0)}`);

@@ -2,16 +2,18 @@
 // Čistá funkční logika: `createInitialWorld`, `stepWorld`, FSM přechody.
 // Žádný Phaser import — testovatelné samostatně.
 
-import type { World, Bay, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode } from "./model";
-import { TASK_DEFS, MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
+import type { World, Bay, Actor, Task, ActorKind, Module, ModuleKind, CoverVariant, StatusLevel, StatusNode, ResourceRecipe } from "./model";
+import { TASK_DEFS, MODULE_DEFS, BAY_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "./model";
 import { appendEvent } from "./events";
 import {
   TICK_MS,
   TICKS_PER_SECOND,
   TICKS_PER_GAME_DAY,
   TICKS_PER_WALL_MINUTE,
-  SEED_FOOD,
-  SEED_AIR,
+  SEED_METAL,
+  SEED_COMPONENTS,
+  SEED_WATER,
+  SEED_COOLANT,
   SEED_COIN,
   SKELETON_HP_MAX,
   COVERED_HP_MAX,
@@ -25,12 +27,13 @@ import {
   ENERGY_SEED,
   DECAY_RATE_PER_GAME_DAY,
   ACTOR_HP_MAX,
-  ACTOR_HP_DRAIN_PER_TICK,
   THRESHOLD_CRIT_PCT,
   THRESHOLD_WARN_PCT,
   PROTOCOL_VERSION,
   PROTOCOL_RESUME_RATING,
   PROTOCOL_PAUSE_RATING,
+  QM_DRAW_W,
+  RECIPE_MIN_HP_EPSILON,
   TASK_AUTOCLEAN_TICKS,
 } from "./tuning";
 
@@ -240,8 +243,8 @@ export function createInitialWorld(): World {
     phase: "running",
     resources: {
       energy: ENERGY_SEED,
-      slab: { food: SEED_FOOD },
-      flux: { air: SEED_AIR },
+      solids: { metal: SEED_METAL, components: SEED_COMPONENTS },
+      fluids: { water: SEED_WATER, coolant: SEED_COOLANT },
       coin: SEED_COIN,
     },
     segment,
@@ -261,7 +264,15 @@ export function createInitialWorld(): World {
     energyMax: 0, // přepočte se v recomputeStatus níže
     drones: 23,   // počet pracovních dronů — převodník E→WD
     next_task_id: 1,
-    protocolVersion: PROTOCOL_VERSION,
+    software: {
+      quartermaster: {
+        id: "quartermaster",
+        name: "QuarterMaster",
+        version: PROTOCOL_VERSION,
+        draw_w: QM_DRAW_W,
+        status: "running",
+      },
+    },
   };
 
   world.energyMax = computeEnergyMax(world);
@@ -434,8 +445,72 @@ function assignIdleActors(w: World): void {
   }
 }
 
+// === Recipe helpers (S25) — M:N reference Module/Bay → Solids/Fluids subtypy ===
+
+// Vrátí recipe pro target tasku (bay-layered nebo modul). null = no recipe (build/demolish bez recepty zatím).
+function getTaskRecipe(w: World, task: Task): ResourceRecipe | null {
+  if (task.target.bayIdx !== undefined) {
+    const bay = w.segment[task.target.bayIdx];
+    if (!bay) return null;
+    if (bay.kind === "skeleton") return BAY_DEFS.skeleton.recipe;
+    if (bay.kind === "covered") return BAY_DEFS.covered.recipe;
+    return null;
+  }
+  if (task.target.moduleId !== undefined) {
+    const mod = w.modules[task.target.moduleId];
+    if (mod) return MODULE_DEFS[mod.kind].recipe;
+  }
+  return null;
+}
+
+// Vrátí jméno první chybějící suroviny (recipe × scale > dostupnost), nebo null.
+// Sparse iterace přes všechny subtypy — undefined složka = 0, automaticky OK.
+function whichResourceMissing(w: World, recipe: ResourceRecipe, scale: number): string | null {
+  const s = recipe.solids;
+  if (s) {
+    if ((s.metal ?? 0)      * scale > w.resources.solids.metal)      return "metal";
+    if ((s.components ?? 0) * scale > w.resources.solids.components) return "components";
+  }
+  const f = recipe.fluids;
+  if (f) {
+    if ((f.water ?? 0)   * scale > w.resources.fluids.water)   return "water";
+    if ((f.coolant ?? 0) * scale > w.resources.fluids.coolant) return "coolant";
+  }
+  return null;
+}
+
+// Spotřebuj recipe × scale ze zdrojů (clamp 0+).
+function consumeResources(w: World, recipe: ResourceRecipe, scale: number): void {
+  const s = recipe.solids;
+  if (s) {
+    if (s.metal)      w.resources.solids.metal      = Math.max(0, w.resources.solids.metal      - s.metal      * scale);
+    if (s.components) w.resources.solids.components = Math.max(0, w.resources.solids.components - s.components * scale);
+  }
+  const f = recipe.fluids;
+  if (f) {
+    if (f.water)   w.resources.fluids.water   = Math.max(0, w.resources.fluids.water   - f.water   * scale);
+    if (f.coolant) w.resources.fluids.coolant = Math.max(0, w.resources.fluids.coolant - f.coolant * scale);
+  }
+}
+
+// Najde první chybějící subtyp napříč všemi non-finished repair tasky. null = vše OK.
+// Slouží protocolTicku pro globální material gate + monitor label důvod.
+function firstMissingRecipeSubtype(w: World): string | null {
+  for (const t of w.tasks) {
+    if (t.kind !== "repair") continue;
+    if (t.status === "completed" || t.status === "failed") continue;
+    const recipe = getTaskRecipe(w, t);
+    if (!recipe) continue;
+    const missing = whichResourceMissing(w, recipe, RECIPE_MIN_HP_EPSILON);
+    if (missing) return missing;
+  }
+  return null;
+}
+
 // Posun progresu tasků + spojitá HP synchronizace vnější vrstvy.
-// Hráči spotřebovávají HP prací. Drony spotřebovávají E.
+// Hráči spotřebovávají HP prací. Drony spotřebovávají E. Repair čerpá Solids/Fluids
+// per-target recipe (S25). Při deficitu kterékoli složky tick skip — next
+// protocolTick pauzne task s důvodem „no <subtype>".
 function progressTasks(w: World): void {
   for (const task of w.tasks) {
     // S24: skip paused/completed/failed/eternal/pending bez assignu. Jen active.
@@ -452,10 +527,15 @@ function progressTasks(w: World): void {
     const dronePower = w.resources.energy > 0 ? w.drones : 0;
     const powerSum = playerPower + dronePower;
     const wd_delta = powerSum / TICKS_PER_GAME_DAY;
-    task.wd_done += wd_delta;
 
     if (task.kind === "repair") {
       const hp_delta = wd_delta / WD_PER_HP;
+      const recipe = getTaskRecipe(w, task);
+      if (recipe) {
+        // Material gate per recipe: jakákoli chybějící složka → skip tick.
+        if (whichResourceMissing(w, recipe, hp_delta) !== null) continue;
+        consumeResources(w, recipe, hp_delta);
+      }
       if (task.target.bayIdx !== undefined) {
         const bay = w.segment[task.target.bayIdx];
         if (bay && (bay.kind === "skeleton" || bay.kind === "covered")) {
@@ -466,6 +546,7 @@ function progressTasks(w: World): void {
         if (mod) mod.hp = Math.min(mod.hp_max, mod.hp + hp_delta);
       }
     }
+    task.wd_done += wd_delta;
 
     if (task.wd_done >= task.wd_total) {
       completeTask(w, task);
@@ -564,9 +645,11 @@ export function stepWorld(w: World): void {
 
 // === Pipeline sloty (stuby + legacy wrap) ===
 
-// Slot 2 — per-capita resource drain (TODO: n_alive × per_actor_rate).
-// Zatím no-op — retirovaná phase_a/b/c mechanika odstraněna v S23.
-function resourceDrain(_w: World): void { /* TODO: per-capita drain */ }
+// Slot 2 — per-capita resource drain.
+// S25 KISS retire: air + food odstraněny — žádný drain v FVP. Stovky sezení
+// crew spí v cryo, atmosféra je 24th-cent recyklovaná. Až přijde wake-up +
+// item registr s edible attributem, doplnit drain edible bucketu (water?).
+function resourceDrain(_w: World): void { /* no-op v FVP */ }
 
 // Sloty 1, 3, 6–11 — no-op stuby. Pořadí a podpis zafixované axiomem, těla
 // postupně naplníme. Podpis `(w: World): void` drží uniformitu pipeline.
@@ -608,6 +691,8 @@ function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueu
 //   3) Hystereze drží hranice pause ≤ 2 vs. resume ≥ 3.
 
 function protocolTick(w: World): void {
+  const qm = w.software.quartermaster;
+  const qmOffline = !qm || qm.status === "offline";
   const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
   const eRating = statusRating(energyPct);
 
@@ -618,10 +703,22 @@ function protocolTick(w: World): void {
   );
   const hasWorkers = droneCapable || actorCapable;
 
-  const gated = eRating <= PROTOCOL_PAUSE_RATING || !hasWorkers;
-  const ready = eRating >= PROTOCOL_RESUME_RATING && hasWorkers;
+  // Material gate (S25): kterákoli existující repair task vyžaduje recipe složky.
+  // Pokud kterákoli chybí → pause s důvodem podle subtypu.
+  const missingMaterial = firstMissingRecipeSubtype(w);
+  const noMaterial = missingMaterial !== null;
 
-  const reason = eRating <= PROTOCOL_PAUSE_RATING ? "low Energy" : "no workers";
+  // QM offline → gate force pause a žádné resume/enqueue.
+  const gated = qmOffline || eRating <= PROTOCOL_PAUSE_RATING || !hasWorkers || noMaterial;
+  const ready = !qmOffline && eRating >= PROTOCOL_RESUME_RATING && hasWorkers && !noMaterial;
+
+  const reason = qmOffline
+    ? "autopilot offline"
+    : eRating <= PROTOCOL_PAUSE_RATING
+      ? "low Energy"
+      : !hasWorkers
+        ? "no workers"
+        : `no ${missingMaterial}`;
 
   if (gated) {
     // Pause všechny active/pending repair tasks. Emit TASK:PAUSE.
@@ -692,12 +789,18 @@ function protocolTick(w: World): void {
   const monitor = w.tasks.find((t) => t.kind === "service" && t.status === "eternal");
   if (monitor) {
     let state: string;
-    if (gated) state = eRating <= PROTOCOL_PAUSE_RATING ? "Paused — low Energy" : "Paused — no workers";
+    if (qmOffline) state = "OFFLINE — no power";
+    else if (gated) {
+      if (eRating <= PROTOCOL_PAUSE_RATING) state = "Paused — low Energy";
+      else if (!hasWorkers) state = "Paused — no workers";
+      else state = `Paused — no ${missingMaterial}`;
+    }
     else if (ready) {
       const hasActive = w.tasks.some((t) => t.kind === "repair" && t.status === "active");
       state = hasActive ? "Active" : "Idle — nothing to repair";
     } else state = "Standby"; // rating mezi PAUSE a RESUME (hystereze)
-    monitor.label = `QuarterMaster ${w.protocolVersion} — ${state}`;
+    const version = qm?.version ?? PROTOCOL_VERSION;
+    monitor.label = `QuarterMaster ${version} — ${state}`;
   }
 }
 
@@ -728,24 +831,9 @@ function findMinHpRatioTarget(w: World): number | null {
   return bestIdx;
 }
 
-function actorLifeTick(w: World): void {
-  const airZero = w.resources.flux.air <= 0;
-  const foodZero = w.resources.slab.food <= 0;
-  if (!airZero && !foodZero) return;
-
-  for (const a of w.actors) {
-    if (a.state === "cryo" || a.state === "dead") continue;
-    a.hp = Math.max(0, a.hp - ACTOR_HP_DRAIN_PER_TICK);
-    if (a.hp <= 0) {
-      a.state = "dead";
-      if (a.taskId) {
-        const task = w.tasks.find((t) => t.id === a.taskId);
-        if (task) task.assigned = task.assigned.filter((id) => id !== a.id);
-        a.taskId = undefined;
-      }
-      appendEvent(w, "DEAD", { actor: a.id, text: `${a.id} zemřel — ${airZero ? "udušení" : "hlad"}` });
-    }
-  }
+function actorLifeTick(_w: World): void {
+  // S25 KISS retire: air + food drain odstraněno. Bez nich nikdo neumírá v FVP.
+  // Až přijde wake-up + edibles bucket (P2+), znovu přidat HP drain při deficitu.
 }
 // Dynamická kapacita baterie — Σ capacity_wh online modulů.
 // Exportováno pro UI (header, info_panel).
@@ -763,8 +851,12 @@ export function computeEnergyMax(w: World): number {
 // Slot 7 — energy bilance per tick.
 // Online moduly: power_w > 0 = produkce, power_w < 0 = spotřeba.
 // Axiom: výkon je násoben koeficientem HP/HP_MAX (100% jen bezvadný modul).
+// Drony spotřebovávají E (1 dron = 1 W) při práci na productive tasku — symetrie
+// E↔W (S23 work eureka). Instalované SW (QuarterMaster, …) mají kontinuální
+// příkon bez ohledu na tasky. Při E=0 drony i SW přechází offline → feedback
+// loop: drony/SW → E drain → E=0 → offline → recovery → boot.
 // Energie se akumuluje do w.resources.energy, clamp [0, energyMax].
-// Při dosažení 0 se emituje DRN:CRIT jednorázově.
+// Při dosažení 0 se emituje DRN:CRIT jednorázově + všechny running SW → offline.
 function productionTick(w: World): void {
   // Přepočítej kapacitu (modul může jít offline decay → kapacita klesne).
   w.energyMax = computeEnergyMax(w);
@@ -775,14 +867,44 @@ function productionTick(w: World): void {
     const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
     netPower += MODULE_DEFS[mod.kind].power_w * hpRatio;
   }
+  const hasEnergy = w.resources.energy > 0;
+  const droneDraw = hasEnergy && w.tasks.some(isProductiveTask) ? w.drones : 0;
+  // Software load — každý running SW čerpá svůj draw_w (kontinuálně).
+  let softwareDraw = 0;
+  if (hasEnergy) {
+    for (const sw of Object.values(w.software)) {
+      if (sw.status === "running") softwareDraw += sw.draw_w;
+    }
+  }
   // W → Wh per tick: energy_delta = netPower / ticks_per_game_hour.
   // 1 game hour = TICKS_PER_GAME_DAY / 16 ticků.
   const ticksPerHour = TICKS_PER_GAME_DAY / 16;
-  const delta = netPower / ticksPerHour;
+  const delta = (netPower - droneDraw - softwareDraw) / ticksPerHour;
   const before = w.resources.energy;
   w.resources.energy = Math.max(0, Math.min(w.energyMax, w.resources.energy + delta));
+
+  // E→0 blackout event (jednorázově při transition pro Event Log čitelnost).
   if (before > 0 && w.resources.energy <= 0) {
     appendEvent(w, "DRN", { csq: "CRIT", item: "energy", text: "Energie vyčerpána" });
+  }
+  // SW state sync — state-based, ne transition-based. Offline když E=0,
+  // running když E>0. Emituje event jen při změně, aby Event Log nespamoval.
+  const powered = w.resources.energy > 0;
+  for (const sw of Object.values(w.software)) {
+    if (!powered && sw.status === "running") {
+      sw.status = "offline";
+      appendEvent(w, "DRN", {
+        csq: "CRIT",
+        item: sw.id,
+        text: `${sw.name} ${sw.version}: kritické selhání — autopilot offline`,
+      });
+    } else if (powered && sw.status === "offline") {
+      sw.status = "running";
+      appendEvent(w, "BOOT", {
+        item: sw.id,
+        text: `${sw.name} ${sw.version}: napájení obnoveno — boot`,
+      });
+    }
   }
 }
 function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
@@ -813,10 +935,13 @@ function recomputeStatus(w: World): void {
   }
   const basePct = baseCount > 0 ? baseSum / baseCount : 0;
 
-  // II.1 Supplies — min(food%, air%).
-  const foodPct = w.resources.slab.food;
-  const airPct = w.resources.flux.air;
-  const suppliesPct = Math.min(foodPct, airPct);
+  // II.1 Supplies — worst-of(metal, components, water, coolant).
+  // S25: food + air retirovány. Solids + Fluids subtypy slouží jako runway proxy.
+  const r = w.resources;
+  const suppliesPct = Math.min(
+    r.solids.metal, r.solids.components,
+    r.fluids.water, r.fluids.coolant,
+  );
 
   // II.2 Integrity — avg HP% všech vrstev (bays + moduly).
   // Energie je samostatná osa (E bar) — nemíchat do integrity.
@@ -870,9 +995,14 @@ function recomputeStatus(w: World): void {
     }
   };
 
-  // Supplies: zobraz konkrétní zdroj (Air/Food), ne abstraktní „Zásoby".
-  const suppliesDriver = foodPct <= airPct ? "food" : "air";
-  const driverLabel = suppliesDriver === "air" ? "Air" : "Food";
+  // Supplies: zobraz konkrétní worst subtyp (Metal/Components/Water/Coolant).
+  const suppliesEntries: Array<[string, number]> = [
+    ["Metal", r.solids.metal],
+    ["Components", r.solids.components],
+    ["Water", r.fluids.water],
+    ["Coolant", r.fluids.coolant],
+  ];
+  const driverLabel = suppliesEntries.reduce((min, e) => (e[1] < min[1] ? e : min))[0];
   emitSign("crew", w.status.crew, crewPct, `${aliveActors}/${totalActors} alive`);
   emitSign("base", w.status.base, basePct, `avg HP ${Math.round(basePct)}%`);
   emitSign("supplies", w.status.supplies, suppliesPct, undefined, driverLabel);
@@ -922,8 +1052,7 @@ export function computeWork(w: World): {
   for (const a of w.actors) {
     if (a.state === "working") playerUsed += a.work;
   }
-  const hasActiveTask = w.tasks.some((t) => t.status === "active" && t.kind !== "service");
-  const droneUsed = droneOnline && hasActiveTask ? w.drones : 0;
+  const droneUsed = droneOnline && w.tasks.some(isProductiveTask) ? w.drones : 0;
   const powerUsed = playerUsed + droneUsed;
   const powerAvailable = Math.max(0, powerMax - powerUsed);
 

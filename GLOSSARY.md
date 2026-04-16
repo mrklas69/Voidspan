@@ -2,7 +2,7 @@
 
 Jediný zdroj pravdy pro klíčové pojmy projektu. Když se pojem mění, mění se zde. Ostatní dokumenty (IDEAS, TODO, SCENARIO, sessions, kód) se na tento glosář odvolávají.
 
-Verze: **v0.9** (Sezení 24 — **QuarterMaster v2.3** (runtime Protokolu): auto-repair orchestrace s E/W gate, eternal monitor task, 5-color Task Queue Panel [T], task lifecycle (pending→active→paused→completed), autoclean po 1 h wall. **Responsive Layout axiom (KISS)**: canvas = viewport, všechny UI velikosti fix, text 18 px. **Protocol** kanonizován. Integrita (II.2) oddělena od E.).
+Verze: **v1.4** (Sezení 25 — **Food + Air retire (KISS)**: `solids.food` smazáno (food je atribut item, ne kategorie); `fluids.air` smazáno (24th-cent recyklace, atmosféra není gameplay osa). FVP subtypy: Solids = {metal, components}, Fluids = {water, coolant}. Per-capita drain prázdný stub. ActorLifeTick HP drain z deficitu odstraněn. **Resource Taxonomy** (rarity 5 stupňů: Common/Uncommon/Rare/Exclusive/Epic + logistics matrix Solids/Fluids — design baseline pro P2+ ekonomiku, FVP scope drží generické placeholder subtypy). **Recipes**: každý Modul/Bay má `ResourceRecipe` per-HP rate, repair drénuje per recipe (M:N reference). **Top Bar S/F bary** ukazují worst-of subtypů. **QM material gate** se subtype-specific důvodem (`Paused — no metal`/`no components`/...). **Kvintet renaming**: 3. = `Pevné/Solids (S)`, 4. = `Tekutiny/Fluids (F)` (`Slab`/`Flux` retirováno). **Drony spotřebovávají E** (productionTick odečítá 1 W/dron při productive tasku, feedback loop → QuarterMaster pause na E<40% / resume na E≥60%, 20% hystereze). **Dashboard 5-color kánon** (Top Bar bary sdílí barvu s tooltip headery přes `ratingColor(pct)`). **Software třída** s příkonem (QuarterMaster v2.3 draw_w 0.86 W). **Per-capita drain** (awake aktéři spotřebovávají Solids/Fluids). Sezení 24 — **QuarterMaster v2.3** (runtime Protokolu): auto-repair orchestrace, eternal monitor task, 5-color Task Queue Panel [T], task lifecycle (pending→active→paused→completed), autoclean po 1 h wall. **Responsive Layout axiom (KISS)**: canvas = viewport, všechny UI velikosti fix, text 18 px. **Protocol** kanonizován. Integrita (II.2) oddělena od E.).
 
 ---
 
@@ -97,16 +97,65 @@ Protokol běží jako **kolonijní AI proces** (ne per-hráč). Nemá vlastní s
 - Schvalování capsule arrivals (dle Ústavy a Vyhlášek o citizenship).
 - Ekonomických pravidlech (mýto, daně, odměny — dle Zákoníku).
 
+### Software (S25) — instalované runtime systémy
+
+Každý autopilot/ovladač/manager kolonie je **Software instance** s těmito atributy:
+
+| Atribut | Popis |
+|---|---|
+| `id` | stabilní identifikátor (`quartermaster`, `lifesupport`, …) |
+| `name` | čitelný název („QuarterMaster") |
+| `version` | verze runtime (upgrade přes výzkum) |
+| `draw_w` | **příkon** v W — kontinuální odběr, běží-li SW |
+| `status` | `running` \| `offline` — offline při E=0 |
+
+**Příkon jako U moduly:** SW běží na CPU, CPU potřebuje E. Odběr je **kontinuální** (bez ohledu na aktuální aktivitu) a liší se per verze. Nová verze = víc schopností, obvykle i vyšší spotřeba (v4.x Energy-aware naopak úspornější).
+
+**Energy gate:** `productionTick` odečítá `Σ draw_w` běžících SW od `netPower`. Při E=0 všechny SW přechází `offline` + DRN:CRIT event per SW. Po obnovení E (≥ 1 Wh) bootují zpět → BOOT event.
+
+**V FVP běží jeden SW:** QuarterMaster v2.3, `draw_w = 0.86 W` (`QM_DRAW_W` v `tuning.ts`).
+
 ### QuarterMaster — runtime Protokolu (S24)
 
-Konkrétní implementace Protokolu ve FVP. **Verzovaný SW** — upgrade přes výzkum odemyká nové capabilities (IDEAS parkoviště).
+Konkrétní implementace Protokolu ve FVP. **Verzovaný SW** (viz Software výše) — upgrade přes výzkum odemyká nové capabilities (IDEAS parkoviště).
 
-**Startovní verze:** `v2.3` (předchozí iterace kolonií už vylepšily). Fix ve `PROTOCOL_VERSION` (tuning.ts).
+**Startovní verze:** `v2.3` (předchozí iterace kolonií už vylepšily), `draw_w = 0.86 W`. Konstanta `PROTOCOL_VERSION` v `tuning.ts`.
 
 **FVP capabilities (v2.3):**
-- Auto-repair orchestrace: E rating ≥ 3 (Dostačující) AND W rating ≥ 3 → start/resume; E nebo W rating ≤ 2 (Slabá/Selhání) → pause. Hystereze (start ≥ 3 vs. pause ≤ 2) brání flappingu.
+- Auto-repair orchestrace se čtyřmi gate podmínkami (všechny musí být ready pro RESUME, kterákoliv pauzuje):
+  1. **Energy** — rating ≥ 4 (≥ 60 %) pro resume, ≤ 2 (< 40 %) pro pause. Hystereze 40–60 %.
+  2. **Workers** — alespoň jeden drone online (drone > 0 && E > 0) nebo alive aktér s HP > 0.
+  3. **Autopilot online** — QM SW není offline (E=0 vypne CPU → žádné orchestrace).
+  4. **Material** — `solids.food > 0` (repair drénuje Solids, S25). Pauza při 0, resume jakmile > 0.
+- W rating do gate **nevstupuje** (S24 Censure fix — W rating odráží availability, použití by zacyklilo).
+- `isProductiveTask(t)` = `status === "active" && kind !== "service"` (sdílený predikát pro sim `productionTick` + tooltipy).
 - Target selection: nejnižší HP ratio (bay nebo modul).
-- Eternal monitor task („QuarterMaster v2.3 — Active/Paused/Idle/Standby") v task queue.
+- Eternal monitor task — label reflektuje stav (priorita shora dolů): `OFFLINE — no power` / `Paused — low Energy` / `Paused — no workers` / `Paused — no Solids` / `Idle — nothing to repair` / `Standby` / `Active`.
+
+**Repair economy (S25) — per-target recipes:**
+- Každý tick repair tasku: `recipeDrain = ResourceRecipe × hp_delta` z příslušných subtypů Solids/Fluids.
+- Recipe = M:N reference Module/Bay → subtypy (definováno v `MODULE_DEFS[*].recipe` / `BAY_DEFS[*].recipe`, model.ts).
+- Při deficitu **kterékoli složky** receptu (recipe[subtype] × ε > available) → tick skip + next protocolTick pauza s důvodem `no <subtype>` (např. `Paused — no metal`).
+- Nulový přísun (P2+ Greenhouse / mining produkce). Hráč musí restockovat.
+
+### Recipe tabulka (FVP seed, per-HP rate)
+
+Total build cost = recipe × HP_MAX. Per-tick repair drain = recipe × hp_delta.
+
+| Item | metal | components | water | coolant |
+|---|---|---|---|---|
+| Bay skeleton | 0.05 | — | — | — |
+| Bay covered | 0.06 | 0.005 | — | — |
+| SolarArray | 0.05 | 0.03 | — | — |
+| Storage | 0.05 | 0.005 | — | — |
+| Habitat | 0.07 | 0.01 | 0.02 | — |
+| MedCore | 0.05 | 0.05 | 0.05 | 0.01 |
+| Assembler | 0.07 | 0.04 | — | 0.02 |
+| CommandPost | 0.05 | 0.06 | — | — |
+| Dock | 0.10 | 0.02 | — | — |
+| Engine | 0.12 | 0.05 | — | 0.05 |
+
+Recipe používá jen FVP subtypy: `metal`, `components`, `water`, `coolant`. Food + air retirovány (S25 KISS).
 
 **Task lifecycle (S24):**
 ```
@@ -164,9 +213,11 @@ Status
 
 ### Agregace
 
-**Parent = worst child** (fraktální semafor red/orange/green). Status root barva = nejhorší listová metrika. Kompozice rekurzivní na všech úrovních.
+**Parent = worst child** (fraktální semafor). Status root barva = nejhorší listová metrika. Kompozice rekurzivní na všech úrovních.
 
-Prahy semaforu jsou jednotné (S18 dashboard axiom): `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`. Helper `metricColor(pct, inverted?)` v `palette.ts`.
+Barevný kánon (S25): UI ukazatel s barvou čerpá barvu ze stejné metriky přes 5-color `RATING_COLOR[statusRating(pct)]` v `palette.ts` — stejná mapa pro Top Bar bary, tooltip headery, InfoPanel rating, Event Log SIGN. Pět kbelíků: < 15 % red, < 40 % orange, < 60 % amber, < 80 % cyan, ≥ 80 % green.
+
+Interní 3-state `StatusNode.level` (ok/warn/crit) se používá jen pro agregace ve world.ts (`toLevel` přes `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`), ne pro barvení UI.
 
 ### Metriky per uzel (FVP seedy, laditelné)
 
@@ -188,7 +239,7 @@ Prahy semaforu jsou jednotné (S18 dashboard axiom): `THRESHOLD_CRIT_PCT = 15`, 
 | 2 | Slabá | Poor | 15–40 % |
 | 1 | Selhání | Failure | 0–15 % |
 
-Mapování na semafor: 5–4 = green, 3 = green (spodní), 2 = orange (warn), 1 = red (crit). Prahy konzistentní s `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`.
+Mapování na UI barvu: **5-color rating** (viz Agregace výše, S25) — 5 green / 4 cyan / 3 amber / 2 orange / 1 red. Interní 3-state `StatusNode.level` (ok/warn/crit přes `THRESHOLD_CRIT_PCT = 15`, `THRESHOLD_WARN_PCT = 40`) se používá jen pro agregační logiku ve world.ts, ne pro barvení UI.
 
 Detail metrik (konkrétní formule, kalibrace) — viz otevřené otázky v `IDEAS.md` („Status tree Q2–Q10").
 
@@ -239,7 +290,7 @@ Startovní sada na palubě `SHIP` (viz SHIP konfigurace). Další moduly vznikaj
 | Modul | Rozměr (typ.) | Role |
 |---|---|---|
 | **SolarArray** | 2×2 | Produkce energie W (napájí drony a moduly) |
-| **Storage** | 2×2 a větší | Sklad Slab/Flux/Coin (materiály, kapaliny, měna), zásoby jídla |
+| **Storage** | 2×2 a větší | Sklad Solids/Fluids/Coin (materiály, tekutiny, měna), zásoby jídla |
 | **Habitat** | 1×1 (start) | Bydlení (cryo-lůžka, ložnice, kuchyň, sport, kultura). `CONST_HABITAT_CAPACITY = 8`. Větší habitat = lineárně škálovaná kapacita × efekt Module Specialization. |
 | **MedCore** | 1×1 (start) | Integrovaná kryo + nemocnice + márnice + research. Slabé. Postupně se odštěpuje do dedikovaných Hospital / Cryobank / Morgue / Lab. |
 | **Assembler** | 1×1 | Výroba modulů a dílů. Bez něj kolonie nestaví. |
@@ -366,21 +417,94 @@ Odchod hráče = brains pokračuje podle nastaveného presetu. Offline hráč be
 
 ## Resources — Model v0.1 (axiom, S12)
 
-**5 ekonomických os:**
+**5 ekonomických os (Kvintet):**
 
-| Zdroj | Symbol | Typ | Obsah |
+| Zdroj (CZ) | Zdroj (EN) | Symbol | Typ | Obsah |
+|---|---|---|---|---|
+| **Energie** | **Energy** | `E` | rate + storage | elektřina v baterii; výroba (SolarArray) − spotřeba (moduly + drony + SW) |
+| **Práce** | **Work** | `W` | throughput | pracovní kapacita = Σ `power_w` všech pracujících aktérů + dronů |
+| **Pevné** | **Solids** | `S` | solid stock | pevné a sypké látky (jídlo, kov, komponenty, …) |
+| **Tekutiny** | **Fluids** | `F` | fluid + gas stock | kapaliny, plyny, plazma (vzduch, voda, chladivo, …) |
+| **Kredit** | **Coin** | `◎` | currency | měna, ne materiál; směna, platby, mzdy |
+
+**Skupenství axiom (S25):** 3. a 4. kategorie pokrývají **dvě fyzikální skupenství** zdrojových surovin (paralela ve dvou osách): `Pevné/Solids` (solid + granular) vs. `Tekutiny/Fluids` (gas + liquid + plasma). Gramatická paralela: oba plurály neutra.
+
+**Subtypy (FVP):**
+- Pevné (Solids): `metal`, `components`
+- Tekutiny (Fluids): `water`, `coolant`
+
+HUD agreguje subtypy do jednoho baru per kategorie (worst-of axiom — bar ukazuje nejnižší subtyp). Event engine pracuje s detailem (`solids.metal < 10` → trigger „nedostatek kovu"). P2+ může přidávat subtypy a item registr bez změny HUD struktury.
+
+**Retirované pojmy:**
+- `Slab` → **Solids** (S25 — Slab evokoval „ingot/blok kovu", neodpovídal subtypu food)
+- `Flux` → **Fluids** (S25 — držet stavovou paralelu se Solids)
+- `Kredo` → **Coin** (currency, S1–S3 retirement)
+- `Echo` → **Energy** (capsule recycling = Coin payout, S1–S3)
+- `solids.food` (S25 KISS) — food je atribut item, ne kategorie. Až přijde item registr s `edible` flagem, „food" = sum všech edibles. V FVP nikdo nejí (cryo crew).
+- `fluids.air` (S25 KISS) — 24th-cent skafandry mají 100% recyklaci, atmosféra mimo skafandr není gameplay osa. Hull integrity covered HP modulů.
+
+---
+
+## Resource Taxonomy — Rarity & Logistics (S25 design prep, P2+ scope)
+
+Členění Solids/Fluids do **rarity tierů** (5 stupňů) a **logistických tříd** (doprava + skladování + metrika). Designový baseline pro P2+ ekonomiku — kapsle, market, recyklace, dopravní moduly.
+
+### Rarity tiers (5 stupňů)
+
+| Rarity (CZ / EN) | Solids (Pevné) — příklady | Fluids (Tekutiny) — příklady |
+|---|---|---|
+| **Obyčejné** / Common | Kámen, Písek, Hlína | Voda, Surová ropa |
+| **Neobvyklé** / Uncommon | Železo, Měď, Uhlí | Zemní plyn, Mazivo |
+| **Vzácné** / Rare | Zlato, Uran, Titan | Kyseliny, Palivo |
+| **Exkluzivní** / Exclusive | Diamanty, Izotopy | Tekutý dusík, Plazma |
+| **Epické / Unikátní** / Epic, Unique | Nanomateriály, Artefakty | Temná hmota, Exolátky |
+
+Rarity ovlivňuje (P2+):
+- **Drop chance** kapslí (capsule recycling — vzácnější items vzácněji)
+- **Market cenu** (commodities exchange — Common = nízká, Epic = enormní volatilita)
+- **Recipe** vyšších modulů (Engine v3 vyžaduje Titan, Reactor vyžaduje Uran, …)
+- **Recyklace výtěžek** — Common rozložitelné, Epic neodbouratelné (story-grade)
+
+### Logistics matrix
+
+| Kategorie | Doprava (Logistics) | Skladování (Storage) | Metrika |
 |---|---|---|---|
-| **Energy** | `E` | rate + storage | elektřina v baterii; výroba (SolarArray) − spotřeba (moduly) |
-| **Work** | `W` | throughput | pracovní kapacita = Σ `power_w` všech pracujících aktérů |
-| **Slab** | `S` | solid stock | všechny pevné materiály (kov, komponenty, food, ...) |
-| **Flux** | `F` | fluid + gas stock | kapaliny + plyny (voda, chlazení, **vzduch** včetně) |
-| **Coin** | `◎` | currency | měna, ne materiál; směna, platby, mzdy |
+| **Solids** (Pevné) | Dopravní pásy, pytle | Haldy, sila, bedny | kg / t |
+| **Fluids** (Tekutiny) | Potrubí, hadice | Nádrže, barely | l / m³ |
 
-**Food = subtyp Slab** (F3 architektura). HUD agreguje do 1 baru, event engine ví: `slab.food < 10` → trigger „hladomor". Pro P2+ lze přidat další subtypy (metal, components) bez změny HUD.
+Implikuje (P2+):
+- **Dedikované dopravní moduly:** Conveyor (solids only), Pipeline (fluids only). Mixed kapsle = oba.
+- **Storage typy:** Silo (solids bulk), Tank (fluids), Crate (small batch / mixed). Současný `Storage` modul = generic, P2+ rozdělit.
+- **Metrika v UI:** kg/t pro Solids, l/m³ pro Fluids — `formatScalar` rozšířit o jednotky?
 
-**Air fold do Flux:** POC_P1 §14 `air_drain` refactorováno na `flux_drain` (breach = unikající Flux, ne Air specificky).
+### Mapping současných FVP subtypů na taxonomii
 
-**Kredo retirováno** — původní pojem z S1–S3 (currency + vague material). Nahrazeno jasným `Coin` (currency only) + `Slab` (materiál). `Echo` (capsule recycling) bude nově taky Coin payout.
+FVP má generické subtypy per kategorie jako **placeholdery** pokrývající rarity rozsah. P2+ se rozštěpí na konkrétní items s `edible`/`rarity`/`unit` attributy.
+
+| FVP subtyp | Rarity bucket | Příklady ze taxonomie |
+|---|---|---|
+| `solids.metal` | Uncommon | Železo, Měď, Uhlí |
+| `solids.components` | Rare | Elektronika, slitiny (Titan-bázované) |
+| `fluids.water` | Common | H₂O, hydratační média |
+| `fluids.coolant` | Uncommon | Mazivo, glykol, kryogenní směsi |
+
+**Food = attribute, ne kategorie (S25 design insight):**
+
+Edibility je **atribut item**, ne discrete subtyp. Napříč Solids i Fluids: energetická šťáva (Fluid: sirupy/koncentráty) je jedlá, pečivo (Solid) je jedlé, syntetické proteiny (Solid) jsou jedlé. P2+ item registr: každý item má `edible: boolean`. Per-capita drain spotřebovává „edibles pool" = sum všech edible items napříč subtypy. V FVP **nikdo nejí** (cryo crew, „lidé spí ještě stovku našich sezení").
+
+**Vzduch retirován (S25 KISS):** v narrative 24. století mají skafandry 100% recyklaci, atmosféra mimo skafandr není gameplay osa. Hull integrity covered HP modulů (Habitat, segment bays). Indoor atmosphere quality = funkce Habitat/MedCore HP, ne separátní float.
+
+### FVP scope
+
+V FVP **rarity tiers ani logistics nehrají roli**. Všechny subtypy stejně dostupné, bez dopravních modulů, bez market cen. Generic placeholdery udrží recept-systém funkční. Plný vývoj přijde s P2+ ekonomikou (kapsle, market, doprava).
+
+### TODO (P2+ rozpracování)
+
+- **Rarity vrstvení:** kapsle drop tabulky, market cena per rarity tier
+- **Conveyor / Pipeline moduly:** transport mezi Storage a konzumentem
+- **Storage subtypy:** Silo (solids), Tank (fluids), Crate (small)
+- **Recipe rozšíření:** vyšší moduly vyžadují konkrétní items (Titan, Uran, Coolant grade)
+- **Item registr:** každý item má `{ name_cs, name_en, rarity, category (solids/fluids), unit (kg/t/l/m3) }`
 
 ---
 
@@ -406,7 +530,7 @@ Všechna čísla v UI (HUD, panely, tooltipy, log) procházejí **`formatScalar(
 > - **Echo → Energy (E)** — solární / pohon / provozní energie.
 > - **Kredo → Coin (◎)** — univerzální měna (stavba, obchod, mzdy).
 >
-> Aktuální kánon: `Resource Model v0.1` (5 os: E / W / S / F / ◎). Starý dvouvýznamový model (E = hmota + peníze, jaký vycházel z „Kredo" jako stavební zdroj) byl v S12 rozdělen: materiály → **Slab (S)**, kapaliny/plyny → **Flux (F)**, měna → **Coin (◎)**. Recyklace kapslí (viz *Capsule*) je vedlejší zdroj Coin a Slab.
+> Aktuální kánon: `Resource Model v0.1` (5 os: E / W / S / F / ◎). Starý dvouvýznamový model (E = hmota + peníze, jaký vycházel z „Kredo" jako stavební zdroj) byl v S12 rozdělen: pevné a sypké → **Pevné/Solids (S)**, kapaliny/plyny → **Tekutiny/Fluids (F)**, měna → **Kredit/Coin (◎)**. S25 zpřesnění: ČJ pojmy „Pevné" a „Tekutiny" drží paralelu skupenství (`Slab`/`Flux` byla anglicky-only nálepka). Recyklace kapslí (viz *Capsule*) je vedlejší zdroj Coin a Solids.
 
 ---
 
@@ -637,7 +761,7 @@ Hra má **dvě perspektivy** s oddělenými HUD rozsahy:
 
 **Princip:** Top Bar 5 resource bars je **Observer-only** — zobrazuje stav kolonie, ne hráče. Per-actor indikátory (HP, osobní zásoby) patří do floating panelu *Podrobnosti* [P] nebo *Kolonisté* [K] v Observer módu; v Player módu (P2+) migrují do Top Baru a kolonijní souhrny se přesunou do floating panelu.
 
-**Izomorfismus:** stejné zdroje (◎, Slab.food, Flux.air, …) se v obou módech zobrazují v **Top Baru**, ale jiná škála — kolonijní vs. osobní. Pojmenování jednotek shodné.
+**Izomorfismus:** stejné zdroje (◎, Solids.food, Fluids.air, …) se v obou módech zobrazují v **Top Baru**, ale jiná škála — kolonijní vs. osobní. Pojmenování jednotek shodné.
 
 **Mode switch** (P2+): patrně zoom-level přechod (mapa beltu → colony view = Observer → actor view = Player) nebo hotkey toggle. Finální UX TBD.
 

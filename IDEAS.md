@@ -427,6 +427,7 @@ Sjednocení 4 mechanik (konstrukce / dekonstrukce / oprava / poškození) do jed
 - Planety / měsíce v soustavě jako **outposty**.
 - **Role „Archivář"** — hráčská pozice spravující Legacy Letter Archive.
 - **Paralelní belty v síti** — server hostí víc kolonií, hráči migrují mezi nimi přes kapsle.
+- **Q-Rarity-Codes (S25)** — code letter per rarity tier (`[C]` Common, `[U]` Uncommon, `[R]` Rare, `[X]` Exclusive, `[E]` Epic) pro UI badges v inventory / market / drop tables. Konflikt s `[E]` jako hotkey pro Event Log? Možná `[ε]` Epic nebo jiná konvence. Rozhodnout až přijde item registr.
 
 ---
 

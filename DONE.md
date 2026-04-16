@@ -2,6 +2,25 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+## 2026-04-16 (Sezení 25 — Drone E + Recipes + Solids/Fluids + Resource Taxonomy + Food/Air retire)
+
+- [x] **Drone E drain v productionTick** — `delta = (netPower - droneDraw - softwareDraw) / ticksPerHour`. Symetrie E↔W (S23 work eureka) konečně sim-implementována. Cyklus: drone-on → E drop → drone-off → E rise.
+- [x] **QuarterMaster hystereze 40–60%** — `PROTOCOL_RESUME_RATING` 3 → 4. Pause E < 40% (rating ≤ 2), resume E ≥ 60% (rating ≥ 4), amber pásmo drží stav. Zabrání flappingu.
+- [x] **Dashboard 5-color kánon** — Top Bar bary `ratingColor(pct)` místo `metricColor` (3-color). Sjednocené s tooltip headery. `metricColor` smazán jako dead code.
+- [x] **`isProductiveTask(t)` predikát v model.ts** — sdílený filter `status === "active" && kind !== "service"` napříč productionTick / computeWork / energyTooltip / workTooltip.
+- [x] **`ratingColor(pct)` helper v palette.ts** — wrap přes `RATING_COLOR[statusRating(pct)]`. RATING_COLOR type tighten na `Record<StatusRating, string>` (žádné `!` non-null asserce).
+- [x] **workTooltip dedup** — `totalPlayerW` accumulated v expense loop, druhý 6-řádkový iter smazán. Sdílená drone řádka (1× w.drones), ne per task.
+- [x] **Software třída** — `Software = { id, name, version, draw_w, status }` v model.ts; `World.software: Record<string, Software>` (nahradilo redundantní `World.protocolVersion`). QuarterMaster v2.3 s `draw_w = 0.86 W` v tuning.
+- [x] **SW E gate + recovery** — productionTick odečítá `Σ draw_w` běžících SW; E=0 → SW offline + DRN:CRIT + monitor label „OFFLINE — no power" + protocolTick force-pause; E > 0 → SW boot + BOOT event. State-based sync (robust při damage scénářích).
+- [x] **Repair recipes (M:N reference)** — `ResourceRecipe` typ v model.ts, `BAY_DEFS` pro skeleton/covered, `recipe: ResourceRecipe` per modul (per-HP rate, sparse subtypy). Recipe helpers (`getTaskRecipe`, `whichResourceMissing`, `consumeResources`, `firstMissingRecipeSubtype`). progressTasks drénuje per recipe; protocolTick gate na deficitu kterékoli složky s důvodem `no <subtype>`.
+- [x] **E infotip agregace per kind** — moduly sloučené v energyTooltip (ID odpadlo, HP průměr, count v suffixu `×N`).
+- [x] **Slab/Flux → Pevné/Solids, Tekutiny/Fluids** — kvintet rename v GLOSSARY + bulk rename v kódu (`World.resources.slab → solids`, `flux → fluids`, `slabTooltip → solidsTooltip`, `fluxTooltip → fluidsTooltip`). Skupenstvová paralela (oba plurály neutra).
+- [x] **Resource Taxonomy v GLOSSARY** (P2+ design baseline) — rarity 5 stupňů (Common → Epic) + logistics matrix (doprava/skladování/metrika per Solids/Fluids). 8 P2+ TODO zapsáno.
+- [x] **Food + Air retire (KISS)** — `solids.food` (food je atribut item, ne kategorie) a `fluids.air` (24th-cent recyklace) odstraněny z modelu. FVP subtypy: Solids = {metal, components}, Fluids = {water, coolant}. resourceDrain + actorLifeTick → no-op stuby. Top Bar S/F bary = worst-of subtypů.
+- [x] **Memory `feedback_lang_convention.md`** — code EN, display CZ, target EN.
+- [x] **AUDIT:CODE pass** (3 paralelní agenti) — `isProductiveTask`, `ratingColor`, `RATING_COLOR` typing, workTooltip dedup, sprint-tag noise vyčištěno.
+- [x] **AUDIT:DOCS pass** — GLOSSARY QM gate (W rating + RESUME 3 stale), 5-color sjednoceno, MINDMAP v3.2.
+
 ## 2026-04-16 (Sezení 24 — Integrita + Protocol + Responsive Layout + QuarterMaster)
 
 - [x] **Integrita (II.2)** — `entropy` → `integrity` v kódu, E vyjmuta z výpočtu (jen hpAvgPct), label „Integrita". TODO rate do budoucna.

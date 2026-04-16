@@ -92,7 +92,38 @@ export type ModuleDef = {
   wd_to_demolish: number;
   cost_coin: number;
   max_hp: number; // HP_MAX — viz tabulka dole (hundreds, monotónně vzestupně)
+  recipe: ResourceRecipe; // S25 — surovinový recept per-HP rate
   description: string;
+};
+
+// === Resource Recipe (S25) ===
+//
+// M:N reference Module/Bay → subtypy Solids/Fluids. Recept definuje **per-HP
+// rate** spotřeby — kolik jednotek subtypu se spotřebuje na 1 HP repair / build.
+// Total cost = recipe × hp_max. Repair tick: cost = recipe × hp_delta.
+//
+// Sparse: subtypy které se neuvádí = 0 (nezávisí na nich). Skeleton potřebuje
+// jen metal; MedCore = metal + components + water; Engine = metal + coolant.
+//
+// Při deficitu kterékoli složky: progressTasks tick skip, protocolTick pauza
+// s důvodem `no Solids` / `no Fluids`.
+
+export type ResourceRecipe = {
+  solids?: {
+    metal?: number;
+    components?: number;
+  };
+  fluids?: {
+    water?: number;
+    coolant?: number;
+  };
+};
+
+// Bay layered states — recepty pro skeleton/covered (paralela k ModuleDef).
+// Singletony, ne katalog → konstanty s recepty.
+export type BayDef = {
+  hp_max: number;
+  recipe: ResourceRecipe;
 };
 
 // Instance modulu ve světě. HP žije tady, cover variant pod ním na Bay.
@@ -176,6 +207,30 @@ export type Task = {
   label?: string;             // override label (pro service tasky — „QuarterMaster v2.3 — Idle")
 };
 
+// Productive task = reálně čerpá pracovní kapacitu (W/E). Vylučuje service
+// (eternal monitor) a ne-active statusy. Sdílený predikát napříč sim +
+// tooltipy, aby nevznikl drift mezi fakticky čerpaným výkonem a UI displayem.
+export function isProductiveTask(t: Task): boolean {
+  return t.status === "active" && t.kind !== "service";
+}
+
+// === Software (S25) ===
+//
+// Instalovaný runtime systém kolonie (QuarterMaster autopilot a budoucí kolegové:
+// LifeSupport, Trader, DefenseGrid, …). Má **příkon** (`draw_w`) jako moduly —
+// SW běží na CPU, CPU potřebuje elektřinu. Při E=0 všechny SW přechází offline
+// (kritické selhání), po obnovení E bootují.
+//
+// Draw je per-version: nová verze může být náročnější i úspornější. Každý SW
+// má vlastní verzi (upgrade přes výzkum) a nese ji v `version`.
+export type Software = {
+  id: string;           // "quartermaster", "lifesupport", ...
+  name: string;         // „QuarterMaster", „LifeSupport"
+  version: string;      // „v2.3" — upgrade přes výzkum (P2+)
+  draw_w: number;       // příkon v W (kontinuální, běží-li SW)
+  status: "running" | "offline"; // offline = chybí E
+};
+
 // === Status tree (S20/S21) ===
 // Agregace zdraví kolonie. parent = worst child (fraktální semafor).
 // Prahy: < 15% = crit, < 40% = warn, ≥ 40% = ok.
@@ -232,8 +287,8 @@ export type World = {
   phase: Phase;
   resources: {
     energy: number;
-    slab: { food: number };
-    flux: { air: number };
+    solids: { metal: number; components: number };
+    fluids: { water: number; coolant: number };
     coin: number;
   };
   segment: Bay[]; // 16 bays (2×8)
@@ -245,8 +300,9 @@ export type World = {
   energyMax: number; // Σ capacity_wh online modulů — dynamická kapacita baterie
   drones: number;    // počet pracovních dronů — převodník E→WD, žádný HP
   next_task_id: number;
-  // S24 QuarterMaster — autopilot kolonie (runtime Protokolu, GLOSSARY §Protocol).
-  protocolVersion: string;   // „v2.3" startovní — upgrade přes výzkum (P2+)
+  // Instalované SW runtime (QuarterMaster v2.3 + budoucí kolegové). Každý má
+  // příkon a běží-li, odčerpává E. Source of truth pro verze SW kolonie.
+  software: Record<string, Software>;
 };
 
 // ============================================================================
@@ -266,6 +322,22 @@ export type World = {
 //   Engine        1240   nejpevnější
 // Monotónní, „hmotnost + kritičnost". Playtest ladí.
 
+// === BAY_DEFS — recepty pro layered bay states (S25) ===
+// skeleton/covered se nestaví/neopravuje přes ModuleDef katalog → vlastní def.
+export const BAY_DEFS: Record<"skeleton" | "covered", BayDef> = {
+  skeleton: {
+    hp_max: 380,
+    recipe: { solids: { metal: 0.05 } }, // jen kov, holá konstrukce
+  },
+  covered: {
+    hp_max: 500,
+    recipe: { solids: { metal: 0.06, components: 0.005 } }, // plášť + těsnění
+  },
+};
+
+// === MODULE_DEFS ===
+// recipe je per-HP rate. Total build cost = recipe × max_hp. Per-tick repair
+// drain = recipe × hp_delta. Sparse subtypy nepoužité jsou implicit 0.
 export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
   SolarArray: {
     kind: "SolarArray",
@@ -279,6 +351,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 8,
     max_hp: 500,
+    recipe: { solids: { metal: 0.05, components: 0.03 } }, // panely + elektronika
     description: "Solární panel s integrovaným akumulátorem 80 Wh.",
   },
   Engine: {
@@ -293,6 +366,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 60,
     cost_coin: 30,
     max_hp: 1240,
+    recipe: { solids: { metal: 0.12, components: 0.05 }, fluids: { coolant: 0.05 } },
     description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
   },
   Dock: {
@@ -307,6 +381,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 20,
     cost_coin: 20,
     max_hp: 1000,
+    recipe: { solids: { metal: 0.10, components: 0.02 } },
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
   },
   Habitat: {
@@ -321,6 +396,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 8,
     cost_coin: 10,
     max_hp: 700,
+    recipe: { solids: { metal: 0.07, components: 0.01 }, fluids: { water: 0.02 } },
     description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
   },
   Storage: {
@@ -335,6 +411,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 6,
     cost_coin: 8,
     max_hp: 650,
+    recipe: { solids: { metal: 0.05, components: 0.005 } },
     description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
   },
   MedCore: {
@@ -349,6 +426,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 9,
     cost_coin: 12,
     max_hp: 800,
+    recipe: { solids: { metal: 0.05, components: 0.05 }, fluids: { water: 0.05, coolant: 0.01 } },
     description: "Lékařské centrum. Léčí HP aktérům (P2+).",
   },
   Assembler: {
@@ -363,6 +441,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 15,
     max_hp: 850,
+    recipe: { solids: { metal: 0.07, components: 0.04 }, fluids: { coolant: 0.02 } },
     description: "Výrobna modulů z Coin (◎). Bottleneck stavby v P2+.",
   },
   CommandPost: {
@@ -377,6 +456,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 10,
     cost_coin: 14,
     max_hp: 900,
+    recipe: { solids: { metal: 0.05, components: 0.06 } },
     description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
   },
 };

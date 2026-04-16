@@ -15,9 +15,8 @@ Většina implementována v S21. Zbývající úkoly:
 
 Pipeline sloty 1, 6, 7, 10 naplněny v S21. Phase win/loss retirováno. Zbývající:
 
-- [ ] **Opravy konzumují suroviny** (S25) — repair task čerpá Slab (S) úměrně wd_done. Rate = Slab × (hp_repaired / hp_max) nebo fix cost per repair task. Pokud Slab=0, task → paused/failed. Napojit na QuarterMaster gate (kromě E+workers i minimum Slab). Rozpracovat CAL tuning hodnoty.
 - [ ] **II.2 Integrita jako rate** — aktuálně snapshot (avg HP bays+moduly). Dle IDEAS/GLOSSARY spec má být **rate** (Δ HP / game day, repair vs. decay trajektorie). Přepsat až bude stabilní decay + repair tick — pak lze měřit trend místo okamžitého stavu. S23 přejmenováno `entropy` → `integrity`, E odstraněno z výpočtu (má vlastní bar).
-- [ ] **`resourceDrain` per-capita** — přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Phase gate odstraněn (S23), stub no-op.
+- [ ] **`resourceDrain` per-capita** (P2+) — stub. Až přijde wake-up + edibles bucket (item registr s `edible` flag), přidat drain edible items per awake actor.
 - [ ] **`autoEnqueueTasks` — priority queue** — Observer-driven: critical HP (< 30 %) → auto repair task. Bez hráčského kliku.
 - [ ] **`arrivalsTick`** — trigger spawning kapsle. Kde se kolonista probudí, když není Habitat?
 - [ ] **`scheduledEvents`** — napojení na events bank (SCENARIO §5). Formální schéma eventu neexistuje.
@@ -47,6 +46,19 @@ Axiom zapsán v `IDEAS.md` → „UI Layer Stack axiom (S19)". Úkoly:
 - [ ] **Q-WinLoss-Buttons** — P1 Win/Loss obrazovka: Close / Restart / Quit?
 - [ ] **Layer 4 overlays (Infotip / Karta / Popover)** — až bude content (`<link>text</link>` syntax v textech). Dnes máme jen tooltip — ekvivalent 4.1. Rozšířit na 4.2 a 4.3.
 - [ ] **Layer 3.5 Floating workspace (K/U/Z/E/P)** — odloženo, viz spec v `POC_P1.md` §16. Po rozhodnutí Q-Floating-Panels-Home.
+
+## Resource Taxonomy (P2+, S25 design prep)
+
+Rarity 5 tierů + Logistics matrix kanonizovány v GLOSSARY. FVP drží generic placeholder subtypy. P2+ rozpracování:
+
+- [ ] **Item registr** — každý konkrétní item má `{ name_cs, name_en, rarity, category, unit }`. Mapování FVP subtypů → konkrétní items.
+- [ ] **Capsule drop tabulky** — drop chance per rarity tier (Common 60% / Uncommon 25% / Rare 10% / Exclusive 4% / Epic 1%, kalibrace TBD).
+- [ ] **Market** — commodities exchange s cenami per rarity tier (volatilita Common low → Epic enormous).
+- [ ] **Conveyor / Pipeline moduly** — dedikovaná doprava per skupenství.
+- [ ] **Storage rozdělení** — Silo (solids bulk) / Tank (fluids) / Crate (small batch). Současný `Storage` je generic placeholder.
+- [ ] **Recipe rozšíření** — vyšší moduly vyžadují konkrétní items per rarity (Engine v3 = Titan, Reactor = Uran, …).
+- [ ] **`formatScalar` jednotky** — kg/t pro Solids, l/m³ pro Fluids (rozhodnout: per-subtyp metadata vs. jeden univerzální formátovač).
+- [ ] **Recyklace výtěžek per rarity** — Common rozložitelné, Epic story-grade neodbouratelné.
 
 ## Konsolidace global tuning (S18)
 

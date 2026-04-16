@@ -33,8 +33,12 @@ export const TICKS_PER_WALL_MINUTE = TICKS_PER_SECOND * 60;
 // ============================================================================
 
 // Startovní zdroje kolonie (Q-P1 CAL-B3).
-export const SEED_FOOD = 40;        // slab.food — 8 osob × 5 game days
-export const SEED_AIR = 100;        // flux.air — 100 % při startu
+// S25 KISS retire: SEED_FOOD a SEED_AIR odstraněny — eating/breathing není
+// gameplay osa v FVP (cryo crew, 24th-century recyklace).
+export const SEED_METAL = 60;       // solids.metal — primární surovina pro repair
+export const SEED_COMPONENTS = 30;  // solids.components — high-tech moduly (CommandPost, MedCore)
+export const SEED_WATER = 30;       // fluids.water — Habitat plumbing, MedCore
+export const SEED_COOLANT = 20;     // fluids.coolant — Engine, Assembler, MedCore
 export const SEED_COIN = 20;        // Kredo — CAL-B2 dock cost budget
 
 // ============================================================================
@@ -128,11 +132,32 @@ export const TOOLTIP_LIST_MAX_ITEMS = 5;
 // Startovní verze Protokolu. Upgrade přes výzkum (P2+).
 export const PROTOCOL_VERSION = "v2.3";
 
+// Příkon QuarterMaster v2.3 — kontinuální odběr v W (nezávisle na aktivních
+// úkolech). Budoucí verze budou mít jinou spotřebu (v3.x Integrated Defense
+// pravděpodobně dražší, v4.x Energy-aware balancing pravděpodobně úspornější).
+export const QM_DRAW_W = 0.86;
+
+// Per-HP resource cost (S25 → recipes): retirováno. Spotřeba opravy je teď
+// per-target rate definovaný v `ModuleDef.recipe` / `BAY_DEFS[*].recipe`
+// (model.ts). Repair task drénuje `recipe × hp_delta` z příslušných subtypů
+// Solids/Fluids; protocolTick gate-uje na disponibilitě recipe komponent.
+//
+// Epsilon pro „can-progress" check v protocolTick — minimální HP delta,
+// pro kterou musí být materiál k dispozici (jinak pauza).
+export const RECIPE_MIN_HP_EPSILON = 0.01;
+
+// Per-capita drain (S25): air + food retirovány v KISS pass — žádný drain v FVP.
+// Mechanism slot 2 zůstává prázdný stub. Až přijde wake-up + jídlo jako item
+// registr (P2+), zde přidat per-actor consumption rate edible bucketu (water?).
+
 // Rating prahy pro Protokol gate.
-// Start / resume: E a W rating ≥ PROTOCOL_RESUME_RATING (= 3 Dostačující, ≥ 40%).
-// Pause:         E nebo W rating ≤ PROTOCOL_PAUSE_RATING (= 2 Slabá, < 40%).
-// Hystereze zabrání flapping (start ≥3 vs. pause ≤2 = gap 40-60% nebo 15-40%).
-export const PROTOCOL_RESUME_RATING = 3;
+// Pause:  E rating ≤ PROTOCOL_PAUSE_RATING (= 2 Slabá, < 40%) — orange/red zóna.
+// Resume: E rating ≥ PROTOCOL_RESUME_RATING (= 4 Dobrá, ≥ 60%) — cyan/green zóna.
+// Reálná hystereze 40–60% (amber pásmo): při PAUSE zůstává paused dokud E
+// nedosáhne ≥60%; při RESUME zůstává active dokud E neklesne <40%. Zabrání
+// flappingu na hraně rating bucketu (S25 — drony čerpají E v productionTick,
+// bez hystereze cyklus drone-on → E drop → drone-off → E rise → ...).
+export const PROTOCOL_RESUME_RATING = 4;
 export const PROTOCOL_PAUSE_RATING = 2;
 
 // Autoclean completed/failed tasks — 1 h wall = 14400 ticků (při TICK_MS 250).

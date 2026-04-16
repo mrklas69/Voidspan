@@ -5,7 +5,7 @@
 import Phaser from "phaser";
 import pkg from "../../../package.json";
 import type { World } from "../model";
-import { MODULE_DEFS, STATUS_LABELS, statusRating } from "../model";
+import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "../model";
 import { formatResource, formatScalar } from "../format";
 import { formatGameTime, computeWork } from "../world";
 import { TOOLTIP_LIST_MAX_ITEMS } from "../tuning";
@@ -16,7 +16,7 @@ import {
   UI_BRAND_ICON,
   HEX_WARN_ORANGE,
   RATING_COLOR,
-  metricColor,
+  ratingColor,
 } from "../palette";
 import { CANVAS_W, HUD_ROW_Y, COL_TEXT, COL_TEXT_ACCENT } from "./layout";
 
@@ -78,8 +78,8 @@ export class HeaderPanel {
     const resourceTooltips: Array<() => string | TooltipContent> = [
       () => this.energyTooltip(),
       () => this.workTooltip(),
-      () => this.slabTooltip(),
-      () => this.fluxTooltip(),
+      () => this.solidsTooltip(),
+      () => this.fluidsTooltip(),
       () => this.coinTooltip(),
     ];
     for (let i = 0; i < this.resourceTexts.length; i++) {
@@ -95,27 +95,41 @@ export class HeaderPanel {
     const rating = statusRating(pct);
     const ratingLabel = STATUS_LABELS[rating];
 
-    // Kapacita — moduly s capacity_wh > 0, sestupně.
+    // Agregace online modulů podle kind — součet cap/power + průměrné HP%.
+    // Bez ID (insignifikantní v seznamech) — jedna řádka per kind, count v suffixu.
+    const agg = new Map<string, { kind: string; count: number; capSum: number; pwSum: number; hpSum: number }>();
+    for (const mod of Object.values(w.modules)) {
+      if (mod.status !== "online") continue;
+      const entry = agg.get(mod.kind) ?? { kind: mod.kind, count: 0, capSum: 0, pwSum: 0, hpSum: 0 };
+      const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
+      entry.count += 1;
+      entry.capSum += (MODULE_DEFS[mod.kind].capacity_wh ?? 0) * hpRatio;
+      entry.pwSum += MODULE_DEFS[mod.kind].power_w * hpRatio;
+      entry.hpSum += hpRatio;
+      agg.set(mod.kind, entry);
+    }
     const capMods: Array<{ name: string; cap: number; hpPct: number }> = [];
     const income: Array<{ name: string; pw: number; hpPct: number }> = [];
     const expense: Array<{ name: string; pw: number; hpPct: number }> = [];
-    for (const mod of Object.values(w.modules)) {
-      if (mod.status !== "online") continue;
-      const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
-      const nomCap = MODULE_DEFS[mod.kind].capacity_wh ?? 0;
-      if (nomCap > 0) {
-        capMods.push({ name: `${mod.kind} (${mod.id})`, cap: nomCap * hpRatio, hpPct: Math.round(hpRatio * 100) });
-      }
-      const pw = MODULE_DEFS[mod.kind].power_w * hpRatio;
-      const entry = { name: `${mod.kind} (${mod.id})`, pw, hpPct: Math.round(hpRatio * 100) };
-      if (pw > 0) income.push(entry);
-      else if (pw < 0) expense.push(entry);
+    for (const a of agg.values()) {
+      const hpPct = Math.round((a.hpSum / a.count) * 100);
+      const name = a.count > 1 ? `${a.kind} ×${a.count}` : a.kind;
+      if (a.capSum > 0) capMods.push({ name, cap: a.capSum, hpPct });
+      if (a.pwSum > 0) income.push({ name, pw: a.pwSum, hpPct });
+      else if (a.pwSum < 0) expense.push({ name, pw: a.pwSum, hpPct });
     }
-    // Nabíjení dronů — drony pracují = spotřeba E (1 dron = 1 W při práci).
-    const activeTasks = w.tasks.filter(t => t.assigned.length > 0 || w.drones > 0).length;
-    const droneCharge = (activeTasks > 0 && w.resources.energy > 0) ? w.drones : 0;
+    // Nabíjení dronů — 1 dron = 1 W při práci na productive tasku.
+    const droneCharge = w.tasks.some(isProductiveTask) && w.resources.energy > 0 ? w.drones : 0;
     if (droneCharge > 0) {
       expense.push({ name: `¤ Nabíjení dronů (${w.drones}×)`, pw: -droneCharge, hpPct: 100 });
+    }
+    // Software load — každý running SW běží kontinuálně (příkon per verze).
+    if (w.resources.energy > 0) {
+      for (const sw of Object.values(w.software)) {
+        if (sw.status === "running") {
+          expense.push({ name: `▣ ${sw.name} ${sw.version}`, pw: -sw.draw_w, hpPct: 100 });
+        }
+      }
     }
     capMods.sort((a, b) => b.cap - a.cap);
     income.sort((a, b) => b.pw - a.pw);
@@ -170,7 +184,7 @@ export class HeaderPanel {
   private workTooltip(): TooltipContent {
     const w = this.getWorld();
     const work = computeWork(w);
-    // S24 Censure fix: rating = availability/max (sdílí metriku s Top Bar ukazatelem).
+    // Rating sdílí metriku s Top Bar ukazatelem (availability/max), ne max kapacita.
     const pct = work.powerMax > 0 ? Math.round((work.powerAvailable / work.powerMax) * 100) : 0;
     const rating = statusRating(pct);
     const ratingLabel = STATUS_LABELS[rating];
@@ -179,41 +193,43 @@ export class HeaderPanel {
     const playerCount = w.actors.filter(a => a.state !== "dead").length;
     const droneOnline = w.resources.energy > 0;
 
-    // Výdaje — aktivní tasky (výkon ve W). Spočítáme nejdřív, abychom věděli kolik dronů pracuje.
+    // Výdaje: per-task hráčský výkon + jediná sdílená řádka pro drone pool.
+    const activeTasks = w.tasks.filter(isProductiveTask);
+    const dronesWorking = droneOnline && activeTasks.length > 0;
+
     const expenseLines: string[] = [];
-    let totalExpense = 0;
-    let dronesWorking = false;
-    for (const task of w.tasks) {
+    let totalPlayerW = 0;
+    for (const task of activeTasks) {
       let taskPlayerW = 0;
       for (const aid of task.assigned) {
         const a = w.actors.find(x => x.id === aid);
         if (a && a.state === "working") taskPlayerW += a.work;
       }
-      const taskDroneW = droneOnline ? w.drones : 0;
-      if (taskDroneW > 0) dronesWorking = true;
-      const taskTotal = taskPlayerW + taskDroneW;
-      if (taskTotal > 0) {
+      totalPlayerW += taskPlayerW;
+      if (taskPlayerW > 0) {
         const pctDone = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
-        expenseLines.push(`${I}${task.kind} (${task.id})  -${taskTotal} W  ${pctDone}%`);
-        totalExpense += taskTotal;
+        expenseLines.push(`${I}☻ ${task.kind} (${task.id})  -${taskPlayerW} W  ${pctDone}%`);
       }
     }
-    if (expenseLines.length === 0) expenseLines.push(`${I}(žádné tasky)`);
+    const droneExpense = dronesWorking ? w.drones : 0;
+    if (droneExpense > 0) {
+      const targets = activeTasks.map(t => t.id).join(", ");
+      expenseLines.push(`${I}¤ Drony (${w.drones}×) → ${targets}  -${droneExpense} W`);
+    }
+    if (expenseLines.length === 0) expenseLines.push(`${I}(žádné aktivní tasky)`);
+    const totalExpense = totalPlayerW + droneExpense;
 
-    // Příjmy — jen aktuálně pracující zdroje.
-    const incomeLines: string[] = [];
-    const playersWorking = w.actors.some(a => a.state === "working");
-    const playerIncome = playersWorking ? work.powerPlayer : 0;
-    const droneIncome = dronesWorking ? work.powerDrone : 0;
-    incomeLines.push(`${I}☻ Hráči ← Food: ${playerIncome} W${playersWorking ? "" : "  (nepracují)"}`);
-    incomeLines.push(`${I}¤ Drony ← E: ${droneIncome} W${dronesWorking ? "" : droneOnline ? "  (nepracují)" : "  OFFLINE"}`);
-    const totalIncome = playerIncome + droneIncome;
+    // Příjmy mirror výdajů — W je flux, ne stock (hráči → HP, drony → E).
+    const incomeLines: string[] = [
+      `${I}☻ Hráči ← Food: ${totalPlayerW} W${totalPlayerW > 0 ? "" : "  (nepracují)"}`,
+      `${I}¤ Drony ← E: ${droneExpense} W${dronesWorking ? "" : droneOnline ? "  (nepracují)" : "  OFFLINE"}`,
+    ];
+    const totalIncome = totalPlayerW + droneExpense;
 
     return {
       header: `Práce — ${ratingLabel.cs} (${pct}%)`,
       headerColor: RATING_COLOR[rating],
       body: [
-        // S24: rating sdílí metriku s Top Bar ukazatelem (availability/max).
         `Výkon: ${work.powerAvailable}/${work.powerMax} W  využito: ${work.powerUsed} W`,
         `Kapacita: ${work.capMax} Wh  (hráči ${work.capPlayer} + drony ${work.capDrone})`,
         `▤ Kapacita ${work.capMax} Wh:`,
@@ -228,39 +244,55 @@ export class HeaderPanel {
     };
   }
 
-  private slabTooltip(): TooltipContent {
+  private solidsTooltip(): TooltipContent {
     const w = this.getWorld();
-    const foodPct = w.resources.slab.food; // max 100 → pct = value
-    const rating = statusRating(foodPct);
+    const s = w.resources.solids;
+    const worstPct = Math.round(Math.min(s.metal, s.components));
+    const rating = statusRating(worstPct);
     const ratingLabel = STATUS_LABELS[rating];
+    const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
+    const lines = [
+      `Worst: ${worstPct} / 100 S`,
+      `≡ Subtypy:`,
+      `   Metal (kov): ${formatScalar(s.metal)}`,
+      `   Components (komponenty): ${formatScalar(s.components)}`,
+      `▼ Výdaje:`,
+    ];
+    if (activeRepairs > 0) {
+      lines.push(`   ✓ Opravy (${activeRepairs}×): per recipe (metal/components)`);
+    } else {
+      lines.push(`   (žádné aktivní opravy)`);
+    }
     return {
-      header: `Materiály — ${ratingLabel.cs} (${Math.round(foodPct)}%)`,
+      header: `Pevné — ${ratingLabel.cs} (${worstPct}%)`,
       headerColor: RATING_COLOR[rating],
-      body: [
-        `${formatScalar(w.resources.slab.food)} / 100 S`,
-        `≡ Složení:`,
-        `   Food: ${formatScalar(w.resources.slab.food)}`,
-        `   Metal/Components: P2+`,
-        `Σ Spotřeba: per capita (P2+)`,
-      ].join("\n"),
+      body: lines.join("\n"),
     };
   }
 
-  private fluxTooltip(): TooltipContent {
+  private fluidsTooltip(): TooltipContent {
     const w = this.getWorld();
-    const airPct = w.resources.flux.air; // max 100 → pct = value
-    const rating = statusRating(airPct);
+    const f = w.resources.fluids;
+    const worstPct = Math.round(Math.min(f.water, f.coolant));
+    const rating = statusRating(worstPct);
     const ratingLabel = STATUS_LABELS[rating];
+    const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;
+    const lines = [
+      `Worst: ${worstPct} / 100 F`,
+      `≡ Subtypy:`,
+      `   Water (voda): ${formatScalar(f.water)}`,
+      `   Coolant (chladivo): ${formatScalar(f.coolant)}`,
+      `▼ Výdaje:`,
+    ];
+    if (activeRepairs > 0) {
+      lines.push(`   ✓ Opravy (${activeRepairs}×): per recipe (water/coolant)`);
+    } else {
+      lines.push(`   (žádné aktivní opravy)`);
+    }
     return {
-      header: `Tekutiny — ${ratingLabel.cs} (${Math.round(airPct)}%)`,
+      header: `Tekutiny — ${ratingLabel.cs} (${worstPct}%)`,
       headerColor: RATING_COLOR[rating],
-      body: [
-        `${formatScalar(w.resources.flux.air)} / 100 F`,
-        `≡ Složení:`,
-        `   Air: ${formatScalar(w.resources.flux.air)} %`,
-        `   Water/Coolant: P2+`,
-        `Σ Spotřeba: per capita (P2+)`,
-      ].join("\n"),
+      body: lines.join("\n"),
     };
   }
 
@@ -289,29 +321,32 @@ export class HeaderPanel {
       `v${pkg.version} Teegarden.Belt1.Seg042 ${time}`,
     );
 
-    // Resource bary — Energy skalár + Work derivovaný + Slab/Flux/Coin z modelu.
-    // Kapacity 100 pro S/F jsou UI strop — model zatím max necaptuje (P2+ rozšíření).
+    // Resource bary — Energy skalár + Work derivovaný + Solids/Fluids/Coin z modelu.
+    // Solids/Fluids ukazují **worst** subtyp (per axiom „parent = worst child").
+    // Tooltip rozepíše všechny subtypy, číslo v baru = nejkritičtější.
     const work = computeWork(w);
+    const s = w.resources.solids;
+    const f = w.resources.fluids;
+    const solidsWorst = Math.min(s.metal, s.components);
+    const fluidsWorst = Math.min(f.water, f.coolant);
     const parts: string[] = [
       formatResource(w.resources.energy, w.energyMax, "E"),
       // S24: available/total W — 0/23 při práci dronů, 23/23 při idle.
       `${work.powerAvailable}/${work.powerMax} W`,
-      formatResource(w.resources.slab.food, 100, "S"),
-      formatResource(w.resources.flux.air, 100, "F"),
+      formatResource(solidsWorst, 100, "S"),
+      formatResource(fluidsWorst, 100, "F"),
       `◎ ${formatScalar(w.resources.coin)}`,
     ];
-    // Dashboard semafor (S18) — barva podle prahu metricColor(pct, inverted?).
+    // Dashboard semafor — barva v baru sdílí metriku s barvou v tooltip headeru.
     // Index pořadí drží pořadí parts[]: 0=E, 1=W, 2=S, 3=F, 4=Coin.
-    // S24 Censure fix: W pct = availability/max (sdílí metriku s ukazatelem 0/23).
+    // W pct = availability/max (shoda s ukazatelem 0/23 při plné zátěži).
     const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
     const workPct = work.powerMax > 0 ? (work.powerAvailable / work.powerMax) * 100 : 0;
-    const foodPct = w.resources.slab.food; // max 100 → pct = value
-    const airPct = w.resources.flux.air;   // max 100 → pct = value
     const colors: string[] = [
-      metricColor(energyPct),
-      metricColor(workPct),
-      metricColor(foodPct),
-      metricColor(airPct),
+      ratingColor(energyPct),
+      ratingColor(workPct),
+      ratingColor(solidsWorst),
+      ratingColor(fluidsWorst),
       HEX_WARN_ORANGE, // Coin: placeholder oranžová (P2+ = porovnání income/expense)
     ];
 

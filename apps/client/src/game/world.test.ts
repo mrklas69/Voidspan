@@ -11,6 +11,7 @@ import {
   COVERED_HP_MAX,
 } from "./world";
 import { MODULE_DEFS } from "./model";
+import type { World } from "./model";
 
 // === Factory ===
 
@@ -19,8 +20,10 @@ describe("createInitialWorld", () => {
     const w = createInitialWorld();
     expect(w.phase).toBe("running");
     expect(w.tick).toBe(0);
-    expect(w.resources.flux.air).toBe(100);
-    expect(w.resources.slab.food).toBe(40);
+    expect(w.resources.solids.metal).toBe(60);
+    expect(w.resources.solids.components).toBe(30);
+    expect(w.resources.fluids.water).toBe(30);
+    expect(w.resources.fluids.coolant).toBe(20);
     expect(w.resources.coin).toBe(20);
     expect(w.resources.energy).toBe(12);
   });
@@ -196,9 +199,50 @@ describe("QuarterMaster runtime", () => {
     expect(eternal[0]!.label).toContain("QuarterMaster");
   });
 
-  it("má protocolVersion", () => {
+  it("inicializuje software.quartermaster s verzí + příkonem", () => {
     const w = createInitialWorld();
-    expect(w.protocolVersion).toBe("v2.3");
+    const qm = w.software.quartermaster;
+    expect(qm).toBeDefined();
+    expect(qm!.version).toBe("v2.3");
+    expect(qm!.draw_w).toBe(0.86);
+    expect(qm!.status).toBe("running");
+  });
+
+  it("při E→0 přepne SW do offline + emituje DRN:CRIT + monitor label OFFLINE", () => {
+    const w = createInitialWorld();
+    // Shodíme SolarArray → jediný zdroj E (jinak net power > 0 a E by rostla).
+    for (const mod of Object.values(w.modules)) {
+      if (mod.kind === "SolarArray") mod.status = "offline";
+    }
+    // Startovní E malá, ale > 0 (pre-condition pro transition detect).
+    w.resources.energy = 1;
+    // Tiknout dokud E nepadne na 0. Konzumenti ≈ -12 W + QM 0.86 → ~0.21 Wh/tick.
+    for (let i = 0; i < 20 && w.resources.energy > 0; i++) stepWorld(w);
+    // Ještě jeden tick — protocolTick běží před productionTick v pipeline, takže
+    // OFFLINE label se projeví až v dalším protocolTicku po transition.
+    stepWorld(w);
+
+    const qm = w.software.quartermaster!;
+    expect(w.resources.energy).toBe(0);
+    expect(qm.status).toBe("offline");
+    const monitor = w.tasks.find((t) => t.status === "eternal");
+    expect(monitor?.label).toContain("OFFLINE");
+    // DRN:CRIT event s item=quartermaster byl emitován.
+    const crit = w.events.find(
+      (e) => e.verb === "DRN" && e.csq === "CRIT" && e.item === "quartermaster",
+    );
+    expect(crit).toBeDefined();
+  });
+
+  it("po obnovení E bootuje SW zpět online", () => {
+    const w = createInitialWorld();
+    w.software.quartermaster!.status = "offline";
+    w.resources.energy = 0;
+    // Tick s E=0 → nic se nestane. Pak vrať E a tick → boot transition.
+    stepWorld(w);
+    w.resources.energy = w.energyMax;
+    stepWorld(w);
+    expect(w.software.quartermaster!.status).toBe("running");
   });
 
   it("při energy=0 pause-uje active repair tasks", () => {
@@ -241,6 +285,99 @@ describe("QuarterMaster runtime", () => {
     if (damagedExists) {
       expect(after).toBeGreaterThan(before);
     }
+  });
+});
+
+// === S25: Solids per repair ===
+
+describe("Recipe-per-target repair (S25)", () => {
+  // Helper: vynuluj všechny Solids subtypy (recepty cílí různé subtypy per modul).
+  const zeroSolids = (w: World) => {
+    w.resources.solids.metal = 0;
+    w.resources.solids.components = 0;
+  };
+
+  it("repair task čerpá Solids subtyp(y) per recipe", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    const metalBefore = w.resources.solids.metal;
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    expect(idx).toBeGreaterThanOrEqual(0);
+    enqueueRepairTask(w, idx);
+
+    for (let i = 0; i < 10; i++) stepWorld(w);
+
+    // Metal je v každém recipe — musí klesnout.
+    expect(w.resources.solids.metal).toBeLessThan(metalBefore);
+  });
+
+  it("při Solids=0 protocolTick pauzne repair task + monitor label 'no <subtype>'", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    enqueueRepairTask(w, idx);
+    stepWorld(w);
+    const repair = w.tasks.find((t) => t.kind === "repair");
+    expect(repair).toBeDefined();
+
+    zeroSolids(w);
+    stepWorld(w);
+    expect(repair!.status).toBe("paused");
+    const monitor = w.tasks.find((t) => t.status === "eternal");
+    // Subtyp závisí na recipe target — ale „no " prefix je vždy.
+    expect(monitor?.label).toMatch(/Paused — no (food|metal|components|air|water|coolant)/);
+  });
+
+  it("progressTasks neprogresuje repair při Solids deficit (wd_done se nezvýší)", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    zeroSolids(w);
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    enqueueRepairTask(w, idx);
+    const repair = w.tasks.find((t) => t.kind === "repair")!;
+    repair.status = "active";
+    const wdBefore = repair.wd_done;
+
+    stepWorld(w);
+    // protocolTick pauzne (recipe deficit) → progressTasks task paused, skip.
+    expect(repair.wd_done).toBe(wdBefore);
+  });
+
+  it("po Solids restocku protocolTick resume-uje task", () => {
+    const w = createInitialWorld();
+    w.resources.energy = w.energyMax;
+    let idx = -1;
+    for (let i = 0; i < 16; i++) {
+      const outer = getOuterHP(w, i);
+      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
+    }
+    enqueueRepairTask(w, idx);
+    stepWorld(w);
+    const repair = w.tasks.find((t) => t.kind === "repair")!;
+
+    // Vynuluj všechny Solids → pauza.
+    zeroSolids(w);
+    stepWorld(w);
+    expect(repair.status).toBe("paused");
+
+    // Restock → další tick resume.
+    w.resources.solids.metal = 60;
+    w.resources.solids.components = 30;
+    w.resources.energy = w.energyMax;
+    stepWorld(w);
+    expect(repair.status).toBe("active");
   });
 });
 

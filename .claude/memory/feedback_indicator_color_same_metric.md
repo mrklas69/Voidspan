@@ -4,7 +4,7 @@ description: UI ukazatel s barvou (semafor) musí barvu odvozovat ze stejné hod
 type: feedback
 ---
 
-UI ukazatel (číslo/bar) a jeho barva (semafor / metricColor) musí sdílet zdrojovou metriku. Když bar ukazuje „0/23", barva musí být červená. Žádný disconnect.
+UI ukazatel (číslo/bar) a jeho barva (semafor `RATING_COLOR[statusRating(pct)]`) musí sdílet zdrojovou metriku. Když bar ukazuje „0/23", barva musí být červená. Žádný disconnect.
 
 **Why:** V S24 jsem Top Bar W ukazatel přepnul na availability/max (0/23 při práci dronů), ale semafor barvy nechal na metrice „plnost baterek" (stabilní 100%), abych zabránil flappingu Protokolu (cyklus active → 0 avail → pause → 100 → resume). User dal **Censure!** — UI disconnect je nepřípustný, ukazatel 0/23 zelenou barvou je lež pro hráče. Správné řešení: oddělit Protocol gate od semaforu (Protocol používá E rating + kapacitní check „máme fyzicky kdo pracovat", ne W rating). Semafor sleduje pravdu.
 
