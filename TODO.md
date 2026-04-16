@@ -15,6 +15,7 @@ Většina implementována v S21. Zbývající úkoly:
 
 Pipeline sloty 1, 6, 7, 10 naplněny v S21. Phase win/loss retirováno. Zbývající:
 
+- [ ] **Opravy konzumují suroviny** (S25) — repair task čerpá Slab (S) úměrně wd_done. Rate = Slab × (hp_repaired / hp_max) nebo fix cost per repair task. Pokud Slab=0, task → paused/failed. Napojit na QuarterMaster gate (kromě E+workers i minimum Slab). Rozpracovat CAL tuning hodnoty.
 - [ ] **II.2 Integrita jako rate** — aktuálně snapshot (avg HP bays+moduly). Dle IDEAS/GLOSSARY spec má být **rate** (Δ HP / game day, repair vs. decay trajektorie). Přepsat až bude stabilní decay + repair tick — pak lze měřit trend místo okamžitého stavu. S23 přejmenováno `entropy` → `integrity`, E odstraněno z výpočtu (má vlastní bar).
 - [ ] **`resourceDrain` per-capita** — přepnout na `drain = n_alive_actors × consumption_per_actor_per_tick`. Phase gate odstraněn (S23), stub no-op.
 - [ ] **`autoEnqueueTasks` — priority queue** — Observer-driven: critical HP (< 30 %) → auto repair task. Bez hráčského kliku.
