@@ -5,7 +5,9 @@
 Cílem tohoto dokumentu je poskytnout **úplný a sebe-nosný zdroj** pro programování, nasazení a rozvoj aplikace. Kompletní validovaný dokument **ukončí přípravnou fázi** projektu.
 
 **Verze:** v0.2 (2026-04-13, snapshot po sezení 14) — **nekompletní, viz sekci 10 a 11**.
-**Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (POC_P1 v0.5.0)**</span>
+**Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (FVP Observer Edition v0.9)**</span>
+
+**Poznámka k aktuálnosti (2026-04-18):** Dokument nebyl aktualizován od S14. Od té doby proběhl pivot z P1 single-player puzzle na **Perpetual Observer Simulation** (S20), retire Slab/Flux/Kredo → Solids/Fluids/Coin (S25), retire food/air/water subtypů (S25 KISS), retire `POC_P1.md` (S32). Pro **aktuální** stav kánonu viz `MINDMAP.md` (v4.0), `GLOSSARY.md` (v1.4) a `IDEAS.md`. Tato SPECIFICATION se dostane do v0.3 po konsolidaci FVP.
 
 **Changelog v0.1 → v0.2:** Uzavřeno 12 otázek napříč S5–S13 (Q-World-1, Q-P1-*, Q11, Q12, Q13, Q-Player-Schema). E1 (SCENARIO paralelní struktura) vyřešeno v S14. W3 (Resource Model v GLOSSARY/SCENARIO) vyřešeno v S13 sweep. §4.5 Zdroje aktualizováno na Resource Model v0.1 (E/W/S/F/◎).
 
@@ -132,15 +134,15 @@ Brains je **rule-based agent**, který za hráče provádí akce offline podle n
 
 ### 4.5 Zdroje
 
-**Resource Model v0.1** (axiom — viz `GLOSSARY.md` §Resources). Pět os:
+**Resource Model v0.2** (axiom — viz `GLOSSARY.md` §Resources). Pět os:
 
 - **Energy (E)** — rate + storage; slunce, baterie, pohonné jednotky.
 - **Work (W)** — throughput lidské/dronové práce (power_w × čas).
-- **Slab (S)** — solid materials (subtypy: food, metal, components, …).
-- **Flux (F)** — fluids + gases (subtypy: air, water, coolant, …).
+- **Solids / Pevné (S)** — pevné a sypké látky (S25: rename `Slab → Solids`; food/metal/components subtypy parkoviště P2+).
+- **Fluids / Tekutiny (F)** — kapaliny, plyny, plazma (S25: rename `Flux → Fluids`; air/water/coolant subtypy parkoviště P2+).
 - **Coin (◎)** — univerzální měna (dříve „Kredo" / „Echo" ve v0.0, retirováno).
 
-P1 scope používá jen `Slab.food`, `Flux.air`, `Coin` (viz `POC_P1.md` §10).
+**FVP KISS** (S26): Solids a Fluids jsou ploché agregáty bez subtypů. Air + food + water odstraněny z modelu (S25 KISS — 24th-cent recyklace + food je atribut itemu, ne kategorie). Subtypy + item registr patří do P2+ Resource Taxonomy (viz `TODO.md` + `GLOSSARY.md`).
 
 ### 4.6 Social layer
 
@@ -304,14 +306,14 @@ Potenciálně později: buymeacoffee nebo podobný **volitelný** model. Hra **n
 ### 10.1 <span style="color:green">RESOLVED</span> (S5–S14)
 
 - ✅ **E1** SCENARIO paralelní struktura — vyřešeno v **S14** (legacy Backbone smazán, §3/§4 → Appendix A/B).
-- ✅ **W3** Resource Model propagace — vyřešeno v **S13** sweep (SPEC §4.5, IDEAS, GLOSSARY, POC_P1).
+- ✅ **W3** Resource Model propagace — vyřešeno v **S13** sweep (SPEC §4.5, IDEAS, GLOSSARY). `POC_P1.md` retirován S32.
 - ✅ **Q-World-1** — vertikální stacking kolem Teegarden, adresa `Teegarden.BeltN` (S5).
 - ✅ **Q12** — jméno hvězdy: Teegarden's Star (S5).
 - ✅ **Q13** — `CONST_BELT_LENGTH = 256` (S5).
 - ✅ **Q11** — žádná vítězná podmínka, peak = pamatovatelný příběh (S1–S4).
 - ✅ **Q-Player-Schema** — STATUS + RANK + SKILL (S4).
 - ✅ **Q9 Tempo** — time-gated, ~1×/den, brains drží prioritu (S4).
-- ✅ **Q-P1-Arch / Telemetry / Input / Character / Tick / UI / Onboarding / Dialogs** — uzavřeny v S7, viz `POC_P1.md`.
+- ✅ **Q-P1-Arch / Telemetry / Input / Character / Tick / UI / Onboarding / Dialogs** — uzavřeny v S7, historický zápis byl v `POC_P1.md` (retirován S32, klíčová rozhodnutí migrována do `MINDMAP.md` + `GLOSSARY.md`).
 
 ### 10.2 <span style="color:red">ERRORS (blokátory)</span>
 
@@ -331,7 +333,7 @@ Potenciálně později: buymeacoffee nebo podobný **volitelný** model. Hra **n
 
 | ID | Otázka | Blokuje |
 |---|---|---|
-| <span style="color:red">Q-Brains-Schema</span> | UX brains sliders, kategorie, granularita | **P2+ implementace** (P1 skrz task-oriented input, viz POC_P1 §15) |
+| <span style="color:red">Q-Brains-Schema</span> | UX brains sliders, kategorie, granularita | **P2+ implementace** (FVP skrz task-oriented input + QuarterMaster autopilot) |
 | <span style="color:red">Q-Institutional-Mail</span> | Formát, protokol, timeline | Session Arc interakce |
 | <span style="color:red">Q-Session-Rhythm</span> | Notifikace vs. přirozená zvědavost; anti-exploit | UX retence |
 | <span style="color:red">Q-Comm-Privacy</span> | Rozsah neprotokolované komunikace, anti-abuse | Moderace |

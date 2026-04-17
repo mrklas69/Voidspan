@@ -1,7 +1,7 @@
 # Voidspan — FVP Observer Edition
 Playtest guide — co sledovat, co řešit, co říct autorovi.
 
-Verze: **v0.8** · 2026-04-17
+Verze: **v0.9** · 2026-04-17
 
 ---
 
@@ -11,18 +11,19 @@ Verze: **v0.8** · 2026-04-17
 
 V tomto vydání jsi **pozorovatel**. Nezasahuješ. Aktivní režim (probuzení prvního kolonisty, výstavba, výzkum) přijde v dalším vydání.
 
-## Jak dlouho
+## Jak dlouho to trvá
 
 **10–20 minut.** Simulace je nekonečná — nekončí vítězstvím ani prohrou. Zavřeš tab, kolonie běží dál jen ve tvé hlavě.
 
 ## Na co se koukat
 
 1. **Pět os zdrojů** v horním pruhu: Energie, Práce, Pevné, Tekutiny, Kredit. Každá má detailní infotip (hover nebo long-tap) — Kapacita, Příjmy, Výdaje, Bilance, Runway.
-2. **16 políček trupu** uprostřed — základní moduly (Solar Array, Habitat, Engine…) a volná pole (skeleton / covered). Klik = detail.
-3. **Panel Události** [E] (vpravo) — živá kronika. `SIGN` = změna stavu, `REPR` = oprava, `DECY` = rozpad, `TASK` = fronta autopilota.
-4. **Panel Moduly** [M] (vlevo) — per-modul HP, výkon, probíhající opravy.
-5. **Panel Stav** [I] (vlevo) — posádka, základna, celkový rating.
-6. **Panel Úkoly** [T] (vpravo) — fronta QuarterMastera, který tasky právě běží a proč.
+2. **16 políček trupu** uprostřed — základní moduly (Solar Array, Habitat, Engine…) a volná pole. Klik = detail.
+3. **Panel Stav** [I] (vlevo nahoře) — posádka, drony, základna, celkový rating.
+4. **Panel Moduly** [M] (vlevo dole) — per-modul HP, status, běžící task.
+5. **Panel Události** [E] (vpravo nahoře) — živá kronika. `SYST` = systémová hláška, `DECY` = rozpad, `DMG` = poškození, `DRN` = nedostatek zdroje, `SIGN` = změna stavu, `ASSN` = přiřazení, `TASK` = lifecycle úkolu, `CMPL` = dokončení, `DEAD` = úmrtí.
+6. **Panel Úkoly** [T] (vpravo dole) — fronta QuarterMastera, který tasky právě běží a proč.
+7. **Query terminál** [Q] — komunikační rozhraní QuarterMastera (otevře se při prvním startu, pak kdykoli stiskem Q).
 
 ## Hrej se svou pozorností
 

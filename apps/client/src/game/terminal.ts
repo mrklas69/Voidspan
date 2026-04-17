@@ -7,6 +7,14 @@
 // Auto-open při prvním spuštění (LS flag); manuálně přes [Q] kdykoli.
 // Využívá existující ModalManager — žádný vlastní scroll/layout.
 
+import type { World } from "./model";
+import { computeWork } from "./world";
+import { SEED_CREW_CRYO } from "./tuning";
+
+// Adresa trupu v Teegarden síti (S33 single-segment FVP — Release 2+ bude
+// derivován z World.address po zavedení multi-segment beltu).
+const SEGMENT_ADDRESS = "Teegarden.Belt1.Seg042";
+
 const DISMISS_KEY = "voidspan.terminal.dismissed";
 
 // Observer session ID — sdílený identifier, P2+ per-session unikátní.
@@ -44,43 +52,34 @@ export function resetTerminal(): void {
 // happy to help"). FVP statický text; B varianta (AI overlay) přidá live
 // status + propose-only commands.
 
-export const TERMINAL_TITLE = "QM TERMINAL v2.3";
+export const TERMINAL_TITLE = "QM Terminal";
 
 // Jednosloupcový formát — hráč projde briefing lineárně shora dolů.
-// Pořadí: boot řádky → stav kolonie → protokol pozorovatele → 5 os →
-// trup → protokol probuzení → uzavírací „kanál otevřen".
-export const TERMINAL_BODY =
-  `> BOOT   QuarterMaster v2.3 online\n` +
-  `> KANAL  pozorovatel read-only (${OBSERVER_ID})\n` +
-  `\n` +
-  `Stav kolonie:\n` +
-  `   32 kolonistů v kryo\n` +
-  `   MedCore online\n` +
-  `   Storage zásobena\n` +
-  `   Engine offline (startup legacy)\n` +
-  `   Dock čeká na flotilu\n` +
-  `   Orbita: Teegarden.Belt1.Seg042\n` +
-  `\n` +
-  `Protokol pozorovatele:\n` +
-  `   Vidíš. Neřídíš.\n` +
-  `   Životní systémy jsou má zodpovědnost.\n` +
-  `   Tvá přítomnost je zaznamenána.\n` +
-  `   Tvé pokyny ne.\n` +
-  `\n` +
-  `Pět kolektivních os:\n` +
-  `   E   Energie    Wh\n` +
-  `   W   Práce      W\n` +
-  `   S   Pevné      jednotky\n` +
-  `   F   Tekutiny   jednotky\n` +
-  `   ◎   Kredit     pokladna kolonie\n` +
-  `\n` +
-  `Trup: 16 bays (8×2).\n` +
-  `\n` +
-  `Protokol probuzení:\n` +
-  `   Čeká na trigger první vlny.\n` +
-  `   V této verzi ne.\n` +
-  `\n` +
-  `Vrať se se zpětnou vazbou\n` +
-  `po 10–20 min pozorování.\n` +
-  `\n` +
-  `> KANAL OTEVREN`;
+// Builder bere World za argument a nahrazuje runtime metriky (E/W/S/F).
+// {red! X} placeholder autorské kritičnosti — Phaser.Text v modalu nepodporuje
+// per-inline barvu, proto KISS ASCII tag `[!! X]` izomorfní s `[OK]` pattern.
+export function buildTerminalBody(w: World): string {
+  const work = computeWork(w);
+  const E = Math.round(w.resources.energy);
+  const W = work.capMax;
+  const S = Math.round(w.resources.solids);
+  const F = Math.round(w.resources.fluids);
+  return (
+    `BOOT... QuarterMaster v2.3 online\n` +
+    `pozorovatel read-only (${OBSERVER_ID})\n` +
+    `2387-04-16.12:14 Dokončení establish [OK]\n` +
+    `2387-04-17.03:33 Dokončení Kontroly [OK]\n` +
+    `   ${SEED_CREW_CRYO} kolonistů v kryo\n` +
+    `   MedCore online\n` +
+    `   Storage zásobena\n` +
+    `   Engine offline (startup legacy)\n` +
+    `   Orbita: ${SEGMENT_ADDRESS} [Nestabilní!!!]\n` +
+    `   Energie ${E} Wh\n` +
+    `   Práce ${W} Wh\n` +
+    `   Pevné ${S}\n` +
+    `   Tekuté ${F}\n` +
+    `2387-04-17.14:47 Stabilizace orbity [OK]\n` +
+    `2387-04-25.09:24 Zahájení oprav [Probíhá...]\n` +
+    `>`
+  );
+}

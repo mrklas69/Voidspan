@@ -105,7 +105,7 @@ export const UI_DOT_WARN       = HEX_WARN_ORANGE;       // warning, busy-over
 export const UI_DOT_ALERT      = HEX_ALERT_RED;         // alert, offline, failed
 export const UI_DOT_IDLE       = HEX_AMBER_DIM;         // idle, neaktivní
 
-export const UI_STATUS_ALERT   = HEX_ALERT_RED;         // LOSS, damaged, fatal
+export const UI_STATUS_ALERT   = HEX_ALERT_RED;         // DEAD:CRIT, damaged, fatal
 export const UI_STATUS_WARN    = HEX_WARN_AMBER;        // warning threshold
 export const UI_STATUS_INFO    = HEX_INFO_BLUE;         // dock, fleet, neutral
 export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
@@ -158,6 +158,6 @@ export const FONT_FAMILY    = '"Atkinson Hyperlegible", system-ui, sans-serif';
 // S29 Atkinson bump -2 px: sans má větší x-height než VT323 → menší velikost
 // vypadá stejně čitelně a textů se vejde víc.
 export const FONT_SIZE_CHROME    = "22px"; // Top Bar, Bottom Bar
-export const FONT_SIZE_PANEL     = "20px"; // modal (Help / QM terminál), commandButton, ActorsPanel
-export const FONT_SIZE_SIDEPANEL = "18px"; // boční panely I / M / E / T (-2 px vůči PANEL, vyšší hustota dat)
+export const FONT_SIZE_PANEL     = "20px"; // commandButton, ActorsPanel (S33: modály přepnuty na SIDEPANEL)
+export const FONT_SIZE_SIDEPANEL = "18px"; // boční panely I / M / E / T + modály (Help, QM Terminal)
 export const FONT_SIZE_TIP       = "18px"; // tooltipy + drobné texty (footer, btn, hotkey hints)

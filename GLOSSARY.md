@@ -42,7 +42,7 @@ Goal **≠ win condition** — je to **kompas** (směr), ne cílová čára (sta
 Svět žije nepřetržitě — bez hráčů, bez NPC, i když všechny entity mají HP=0. Přidání hráče je **resume**, ne restart. Simulaci ukončí **jen vypnutí serveru**, nikdy herní událost.
 
 - Žádný `Phase.win` / `Phase.loss` jako terminální stav světa.
-- `air = 0` neznamená konec simulace; znamená že aktéři ztrácejí HP (dusí se).
+- `populace = 0` neznamená konec simulace; kosmická kolonie může být prázdná a přesto fungovat (autonomní QM, moduly, decay).
 - `populace = 0` neznamená konec; kapsle z orbitu může přivést nové kolonisty do rozbité základny.
 
 ### Two Perspectives (axiom)
@@ -54,7 +54,7 @@ Dvě perspektivy téže simulace — **oddělené axiomy, oddělené modely**:
 | **Observer** | **neexistuje** | vidí svět, nemůže intervenovat. FVP default. |
 | **Player** | ANO — per hráč | vtělení do aktéra, P2+. |
 
-WIN/LOSS puzzle v P1 POC (SHIP Wake-up s HULL BREACH → ENGINE→DOCK → BONUS) byl **onboarding test**, ne kánon simulace — bude retirován.
+WIN/LOSS puzzle v historickém P1 POC (SHIP Wake-up s HULL BREACH → ENGINE→DOCK → BONUS) byl **onboarding test**, ne kánon simulace — **retirován v S20/S21** pivotem na Perpetual Observer.
 
 ### Maslow axiom
 
@@ -126,7 +126,7 @@ Konkrétní implementace Protokolu ve FVP. **Verzovaný SW** (viz Software výš
   1. **Energy** — rating ≥ 4 (≥ 60 %) pro resume, ≤ 2 (< 40 %) pro pause. Hystereze 40–60 %.
   2. **Workers** — alespoň jeden drone online (drone > 0 && E > 0) nebo alive aktér s HP > 0.
   3. **Autopilot online** — QM SW není offline (E=0 vypne CPU → žádné orchestrace).
-  4. **Material** — `solids.food > 0` (repair drénuje Solids, S25). Pauza při 0, resume jakmile > 0.
+  4. **Material** — `solids > 0` && `fluids > 0` (repair drénuje Solids/Fluids per recipe, S25/S26 FVP ploché resources). Pauza při 0, resume jakmile > 0 a deficit pokryje.
 - W rating do gate **nevstupuje** (S24 Censure fix — W rating odráží availability, použití by zacyklilo).
 - `isProductiveTask(t)` = `status === "active" && kind !== "service"` (sdílený predikát pro sim `productionTick` + tooltipy).
 - Target selection: nejnižší HP ratio (bay nebo modul).
@@ -205,7 +205,7 @@ Status
  │   ├── I.1 Posádka  (kvantita + kvalita)
  │   └── I.2 Základna (kvantita + kvalita)
  ├── II. Udržitelnost (vyhlídky — přežití)
- │   ├── II.1 Zásoby kolonistů (vzduch, voda, jídlo — runway + trend)
+ │   ├── II.1 Zásoby kolonie (Solids + Fluids — runway + trend)
  │   └── II.2 Integrita základny (S24 — přejmenováno z „Entropie"; FVP = snapshot avg HP vrstev, target = rate repair vs. decay)
  ├── III. Rozvoj (vyhlídky — expanze)        [P2+ pahýl]
  │        migrace, rozmnožování, pás, expedice
@@ -227,7 +227,7 @@ Interní 3-state `StatusNode.level` (ok/warn/crit) se používá jen pro agregac
 - **I.1 kvalita:** ∑HP aktérů / ∑HP_MAX (FVP pahýl; P2+ happiness/stress/health).
 - **I.2 kvantita:** osazené bays / 16 (ratio non-void).
 - **I.2 kvalita:** ∑HP všech vrstev / ∑HP_MAX_THEORETICAL.
-- **II.1:** `min(food_days, air_days, water_days)` do 0 při current drain rate.
+- **II.1:** `min(solids_days, fluids_days)` do 0 při current drain rate (S25 KISS — subtypy retire; runway per-kategorie, ne per-item).
 - **II.2 (Integrita):** **FVP seed** = snapshot avg HP všech vrstev (bays + moduly) — jednoduché a čitelné. **Target (TODO):** net HP trajectory per game-day (repair rate − decay rate). Energie se **nemíchá** — má vlastní osu (E bar v HUD).
 - **III, IV:** FVP placeholder all-green, „bla bla" text.
 
@@ -764,16 +764,16 @@ Hra má **dvě perspektivy** s oddělenými HUD rozsahy:
 
 | Mode | Pohled | HUD obsah | Fáze |
 |---|---|---|---|
-| **Observer** | kolonie jako celek | `World.resources` agregované (E/W/S/F/◎) | **P1 scope** |
-| **Player** | jeden aktér + jeho kontext | per-actor HP, osobní inventář (◎, food), pozice, action palette | P2+ |
+| **Observer** | kolonie jako celek | `World.resources` agregované (E/W/S/F/◎) | **FVP scope** |
+| **Player** | jeden aktér + jeho kontext | per-actor HP, osobní inventář (◎, případné osobní itemy), pozice, action palette | Release 2+ |
 
-**Princip:** Top Bar 5 resource bars je **Observer-only** — zobrazuje stav kolonie, ne hráče. Per-actor indikátory (HP, osobní zásoby) patří do floating panelu *Podrobnosti* [P] nebo *Kolonisté* [K] v Observer módu; v Player módu (P2+) migrují do Top Baru a kolonijní souhrny se přesunou do floating panelu.
+**Princip:** Top Bar 5 resource bars je **Observer-only** — zobrazuje stav kolonie, ne hráče. Per-actor indikátory (HP, osobní zásoby) patří do floating panelu *Kolonisté* [K] v Observer módu (Release 2+); v Player módu (P2+) migrují do Top Baru a kolonijní souhrny se přesunou do floating panelu.
 
-**Izomorfismus:** stejné zdroje (◎, Solids.food, Fluids.air, …) se v obou módech zobrazují v **Top Baru**, ale jiná škála — kolonijní vs. osobní. Pojmenování jednotek shodné.
+**Izomorfismus:** stejné zdroje (◎, Solids, Fluids) se v obou módech zobrazují v **Top Baru**, ale jiná škála — kolonijní vs. osobní. Pojmenování jednotek shodné.
 
-**Mode switch** (P2+): patrně zoom-level přechod (mapa beltu → colony view = Observer → actor view = Player) nebo hotkey toggle. Finální UX TBD.
+**Mode switch** (Release 2+): patrně zoom-level přechod (mapa beltu → colony view = Observer → actor view = Player) nebo hotkey toggle. Finální UX TBD.
 
-**P1 důsledek:** hráč v P1 nemá samostatné HP / osobní zásoby — sdílí osud kolonie (viz POC_P1 §Q-P1-Character).
+**FVP důsledek:** hráč v Observer Edition nemá samostatné HP / osobní zásoby — sdílí osud kolonie (simulace běží bez hráčova zásahu, QuarterMaster autopilot).
 
 ---
 
@@ -783,29 +783,33 @@ Rozložení obrazovky drží **tři ukotvené zóny** (top / main / bottom) + **
 
 ### Horní panel (Top Bar / HUD)
 Ukotvená horní lišta. Vždy viditelná. Obsah:
-- **Vlevo:** `⊙Voidspan v1.0  <Adresa.pásu>  T <čas>` (branding + identita + lokace + herní čas)
-- **Vpravo:** `[?] Help`
+- **Vlevo:** `⊙Voidspan v0.9  <Adresa.pásu>  T <čas>` (branding + identita + lokace + herní čas)
+- **Střed:** pět resource bars **E / W / S / F / ◎** (Energy, Work, Solids, Fluids, Coin) — každý s detailním tooltipem (Kapacita / Příjmy / Výdaje / Bilance / Runway / Bilance slovně).
+- **Vpravo:** nic (Help je command `[H]` v Bottom Baru).
 
-Zdroje (E / W / S (food) / F (air) / ◎ — Resource Model v0.1) jsou zatím ve floating panelu *Zdroje*. Pokud se v ladění ukáže, že stavová viditelnost trpí (hráč mine hladovění), přesunou se sem mezi čas a Help.
+Since S26 jsou zdroje v Top Baru (ne floating panelu) — always-visibility axiom: observer musí vidět kritické metriky bez dalšího kliku.
 
 ### Hlavní panel (Main Panel)
 Ukotvená střední plocha. Primární hrací prostor — segment grid 8×2, orbitální dekor, interakce (klik bay = task, klik modul = inspekce). Full-width mezi Top a Bottom Bar.
 
-### Dolní panel (Bottom Bar / Event Log ticker)
-Ukotvená dolní lišta. Vždy viditelná. Kompaktní ticker posledních 3–5 událostí. Pro plnou filtrovatelnou historii → floating panel *Události*.
+### Dolní panel (Bottom Bar / command row)
+Ukotvená dolní lišta. Vždy viditelná. Od S32 obsahuje **commandy** (ne ticker): `[I]nfo [M]odules [E]vents [T]asks [Q]uery [H]elp`. Každý toggluje příslušný floating panel nebo otevírá modal.
 
-### Plovoucí panely (Floating Panels)
-**Neukotvené.** Otevírají se toggle (hotkey nebo button v Top Baru), překrývají Main. Druhé stisknutí téže klávesy = zavřít. `Esc` = zavřít všechny.
+### Plovoucí panely (Floating Panels, S29+)
+**Neukotvené.** Otevírají se toggle (hotkey nebo klik v Bottom Baru). Druhé stisknutí téže klávesy = zavřít. `Esc` priority chain: modal → panely v pořadí Modules → Info → Task → Event. Od S29 mohou být všechny 4 otevřené současně ve **pevném 2×2 layoutu** (I nahoře-vlevo, M dole-vlevo, E nahoře-vpravo, T dole-vpravo) — mutex pairs zrušeny.
 
-| CZ název | EN název | Hotkey | Obsah |
-|---|---|---|---|
-| **Kolonisté** | Colonists | `K` | Seznam aktérů (hráč + drony). Kind, power_w, state, current task. Klik → highlight tasku a actor path. |
-| **Úkoly** | Tasks | `U` | Task queue. Drag&drop priority, progress bar, assigned actors, cancel. (P2+: filtr podle kind / status.) |
-| **Události** | Events | `E` | Plný filtrovatelný Event Log. Historie, search, filtr podle type/severity. Rozšíření Bottom Bar tickeru. |
-| **Podrobnosti** | Details (Inspector) | `P` / `Tab` | Kontextový inspector vybraného objektu (bay / modul / actor / task). Kontext určuje obsah. |
-| **Zdroje** | Resources | `Z` | E / W / S (food) / F (air) / ◎ s historií (mini-sparkline) — Resource Model v0.1. Kandidát na přesun do Top Baru, pokud always-visibility bude nutná. |
+| CZ název | EN název | Hotkey | Pozice | Obsah |
+|---|---|---|---|---|
+| **Stav** | Info | `I` | top-left | Posádka (cryo/alive/dead), Drony (working/idle/offline), Základna (online/offline/destroyed), rating. |
+| **Moduly** | Modules | `M` | bottom-left | 5-sloupcová tabulka: Kind (id) status HP% task_state, 5-color semafor per řádek. |
+| **Události** | Events | `E` | top-right | Plný Event Log. Lazy filter chips per verb (LS persist), ellipsize + tooltip. |
+| **Úkoly** | Tasks | `T` | bottom-right | QM task queue, 5-color semafor, progress bar, right-aligned ETA. |
 
-**Princip:** žádné trvale ukotvené sidebary. Main Panel není krájený na sloupce. Plovoucí panely jsou **dočasné nástroje**, ne fixní HUD.
+**Modály (ne-floating):** `[Q]uery` = QM Communication Terminal (suchý tech briefing, blikající kurzor). `[H]elp` = klávesnice + myš/dotyk + co sleduješ + motto.
+
+**Release 2+ kandidáti:** floating panel **Kolonisté** [K] (per-actor HP + inventář) přijde s Player mode.
+
+**Princip:** žádné trvale ukotvené sidebary. Main Panel (BELT) se re-centruje do volné zóny mezi otevřenými panely přes DockManager (S28 MVP).
 
 **Seam pro rozšíření (P2+):** nové panely (Diplomacie, Výzkum, Trh…) přibudou jako další Floating Panels bez změny layout architektury.
 

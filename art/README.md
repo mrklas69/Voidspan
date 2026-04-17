@@ -2,23 +2,24 @@
 
 Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art ve stylu Dune II (1992).
 
-**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, font **VT323**, bay scale 2×.
+**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, bay scale 2× (UI font je samostatná osa — od S29 Atkinson Hyperlegible pro čitelnost textu, nesouvisí s art stylem).
 
 ## Struktura
 
 ```
 art/
-├── modules/     # moduly (v P1: SolarArray, Engine, Dock; P2+: Habitat, Storage, ...)
-├── actors/      # aktéři (Constructor, Hauler, Player)
-├── bays/       # stavy/overlay pro bay (floor, damaged, highlight…)
-└── ui/          # HUD ikony, UI elementy
+├── modules/     # 8 modulů FVP: assembler, command_post, dock, engine,
+│                #               habitat, medcore, solar_array, storage
+├── actors/      # aktéři (Constructor, Hauler retirován, Player)
+├── bays/        # stavy/overlay pro bay (floor, damaged, highlight…)
+└── sprites/     # asteroid, ostatní world sprites
 ```
 
-Kategorie zrcadlí `apps/client/public/assets/` (shipped).
+Kategorie zrcadlí `apps/client/public/assets/` (shipped). Moduly v `MODULE_DEFS` v `apps/client/src/game/model.ts` odkazují na soubor přes `asset` pole.
 
 ## Konvence
 
-- **Rozlišení:** 40×40 px native (POC_P1 §16, tablet primary).
+- **Rozlišení:** 40×40 px native (tablet primary, baseline 1280×720).
 - **Formát:** PNG, 32-bit RGBA.
 - **Chroma key:** **magenta `#ff00ff`** v source PNG je vždy průhledná. Pipeline ji převede na `alpha=0`. Magenta se NIKDY nesmí objevit v samotném obsahu.
 - **Naming:** `<kind>.png` v lowercase snake_case. Pro moduly musí odpovídat `MODULE_DEFS[kind].asset` v `apps/client/src/game/model.ts`.

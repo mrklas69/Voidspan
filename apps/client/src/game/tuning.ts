@@ -1,4 +1,4 @@
-// Voidspan tuning (S20) — centrální zdroj pravdy pro všechny laditelné parametry P1 POC.
+// Voidspan tuning (S20) — centrální zdroj pravdy pro všechny laditelné parametry FVP.
 // Axiom: jedno místo pro seed hodnoty, prahy, rozsahy, časování. Playtest kalibrace
 // se řeší pouze tady. `world.ts` a další moduly importují z `tuning.ts`, nikdy
 // nedefinují vlastní magic number.

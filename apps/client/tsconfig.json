@@ -6,7 +6,7 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
-    // Strict mode — povinné pro POC_P1 (dle dohody S8)
+    // Strict mode — povinné pro FVP (dle dohody S8)
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

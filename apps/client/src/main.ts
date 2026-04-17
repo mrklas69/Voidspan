@@ -1,5 +1,5 @@
 // Vstupní bod klientské aplikace.
-// Bootstrap Phaseru + registrace scén. POC_P1 §12 (pure client), §16 (1280×720 baseline).
+// Bootstrap Phaseru + registrace scén. Pure client (FVP), baseline 1280×720.
 
 import Phaser from "phaser";
 import { GameScene } from "./game/GameScene";

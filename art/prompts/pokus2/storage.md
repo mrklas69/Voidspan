@@ -1,0 +1,11 @@
+Generate a single image, 1024x1024 pixels, on a pure uniform magenta #ff00ff background. Render the subject in flat orthographic top-down projection, no perspective skew. Absolutely no cast shadows fall onto the surrounding background — all shading stays contained within the module silhouette itself. The subject occupies approximately the central 85 percent of the canvas; the remaining margin is pure flat magenta #ff00ff with zero gradient, zero texture, zero vignette, zero grid lines, zero overlay.
+
+Subject: a cargo storage module. A rectangular freight container with heavy industrial locking mechanisms at the corners, a partially-open top hatch revealing stacked crates and barrels inside, diagonal amber-and-black hazard stripes along one side, rust-colored scuff marks at the corners and along the base. Visible panel seams indicate modular construction. Reinforcement ribs run along the long edges. The silhouette is distinctly box-like — heavy, utilitarian, unmistakably a storage container.
+
+Style: painterly sci-fi concept art in the tradition of Chris Foss and Peter Elson, blended with the technical clarity of a Mass Effect codex illustration. Weathered industrial metal, matte panels, amber emissive details as the dominant accent color, muted steel-blue and gunmetal body tones.
+
+Lighting: single soft key light from the top-left at a consistent angle. All highlights and shadows stay within the module body — no light spill onto the magenta background, no cast shadow, no bloom halo beyond the silhouette edge.
+
+Palette: amber #ffd060 for hazard stripes and any tiny indicator light; hull body in dark gunmetal #3a4550 to deep steel #1e2832; internal shadows near-black #0a0f14; rust accent #a04030 for weathering and corner scuff marks; occasional teal accent #60b0c0 for a status indicator. Soft gradients and subtle dithering welcome inside the body.
+
+Hard constraints: no text, no letters, no numerals, no labels, no runes, no symbols resembling writing, no logos, no signatures, no watermarks, no outlines around the module, no decorative borders, no UI chrome, no cockpit elements, no people, no barcodes (they render as gibberish lines). The background stays pure magenta #ff00ff with zero shadow bleed, zero antialiasing fringe, zero halo — the edge between subject and background must be a crisp silhouette suitable for chroma-key cutout.

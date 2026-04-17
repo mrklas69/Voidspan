@@ -189,7 +189,7 @@ Pro zakládající posádku platí **odlišný onboarding** od kapslové variant
 - Zásoby ve Storage: cca X dní jídla / vzduchu (TBD kalibrace). **Greenhouse parkuje u SHIPu** — připojí se po dostavbě Docku.
 - Flotila dronů: Constructors + Haulers + Marshals. Energie omezuje počet simultánně aktivních aktorů.
 - Instituce: integrovaně v `CommandPost` (včetně Observatory).
-- **POC_P1 scope:** viz `POC_P1.md` — single-player puzzle s krizí Úniku vzduchu + Engine→Dock.
+- **Historický P1 scope** (retirován S20/S21, `POC_P1.md` smazán S32): single-player puzzle s krizí Úniku vzduchu + Engine→Dock. FVP dnes = Perpetual Observer Simulation bez terminálního stavu. Klíčová rozhodnutí migrována do `MINDMAP.md` + `GLOSSARY.md`.
 
 **Úvodní zpráva prvnímu probuzenému:**
 

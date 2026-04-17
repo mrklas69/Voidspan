@@ -264,7 +264,7 @@
     <h2>3. Tile grid — 40×40 native, 2× scale</h2>
     <div class="note">
       Source art leží v <code>art/&lt;kat&gt;/&lt;name&gt;.png</code> jako <strong>40×40 px
-      native</strong> (POC_P1 §9, S10 pipeline). <code>pnpm build:assets</code> aplikuje
+      native</strong> (art pipeline, S10). <code>pnpm build:assets</code> aplikuje
       magenta chroma key <code>#ff00ff</code> → průhlednost a mirroruje do
       <code>public/assets/</code>. V Phaseru pixelArt mode + setScale(2) → 80×80 px na canvasu
       bez filtering. Tablet baseline 1024×768, tile-to-screen ratio ~5.2 %.
@@ -371,7 +371,7 @@
       <li><code>src/game/palette.ts</code> — exportuje 16 konstant (<code>COL_HULL_MID</code>, <code>COL_AMBER_BRIGHT</code>, …) + typografické velikosti.</li>
       <li><code>GameScene</code> — nahradí stávající ad-hoc literály refermi do <code>palette.ts</code>.</li>
       <li><code>art/_palette.png</code> — 16×1 native swatch, reference pro hand-pixel.</li>
-      <li><code>POC_P1.md §9 Konvence</code> — pravidlo „source art používá jen barvy z palety".</li>
+      <li><code>art/README.md</code> — pravidlo „source art používá jen barvy z palety".</li>
       <li><code>art/README.md</code> — odkaz na tento grafický manuál jako závazný vzorník.</li>
     </ul>
 

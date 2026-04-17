@@ -1,0 +1,11 @@
+Generate a single image, 1024x1024 pixels, on a pure uniform magenta #ff00ff background. Render the subject in flat orthographic top-down projection, no perspective skew. Absolutely no cast shadows fall onto the surrounding background — all shading stays contained within the module silhouette itself. The subject occupies approximately the central 85 percent of the canvas; the remaining margin is pure flat magenta #ff00ff with zero gradient, zero texture, zero vignette, zero grid lines, zero overlay.
+
+Subject: a habitat module. A horizontally-oriented cylindrical pressure vessel spanning the frame, clearly a pressurized crew living pod. Four small round portholes along the long flank glow with warm amber light from the interior. A service ladder runs along one side with fine rungs. Antenna stubs extend from each cap end. Subtle hull panel seams and weathering marks indicate age and function. The silhouette is unmistakably tubular — a pill or capsule shape that reads as "crew quarters" at any scale.
+
+Style: painterly sci-fi concept art in the tradition of Chris Foss and Peter Elson, blended with the technical clarity of a Mass Effect codex illustration. Weathered industrial metal, matte panels, amber emissive details as the dominant accent color, muted steel-blue and gunmetal body tones.
+
+Lighting: single soft key light from the top-left at a consistent angle. All highlights and shadows stay within the module body — no light spill onto the magenta background, no cast shadow, no bloom halo beyond the silhouette edge.
+
+Palette: amber #ffd060 for the porthole emissive glow; hull body in dark gunmetal #3a4550 to deep steel #1e2832; internal shadows near-black #0a0f14; occasional rust accent #a04030 for weathering around edges; occasional teal accent #60b0c0 for a tech indicator. Soft gradients and subtle dithering welcome inside the body.
+
+Hard constraints: no text, no letters, no numerals, no labels, no runes, no symbols resembling writing, no logos, no signatures, no watermarks, no outlines around the module, no decorative borders, no UI chrome, no cockpit elements, no people. The background stays pure magenta #ff00ff with zero shadow bleed, zero antialiasing fringe, zero halo — the edge between subject and background must be a crisp silhouette suitable for chroma-key cutout.

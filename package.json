@@ -1,8 +1,8 @@
 {
   "name": "voidspan",
-  "version": "0.8",
+  "version": "0.9",
   "private": true,
-  "description": "Voidspan — text strategy / colony sim (POC_P1)",
+  "description": "Voidspan — text strategy / colony sim (FVP Observer Edition)",
   "scripts": {
     "dev": "pnpm --filter @voidspan/client dev",
     "build": "pnpm --filter @voidspan/client build",

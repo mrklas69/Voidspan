@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 // Regenerates jen při restartu Vite procesu, ne při HMR.
 const BUILD_ID = Date.now().toString(36);
 
-// Vite config — pure-client static build (POC_P1 §12).
+// Vite config — pure-client static build (FVP architektura, GH Pages deploy).
 // base "./" = relativní cesty v indexu, aby build fungoval i z podadresáře (GH Pages apod.).
 export default defineConfig({
   base: "./",

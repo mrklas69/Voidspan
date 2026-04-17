@@ -30,7 +30,8 @@
       "Bash(where.exe:*)",
       "WebFetch(domain:support.forpsi.com)",
       "WebFetch(domain:www.forpsi.com)",
-      "Bash(tasklist)"
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

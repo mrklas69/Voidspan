@@ -2,6 +2,8 @@
 
 Hotové úkoly. Přesouvá se z `TODO.md`.
 
+> **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
+
 ## 2026-04-16 (Sezení 27 — Font glyph fallback fix)
 
 - [x] **Font glyph fallback fix (MINDMAP „Další bagr" #12)** — VT323 latin-subset z Google Fonts nemá geometric/dingbats/exotické arrows → browser fallback rozbíjel baseline. KISS ASCII substituce napříč rendered code.

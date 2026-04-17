@@ -14,8 +14,9 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
+  COL_AMBER_BRIGHT,
   FONT_FAMILY,
-  FONT_SIZE_PANEL,
+  FONT_SIZE_SIDEPANEL,
   FONT_SIZE_TIP,
 } from "./palette";
 
@@ -41,6 +42,10 @@ export interface ModalOptions {
   // zavřením modalu, pokud chce caller modal zavřít sám, zavolá si close()
   // nebo nechá default (tlačítko zavírá modal po onClick).
   action?: { label: string; onClick: () => void };
+  // Blikající kurzor za posledním znakem `body` (jen pro 1-col režim).
+  // Kreslený jako Rectangle (nezávislý na fontu — Atkinson subset nemá U+2588),
+  // tween yoyo alpha 1 → 0.2 @ 500 ms. Používá QM Terminal pro CRT vibe.
+  cursor?: boolean;
 }
 
 export class ModalManager {
@@ -88,7 +93,7 @@ export class ModalManager {
 
     const bodyStyle = {
       fontFamily: FONT_FAMILY,
-      fontSize: FONT_SIZE_PANEL,
+      fontSize: FONT_SIZE_SIDEPANEL,
       color: UI_TEXT_PRIMARY,
       wordWrap: { width: bodyWrapW },
       lineSpacing: 4,
@@ -132,7 +137,7 @@ export class ModalManager {
     const title = this.scene.add
       .text(panelX + PADDING, panelY + PADDING, opts.title, {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setDepth(DEPTH + 3);
@@ -158,6 +163,45 @@ export class ModalManager {
         .text(panelX + PADDING, bodyY, opts.body ?? "", bodyStyle)
         .setDepth(DEPTH + 3);
       this.layer.push(body);
+
+      // Blikající kurzor — Rectangle za posledním řádkem body. Kreslený geometrií
+      // (ne Text), protože `█` U+2588 není v Atkinson Hyperlegible latin subsetu.
+      if (opts.cursor && opts.body) {
+        const wrapped = body.getWrappedText(opts.body);
+        const lastLine = wrapped.at(-1) ?? "";
+        // Prázdný wrap (body = "") = nic k zarovnání za. Přeskočíme, jinak by
+        // kurzor skočil na (x, y + height) = pod text area.
+        if (lastLine.length > 0) {
+          const probe = this.scene.add.text(0, 0, lastLine, bodyStyle).setVisible(false);
+          const lastW = probe.width;
+          const lineH = probe.height;
+          probe.destroy();
+
+          // Geometrie kurzoru: aspect 55 % = šířka průměrného sans-serif glyphu 'M'.
+          // Vertical inset 4 px = sedí na x-height baseline, nečouhá nad majuskule.
+          // Gap 2 px = vizuální dech mezi `>` a kurzorem.
+          const CURSOR_ASPECT = 0.55;
+          const CURSOR_V_INSET = 4;
+          const CURSOR_GAP = 2;
+          const cursorW = Math.max(6, Math.round(lineH * CURSOR_ASPECT));
+          const cursorH = Math.max(10, lineH - CURSOR_V_INSET);
+          const cursorX = body.x + lastW + CURSOR_GAP;
+          const cursorY = body.y + body.height - cursorH - CURSOR_GAP;
+
+          const cursor = this.scene.add
+            .rectangle(cursorX, cursorY, cursorW, cursorH, COL_AMBER_BRIGHT, 1)
+            .setOrigin(0, 0)
+            .setDepth(DEPTH + 3);
+          this.scene.tweens.add({
+            targets: cursor,
+            alpha: { from: 1, to: 0.2 },
+            duration: 500,
+            yoyo: true,
+            repeat: -1,
+          });
+          this.layer.push(cursor);
+        }
+      }
     }
 
     // Close button — bottom-right v panelu. Bg rect + label, hover highlight.
@@ -228,7 +272,13 @@ export class ModalManager {
   close(onClose?: () => void): void {
     if (!this.open_) return;
     this.open_ = false;
-    for (const obj of this.layer) obj.destroy();
+    // Kill tweens před destroy — Phaser neukončí tween automaticky při destroy
+    // targetu, infinite `repeat: -1` (blikající kurzor) by se akumuloval napříč
+    // open/close cykly. `killTweensOf` je no-op pro objekty bez tweenu.
+    for (const obj of this.layer) {
+      this.scene.tweens.killTweensOf(obj);
+      obj.destroy();
+    }
     this.layer = [];
     this.onCloseCb = undefined;
     onClose?.();

@@ -10,7 +10,7 @@ import {
   shouldShowTerminal,
   markTerminalDismissed,
   TERMINAL_TITLE,
-  TERMINAL_BODY,
+  buildTerminalBody,
 } from "./terminal";
 import { BackgroundSystem, preloadM110 } from "./background";
 import {
@@ -214,7 +214,8 @@ export class GameScene extends Phaser.Scene {
   private openTerminalModal(): void {
     this.modal.open({
       title: TERMINAL_TITLE,
-      body: TERMINAL_BODY,
+      body: buildTerminalBody(this.world),
+      cursor: true,
       onClose: () => markTerminalDismissed(),
     });
   }
