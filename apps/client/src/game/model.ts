@@ -14,7 +14,7 @@
 // === Event Log System (S20 kánon, GLOSSARY §Event Log System) ===
 
 export type EventVerb =
-  | "BOOT" | "SPWN" | "DEAD" | "ARRV" | "DPRT"
+  | "SYST" | "SPWN" | "DEAD" | "ARRV" | "DPRT"
   | "REPR" | "BLD"  | "DEMO" | "DMG"  | "DECY"
   | "DRN"  | "PROD" | "HAUL" | "ASSN" | "CMPL"
   | "FAIL" | "IDLE" | "WAKE" | "DOCK" | "TICK"
@@ -82,17 +82,21 @@ export type ModuleDef = {
   capacity_wh?: number; // energetická kapacita modulu (baterie). Výchozí 0.
   wd_to_build: number;
   wd_to_demolish: number;
-  cost_coin: number;
   max_hp: number; // HP_MAX — viz tabulka dole (hundreds, monotónně vzestupně)
-  recipe: ResourceRecipe; // S25 — surovinový recept per-HP rate
+  recipe: ResourceRecipe; // S29 — surovinový recept v TOTAL hodnotách (full build)
   description: string;
 };
 
-// === Resource Recipe (S25, zjednodušeno S26 FVP) ===
+// === Resource Recipe (S25, zjednodušeno S26 FVP, S29 total representation) ===
 //
 // Reference Module/Bay → ploché Solids/Fluids numbers. Recept definuje
-// **per-HP rate** spotřeby — kolik jednotek Solids/Fluids se spotřebuje
-// na 1 HP repair / build. Total cost = recipe × hp_max.
+// **total cost** na postavení modulu od 0 HP do hp_max — celý balík surovin.
+// Runtime API (recipe.ts) převádí na per-HP rate dělením hp_max pro spojitou
+// spotřebu během repair ticků.
+//
+// S29 motivace: katalog má lidsky čitelné celkové ceny (40 Solids, 211/62),
+// ne obskurní desetinné rates (0.08, 0.17). Nekonzistence v hodnotách (např.
+// 35.75 → round na 36) jsou samy o sobě indikátor, kde kalibrace škobrtá.
 //
 // FVP KISS: bez subtypů. Metal/components/water/coolant → P2+ (viz TODO
 // „Resource subtypes"). Sparse: složka která se neuvádí = 0.
@@ -106,6 +110,8 @@ export type ResourceRecipe = {
 };
 
 // Instance modulu ve světě. HP žije tady (jediná vrstva s HP po S28).
+// S29 flashUntilTick: visual flash při asteroid hit — segment renderer kreslí
+// červený overlay na bay zatímco w.tick < flashUntilTick.
 export type Module = {
   id: string;
   kind: ModuleKind;
@@ -115,6 +121,7 @@ export type Module = {
   hp_max: number;
   progress_wd: number;
   docked_count?: number;
+  flashUntilTick?: number;
 };
 
 // === Aktér ===
@@ -178,7 +185,6 @@ export type Task = {
   wd_done: number;
   assigned: string[];
   priority: number;
-  cost_coin?: number;
   // S24 QuarterMaster lifecycle:
   status: TaskStatus;
   createdAt: number;          // tick vzniku (pro řazení + ETA)
@@ -339,9 +345,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     capacity_wh: 80,
     wd_to_build: 20,
     wd_to_demolish: 10,
-    cost_coin: 8,
     max_hp: 500,
-    recipe: { solids: 0.08 }, // panely + elektronika
+    recipe: { solids: 40 }, // panely + elektronika
     description: "Solární panel s integrovaným akumulátorem 80 Wh.",
   },
   Engine: {
@@ -354,9 +359,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 80,
     wd_to_demolish: 60,
-    cost_coin: 30,
     max_hp: 1240,
-    recipe: { solids: 0.17, fluids: 0.05 },
+    recipe: { solids: 211, fluids: 62 },
     description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
   },
   Dock: {
@@ -369,9 +373,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 48,
     wd_to_demolish: 20,
-    cost_coin: 20,
     max_hp: 1000,
-    recipe: { solids: 0.12 },
+    recipe: { solids: 120 },
     description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
   },
   Habitat: {
@@ -384,9 +387,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 15,
     wd_to_demolish: 8,
-    cost_coin: 10,
     max_hp: 700,
-    recipe: { solids: 0.08, fluids: 0.02 },
+    recipe: { solids: 56, fluids: 14 },
     description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
   },
   Storage: {
@@ -399,9 +401,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 12,
     wd_to_demolish: 6,
-    cost_coin: 8,
     max_hp: 650,
-    recipe: { solids: 0.055 },
+    recipe: { solids: 36 },
     description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
   },
   MedCore: {
@@ -414,9 +415,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 18,
     wd_to_demolish: 9,
-    cost_coin: 12,
     max_hp: 800,
-    recipe: { solids: 0.10, fluids: 0.06 },
+    recipe: { solids: 80, fluids: 48 },
     description: "Lékařské centrum. Léčí HP aktérům (P2+).",
   },
   Assembler: {
@@ -429,9 +429,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 22,
     wd_to_demolish: 10,
-    cost_coin: 15,
     max_hp: 850,
-    recipe: { solids: 0.11, fluids: 0.02 },
+    recipe: { solids: 94, fluids: 17 },
     description: "Výrobna modulů z Coin (◎). Bottleneck stavby v P2+.",
   },
   CommandPost: {
@@ -444,9 +443,8 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
 
     wd_to_build: 20,
     wd_to_demolish: 10,
-    cost_coin: 14,
     max_hp: 900,
-    recipe: { solids: 0.11 },
+    recipe: { solids: 99 },
     description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
   },
 };

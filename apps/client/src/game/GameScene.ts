@@ -7,7 +7,7 @@ import Phaser from "phaser";
 import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
 import { WelcomeDialog, shouldShowWelcome, resetWelcome } from "./welcome";
-import { BackgroundSystem } from "./background";
+import { BackgroundSystem, preloadM42 } from "./background";
 import {
   createInitialWorld,
   stepWorld,
@@ -75,6 +75,9 @@ export class GameScene extends Phaser.Scene {
     // Hero splash pro Welcome dialog (400×300 indexed PNG, 16-color paleta).
     this.load.image("welcome_hero", "assets/splash/welcome.png");
 
+    // M-42 Orion Nebula — 10 SVG parts (S29). Fixed composition, retired random DSO.
+    preloadM42(this);
+
     // Potlač chyby při chybějícím souboru.
     this.load.on("loaderror", () => {
       // Silent skip — textures.exists() to odfiltruje.
@@ -108,12 +111,9 @@ export class GameScene extends Phaser.Scene {
     this.infoPanel = new InfoPanel(this, getWorld);
     this.modulesPanel = new ModulesPanel(this, getWorld);
 
-    // S24: radio mutex mezi EventLog a TaskQueue (sdílí pravý roh).
-    this.eventLog.setOnToggleOpen(() => this.taskQueue.close());
-    this.taskQueue.setOnToggleOpen(() => this.eventLog.close());
-    // S26: radio mutex mezi InfoPanel a ModulesPanel (sdílí levý roh).
-    this.infoPanel.setOnToggleOpen(() => this.modulesPanel.close());
-    this.modulesPanel.setOnToggleOpen(() => this.infoPanel.close());
+    // S29: mutex pairs zrušeny (dříve I↔M a E↔T) — všechny 4 panely mohou být
+    // otevřené současně ve 2×2 gridu (I vlevo nahoře, M vlevo dole, E vpravo
+    // nahoře, T vpravo dole). DockManager BELT re-centering zachován.
 
     // Initial dock override — pokud panely otevřené z LS prefs, BELT se hned re-centruje.
     setSegmentX(dockManager.getSegmentX());
@@ -127,6 +127,8 @@ export class GameScene extends Phaser.Scene {
     this.segment.attachTooltips(this.tooltips);
     this.infoPanel.attachTooltips(this.tooltips);
     this.modulesPanel.attachTooltips(this.tooltips);
+    this.eventLog.attachTooltips(this.tooltips);
+    this.taskQueue.attachTooltips(this.tooltips);
 
     // S24: resize handler — recomputeLayout + relayout všech panelů.
     this.scale.on("resize", this.handleResize, this);
@@ -175,32 +177,30 @@ export class GameScene extends Phaser.Scene {
   private openHelpModal(): void {
     this.modal.open({
       title: "Nápověda",
-      body:
-        "Ovládání (Observer)\n" +
-        "\n" +
+      bodyLeft:
         "Klávesnice:\n" +
-        "  [WASD]  pohyb žlutým kurzorem po trupu\n" +
-        "  [I]     panel Stav — posádka, základna\n" +
-        "  [M]     panel Moduly — HP, výkon, opravy\n" +
-        "  [E]     panel Události — živý kanál\n" +
-        "  [T]     panel Úkoly — fronta QuarterMastera\n" +
+        "  [WASD]  pohyb kurzorem po trupu\n" +
+        "  [I]     panel Stav\n" +
+        "  [M]     panel Moduly\n" +
+        "  [E]     panel Události\n" +
+        "  [T]     panel Úkoly\n" +
         "  [H]     tato nápověda\n" +
         "  [ESC]   zavřít dialog\n" +
         "\n" +
         "Myš / dotyk:\n" +
-        "  Klik na políčko   výběr pro inspekci\n" +
-        "  Hover / long-tap  detail (tooltip)\n" +
-        "  Kolečko / drag    scroll v panelu\n" +
-        "\n" +
+        "  Klik na políčko   výběr\n" +
+        "  Hover / long-tap  tooltip\n" +
+        "  Kolečko / drag    scroll panelu",
+      bodyRight:
         "Co sleduješ:\n" +
         "  Top bar     pět os zdrojů\n" +
         "  Střed       16 políček trupu\n" +
         "  Události    kronika kolonie\n" +
+        "  Úkoly       fronta QuarterMastera\n" +
         "\n" +
-        "Kolonie běží bez tebe. Nemusíš nic řešit.\n" +
-        "Pozoruj, jak autopilot drží systém naživu.\n" +
-        "\n" +
-        "Voidspan — FVP Observer Edition · v0.7",
+        "Kolonie běží bez tebe.\n" +
+        "Nemusíš nic řešit. Pozoruj,\n" +
+        "jak autopilot drží systém naživu.",
       action: {
         label: "Zobrazit uvítání",
         onClick: () => this.openWelcomeDialog(),
@@ -228,11 +228,11 @@ export class GameScene extends Phaser.Scene {
 
     // Touch-friendly command buttons — každý zvlášť klikatelný (mobil bez klávesnice).
     const commands: Array<{ text: string; action: () => void }> = [
-      { text: "[I]info", action: () => this.infoPanel.toggle() },
-      { text: "[M]modules", action: () => this.modulesPanel.toggle() },
-      { text: "[E]events", action: () => this.eventLog.toggle() },
-      { text: "[T]tasks", action: () => this.taskQueue.toggle() },
-      { text: "[H]help", action: () => this.openHelpModal() },
+      { text: "[I]nfo", action: () => this.infoPanel.toggle() },
+      { text: "[M]odules", action: () => this.modulesPanel.toggle() },
+      { text: "[E]vents", action: () => this.eventLog.toggle() },
+      { text: "[T]asks", action: () => this.taskQueue.toggle() },
+      { text: "[H]elp", action: () => this.openHelpModal() },
     ];
 
     this.logCmdTexts = commands.map((cmd) => {

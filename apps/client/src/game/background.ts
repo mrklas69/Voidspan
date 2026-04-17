@@ -17,8 +17,6 @@ import {
   COL_AMBER_BRIGHT,
   COL_TEXT_WHITE,
   COL_INFO_BLUE,
-  COL_ALERT_RED,
-  COL_WARN_AMBER,
 } from "./palette";
 
 // Čtvercový chunk — 2D indexace (cx, cy).
@@ -31,8 +29,7 @@ const DRIFT_MAGNITUDE_PX = 30;
 const DRIFT_PERIOD_MS = 240_000;
 // Buffer = chunks mimo viewport, které držíme (plynulý scroll bez popu).
 const CHUNK_BUFFER = 1;
-// Depth pořadí (uvnitř Containeru relativně).
-const DEPTH_DSO = -2;
+// Depth pořadí (uvnitř Containeru relativně). DSO depths jsou per-part v M42_PARTS.
 const DEPTH_STAR = 0;
 const DEPTH_CLUSTER = 2;
 
@@ -42,10 +39,48 @@ const MEDIUM_PER_CHUNK = 28;
 const LARGE_PER_CHUNK = 5;
 const TWINKLE_RATIO = 0.18;
 const CLUSTER_CHANCE = 0.55;
-// DSO jsou vzácné výjevy — 1/8 původní hustoty (0.35 → 0.04375).
-// Dřív se zjevovaly v každém 3. chunku, což je v kosmu nerealistické (reálná
-// DSO hustota v úhlovém úhlu je řády pod hvězdnou). Rarity zvyšuje dopad výskytu.
-const DSO_CHANCE = 0.35 / 8;
+// Random DSO retirován (S29): nahrazen jediným pečlivě composed M-42 Orion
+// Nebula (10 SVG parts, fixní world pozice, viz M42_PARTS níže).
+
+// === M-42 Orion Nebula (S29) — 10 SVG parts ===
+// Fixed world position, scale 0.55× native viewBox. Composing order (depth):
+//   −6 halo_outer → −5 halo_middle → −4 wisps (E/W/N) → −3 m43_blue →
+//   −2 core_glow → −1 dark_bay → 0 trapezium → +1 stars_accent
+// Blend ADD pro emission glow (aditivně se skládá svit), NORMAL pro dark_bay
+// (tmavá negace — Fish Mouth Dark Nebula blokuje zadní emisi).
+
+const M42_CENTER_X = 220;
+const M42_CENTER_Y = 180;
+const M42_SCALE = 0.55;
+
+type M42Part = {
+  key: string;
+  file: string;
+  dx: number;
+  dy: number;
+  alpha: number;
+  blend: Phaser.BlendModes;
+  depth: number;
+};
+
+// S29 iterace 2: wisps (06/07/08) retirovány — vizuál přeplněný, M-42 je
+// charakteristická hlavně halem + core + dark bay + Trapeziem + M43 sousedem.
+const M42_PARTS: readonly M42Part[] = [
+  { key: "m42_halo_outer",   file: "01_halo_outer.svg",   dx:  0,   dy:  0,   alpha: 0.45, blend: Phaser.BlendModes.ADD,    depth: -6 },
+  { key: "m42_halo_middle",  file: "02_halo_middle.svg",  dx:  10,  dy:  30,  alpha: 0.60, blend: Phaser.BlendModes.ADD,    depth: -5 },
+  { key: "m42_m43_blue",     file: "09_m43_blue.svg",     dx: -43,  dy: -103, alpha: 0.55, blend: Phaser.BlendModes.ADD,    depth: -3 },
+  { key: "m42_core_glow",    file: "03_core_glow.svg",    dx:  5,   dy:  25,  alpha: 0.85, blend: Phaser.BlendModes.ADD,    depth: -2 },
+  { key: "m42_dark_bay",     file: "05_dark_bay.svg",     dx:  25,  dy:  25,  alpha: 0.80, blend: Phaser.BlendModes.NORMAL, depth: -1 },
+  { key: "m42_trapezium",    file: "04_trapezium.svg",    dx:  5,   dy:  15,  alpha: 1.00, blend: Phaser.BlendModes.ADD,    depth:  0 },
+  { key: "m42_stars_accent", file: "10_stars_accent.svg", dx:  0,   dy: -45,  alpha: 0.85, blend: Phaser.BlendModes.ADD,    depth:  1 },
+];
+
+// Preload helper — volá GameScene.preload() před BackgroundSystem.
+export function preloadM42(scene: Phaser.Scene): void {
+  for (const p of M42_PARTS) {
+    scene.load.svg(p.key, `assets/dso/m42/${p.file}`);
+  }
+}
 
 // Deterministic RNG — mulberry32.
 function mulberry32(seed: number): () => number {
@@ -91,7 +126,25 @@ export class BackgroundSystem {
     this.container = scene.add.container(0, 0);
     this.container.setDepth(-10); // pod vším herním obsahem
 
+    this.buildM42();
+
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
+  }
+
+  // M-42 staví se jednou při konstrukci — fixní world pozice, nepatří do
+  // chunk systému (chunk eviction by ji ničila). 10 Image objektů na M42_PARTS.
+  private buildM42(): void {
+    for (const p of M42_PARTS) {
+      if (!this.scene.textures.exists(p.key)) continue; // SVG preload selhal
+      const img = this.scene.add
+        .image(M42_CENTER_X + p.dx * M42_SCALE, M42_CENTER_Y + p.dy * M42_SCALE, p.key)
+        .setOrigin(0.5, 0.5)
+        .setScale(M42_SCALE)
+        .setAlpha(p.alpha)
+        .setBlendMode(p.blend)
+        .setDepth(p.depth);
+      this.container.add(img);
+    }
   }
 
   setSize(w: number, h: number): void {
@@ -157,10 +210,7 @@ export class BackgroundSystem {
     const y0 = cy * CHUNK_SIZE;
     const objs: Phaser.GameObjects.GameObject[] = [];
 
-    // --- DSO (jemná mlhovina) ---
-    if (rng() < DSO_CHANCE) {
-      objs.push(...this.makeDso(rng, x0, y0));
-    }
+    // Random DSO retirováno (S29) — nahrazeno jedinou M-42 (viz buildM42).
 
     // --- Malé hvězdy ---
     for (let i = 0; i < SMALL_PER_CHUNK; i++) {
@@ -256,29 +306,5 @@ export class BackgroundSystem {
     return objs;
   }
 
-  // DSO: poloviční velikost (40–110 px) + 1/3 opacity.
-  private makeDso(rng: () => number, x0: number, y0: number): Phaser.GameObjects.GameObject[] {
-    const cx = x0 + rng() * CHUNK_SIZE;
-    const cy = y0 + rng() * CHUNK_SIZE;
-    const sizeBase = 40 + rng() * 70;
-    const colorRoll = rng();
-    const color =
-      colorRoll < 0.55 ? COL_INFO_BLUE : colorRoll < 0.85 ? COL_WARN_AMBER : COL_ALERT_RED;
-    const layers = 3 + Math.floor(rng() * 3);
-    const objs: Phaser.GameObjects.GameObject[] = [];
-    for (let i = 0; i < layers; i++) {
-      const scale = 1 - i * 0.22 + (rng() - 0.5) * 0.15;
-      const w = sizeBase * scale;
-      const h = sizeBase * (0.55 + rng() * 0.35) * scale;
-      const ox = (rng() - 0.5) * sizeBase * 0.25;
-      const oy = (rng() - 0.5) * sizeBase * 0.15;
-      const alpha = (0.04 + i * 0.025) * 0.33;
-      const ellipse = this.scene.add
-        .ellipse(cx + ox, cy + oy, w, h, color, alpha)
-        .setDepth(DEPTH_DSO);
-      this.container.add(ellipse);
-      objs.push(ellipse);
-    }
-    return objs;
-  }
+  // makeDso retirováno v S29 — nahrazeno buildM42 (fixed SVG composition).
 }

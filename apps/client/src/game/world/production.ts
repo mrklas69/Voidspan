@@ -69,7 +69,7 @@ export function productionTick(w: World): void {
       });
     } else if (powered && sw.status === "offline") {
       sw.status = "running";
-      appendEvent(w, "BOOT", {
+      appendEvent(w, "SYST", {
         item: sw.id,
         text: `${sw.name} ${sw.version}: napájení obnoveno — boot`,
       });

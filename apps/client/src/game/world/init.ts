@@ -169,6 +169,6 @@ export function createInitialWorld(): World {
     label: `QuarterMaster ${PROTOCOL_VERSION} — Idle`,
   });
 
-  appendEvent(world, "BOOT", { text: "Simulace spuštěna" });
+  appendEvent(world, "SYST", { text: "Simulace spuštěna" });
   return world;
 }

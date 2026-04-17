@@ -7,6 +7,7 @@ import type { World, Event, EventVerb } from "./model";
 import { statusRating } from "./model";
 import { VERB_CATALOG } from "./events";
 import { formatGameTimeShort } from "./world";
+import type { TooltipManager } from "./tooltip";
 import {
   COL_HULL_DARK,
   COL_HULL_MID,
@@ -17,7 +18,6 @@ import {
   UI_TEXT_DIM,
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
-  FONT_SIZE_TIP,
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
   HEX_OK_GREEN,
@@ -30,25 +30,72 @@ import {
   PANEL_PADDING as PADDING,
   PANEL_BG_ALPHA,
   PANEL_HEADER_H as HEADER_H,
+  PANEL_HALF_H,
+  PANEL_WIDTH_STD,
   loadPanelOpenPref,
   savePanelOpenPref,
+  ellipsizeText,
 } from "./ui/panel_helpers";
 import { dockManager } from "./ui/dock_manager";
 
-const PANEL_W = 420;
+const PANEL_W = PANEL_WIDTH_STD;
 const ROW_H = 20;
-const FOOTER_H = 28;
+// S29 iterace: footer (count + copy button) odebrán — redundantní, user chce čistší UI.
+const FOOTER_H = 0;
+// Ellipsize: max šířka row textu — left PADDING + right PADDING + scrollbar gutter.
+// Scrollbar se zapíná až při přetečení, ale rezervujeme vždy → stabilní pravá hrana.
+const SCROLLBAR_GUTTER = 12;
+const ROW_MAX_W = PANEL_W - 2 * PADDING - SCROLLBAR_GUTTER;
 
-// S24 KISS: PANEL_H fix (baseline 720 - 60 - 60 - 24 = 576). Při malém okně
-// panel přetéká — user zvětší okno. Počet řádků (MAX_VISIBLE) spočten jednou.
-const PANEL_H = 576;
-const BODY_H = PANEL_H - HEADER_H - FOOTER_H;
+// S29 2×2 layout: každý panel polovina middle area.
+const PANEL_H = PANEL_HALF_H;
+
+// S29 iterace: chip font na polovinu (18→9 px) + chip row zmenšen + underline pryč.
+const CHIP_FONT_SIZE = "9px";
+const CHIP_ROW_H = 14;
+const CHIP_AREA_H = 32; // 2 řádky × 14 + 4 pad
+const BODY_TOP_Y = HEADER_H + CHIP_AREA_H;
+const BODY_H = PANEL_H - HEADER_H - CHIP_AREA_H - FOOTER_H;
 const MAX_VISIBLE = Math.floor(BODY_H / ROW_H);
 
 const LS_KEY = "voidspan.eventlog.open";
 
 const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
 const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
+
+// === Lazy filter chips — LS persist helpery (exportováno pro testy) ======
+//
+// Uloženo jako JSON array verbů, které jsou OFF. Default (prázdný LS) = jen
+// TICK off (spec TODO). Chip se v UI zobrazí až když verb poprvé zazní v
+// sezení (`seenVerbs` set) — 'lazy' = bez UI spamu při startu.
+
+export const FILTER_LS_KEY = "voidspan.eventlog.filters";
+
+export function loadVerbFilters(): Map<EventVerb, boolean> {
+  // S29 iterace: default = všechno ON (prázdná mapa). User si při prvním
+  // spuštění vidí všechny verbs v logu včetně TICK, pak chip-clickem vypíná.
+  const filters = new Map<EventVerb, boolean>();
+  try {
+    const raw = localStorage.getItem(FILTER_LS_KEY);
+    if (raw !== null) {
+      const offVerbs = JSON.parse(raw) as EventVerb[];
+      for (const v of offVerbs) filters.set(v, false);
+    }
+    // raw === null → prázdný LS → filters zůstane empty = všechno ON.
+  } catch {
+    // Incognito / broken JSON → bezpečný default (empty = all ON).
+  }
+  return filters;
+}
+
+export function saveVerbFilters(filters: Map<EventVerb, boolean>): void {
+  try {
+    const offVerbs = Array.from(filters.entries())
+      .filter(([, on]) => on === false)
+      .map(([v]) => v);
+    localStorage.setItem(FILTER_LS_KEY, JSON.stringify(offVerbs));
+  } catch { /* incognito */ }
+}
 
 const SEVERITY_COLOR: Record<string, string> = {
   crit: HEX_ALERT_RED,
@@ -87,7 +134,7 @@ export class EventLogPanel {
   private bg!: Phaser.GameObjects.Rectangle;
   private titleText!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
-  private footerText!: Phaser.GameObjects.Text;
+  // footerText retirován (S29 iterace) — user preference čistší UI bez count/copy.
   private rowTexts: Phaser.GameObjects.Text[] = [];
 
   // Scroll state.
@@ -97,8 +144,17 @@ export class EventLogPanel {
   private visible = false;
   private lastRenderedCount = -1;
 
-  // Lazy filter chips — tracked verbs (pro budoucí chip UI).
+  // Lazy filter chips — tracked verbs + per-verb on/off map + rendered chip Texts.
+  // Chipy se staví až když verb poprvé zazní (seenVerbs). verbFilters drží jen
+  // OFF stavy (default on = absence v mapě).
   private seenVerbs = new Set<EventVerb>();
+  private verbFilters!: Map<EventVerb, boolean>;
+  private chipTexts: Map<EventVerb, Phaser.GameObjects.Text> = new Map();
+  private lastChipSeenCount = -1;
+
+  // S29 — plný (pre-ellipsize) text per row, použitý tooltipem při truncaci.
+  // Paralelní array s rowTexts. Prázdný string = řádek skrytý → tooltip null.
+  private fullRowTexts: string[] = [];
 
   // Touch drag scroll state.
   private touchDragY: number | null = null;
@@ -111,6 +167,7 @@ export class EventLogPanel {
   constructor(scene: Phaser.Scene, getWorld: () => World) {
     this.scene = scene;
     this.getWorld = getWorld;
+    this.verbFilters = loadVerbFilters();
     this.build();
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
@@ -169,9 +226,11 @@ export class EventLogPanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
-    // Body rows — pre-allocate MAX_VISIBLE text objects.
+    // S29 iterace: chip underline retirován (user preference — méně vizuálního šumu).
+
+    // Body rows — pre-allocate MAX_VISIBLE text objects. Y start za chip area.
     for (let i = 0; i < MAX_VISIBLE; i++) {
-      const rowY = HEADER_H + i * ROW_H;
+      const rowY = BODY_TOP_Y + i * ROW_H;
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
@@ -180,59 +239,30 @@ export class EventLogPanel {
         })
         .setOrigin(0, 0);
       this.rowTexts.push(t);
+      this.fullRowTexts.push("");
       this.container.add(t);
     }
 
-    // Copy button — kopíruje všechny eventy do clipboardu.
-    const copyBtn = this.scene.add
-      .text(PANEL_W - PADDING - 30, PANEL_H - FOOTER_H + 4, "📋", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_TIP,
-      })
-      .setOrigin(0, 0)
-      .setInteractive({ useHandCursor: true });
-    copyBtn.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      const events = this.getWorld().events;
-      const text = events.map(formatEventRow).join("\n");
-      navigator.clipboard.writeText(text).catch(() => {});
-    });
-    this.container.add(copyBtn);
-
-    // Footer.
-    this.footerText = this.scene.add
-      .text(PADDING, PANEL_H - FOOTER_H + 4, "", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_TIP,
-        color: UI_TEXT_DIM,
-      })
-      .setOrigin(0, 0);
-    this.container.add(this.footerText);
-
-    // Footer underline (above footer).
-    const footerLine = this.scene.add
-      .rectangle(PADDING, PANEL_H - FOOTER_H, PANEL_W - 2 * PADDING, 1, UI_BORDER_DIM)
-      .setOrigin(0, 0);
-    this.container.add(footerLine);
+    // S29 iterace: Copy button + footer (count + footer underline) retirovány.
 
     // Scrollbar — visual track + thumb (reflects row-based scrollOffset).
     const sbX = PANEL_W - 10;
     this.scrollTrack = this.scene.add
-      .rectangle(sbX, HEADER_H, 8, BODY_H, COL_HULL_MID, 0.3)
+      .rectangle(sbX, BODY_TOP_Y, 8, BODY_H, COL_HULL_MID, 0.3)
       .setOrigin(0, 0)
       .setVisible(false);
     this.container.add(this.scrollTrack);
 
     this.scrollThumb = this.scene.add
-      .rectangle(sbX, HEADER_H, 8, 30, COL_TEXT_WHITE, 0.5)
+      .rectangle(sbX, BODY_TOP_Y, 8, 30, COL_TEXT_WHITE, 0.5)
       .setOrigin(0, 0)
       .setVisible(false);
     this.container.add(this.scrollThumb);
 
     // Scroll — mouse wheel on bg.
     this.bg.on("wheel", (_p: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number) => {
-      const events = this.getWorld().events;
-      const maxOffset = Math.max(0, events.length - MAX_VISIBLE);
+      const total = this.getFilteredEvents().length;
+      const maxOffset = Math.max(0, total - MAX_VISIBLE);
       if (dz > 0) {
         // Scroll down.
         this.scrollOffset = Math.min(maxOffset, this.scrollOffset + 3);
@@ -251,8 +281,8 @@ export class EventLogPanel {
       if (this.touchDragY === null || !this.visible) return;
       const dy = this.touchDragY - pointer.y;
       const rows = Math.round(dy / ROW_H);
-      const events = this.getWorld().events;
-      const maxOffset = Math.max(0, events.length - MAX_VISIBLE);
+      const total = this.getFilteredEvents().length;
+      const maxOffset = Math.max(0, total - MAX_VISIBLE);
       this.scrollOffset = Math.max(
         0,
         Math.min(maxOffset, this.touchDragOffset + rows),
@@ -270,6 +300,19 @@ export class EventLogPanel {
   private onToggleOpen?: () => void;
   setOnToggleOpen(cb: () => void): void {
     this.onToggleOpen = cb;
+  }
+
+  // S29 — každý řádek má tooltip s plnou verzí textu (pokud byl ořezán).
+  // Provider se volá při hover; vrací null když se full vešel (žádný tooltip).
+  attachTooltips(tooltips: TooltipManager): void {
+    for (let i = 0; i < MAX_VISIBLE; i++) {
+      const row = this.rowTexts[i]!;
+      tooltips.attach(row, () => {
+        const full = this.fullRowTexts[i] ?? "";
+        if (!full || full === row.text) return null;
+        return full;
+      });
+    }
   }
 
   toggle(): void {
@@ -308,16 +351,98 @@ export class EventLogPanel {
     // Track seen verbs (lazy chips).
     for (const ev of events) this.seenVerbs.add(ev.verb);
 
-    // Auto-scroll: snap to bottom.
+    // Rebuild chip UI pokud se seenVerbs rozrostl.
+    this.rebuildChips();
+
+    // Auto-scroll: snap to bottom (filtered).
+    const filteredLen = this.getFilteredEvents().length;
     if (this.autoScroll) {
-      this.scrollOffset = Math.max(0, events.length - MAX_VISIBLE);
+      this.scrollOffset = Math.max(0, filteredLen - MAX_VISIBLE);
     }
 
     this.renderRows();
   }
 
+  // === Lazy filter chips ===
+
+  // Filter predikát — verb je ON pokud není explicitně v mapě s hodnotou false.
+  private isVerbOn(v: EventVerb): boolean {
+    return this.verbFilters.get(v) !== false;
+  }
+
+  // Vrátí events po aplikaci per-verb filtrů. Voláno v renderRows + scroll logic.
+  private getFilteredEvents(): Event[] {
+    return this.getWorld().events.filter((ev) => this.isVerbOn(ev.verb));
+  }
+
+  // Klik na chip — flipne filter, uloží do LS, znovu vykreslí.
+  private toggleVerb(v: EventVerb): void {
+    const wasOn = this.isVerbOn(v);
+    this.verbFilters.set(v, !wasOn);
+    saveVerbFilters(this.verbFilters);
+
+    const t = this.chipTexts.get(v);
+    if (t) {
+      const isOn = !wasOn;
+      t.setColor(isOn ? UI_TEXT_ACCENT : UI_TEXT_DIM);
+      t.setAlpha(isOn ? 1 : 0.4);
+    }
+
+    // Filter změnil → layout řádků se posune, auto-scroll resync.
+    this.autoScroll = true;
+    this.renderRows();
+  }
+
+  // Pokud narostl seenVerbs, dokreslí chybějící chipy + relayout (flow wrap).
+  // Skip když se nic nezměnilo (lazy — bez zbytečných allocations per frame).
+  private rebuildChips(): void {
+    if (this.seenVerbs.size === this.lastChipSeenCount) return;
+    this.lastChipSeenCount = this.seenVerbs.size;
+
+    // Dokresli chybějící chipy.
+    for (const verb of this.seenVerbs) {
+      if (this.chipTexts.has(verb)) continue;
+      const isOn = this.isVerbOn(verb);
+      const t = this.scene.add
+        .text(0, 0, verb, {
+          fontFamily: FONT_FAMILY,
+          fontSize: CHIP_FONT_SIZE,
+          color: isOn ? UI_TEXT_ACCENT : UI_TEXT_DIM,
+        })
+        .setOrigin(0, 0)
+        .setAlpha(isOn ? 1 : 0.4)
+        .setInteractive({ useHandCursor: true });
+      t.on(
+        "pointerdown",
+        (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+          event.stopPropagation();
+          this.toggleVerb(verb);
+        },
+      );
+      this.chipTexts.set(verb, t);
+      this.container.add(t);
+    }
+
+    // Flow layout — abecedně pro stabilitu (nové chipy nepřeházejí existující).
+    const verbs = Array.from(this.chipTexts.keys()).sort();
+    const availableW = PANEL_W - 2 * PADDING;
+    const CHIP_GAP = 8;
+    let x = 0;
+    let row = 0;
+    for (const verb of verbs) {
+      const t = this.chipTexts.get(verb)!;
+      const w = t.width;
+      if (x + w > availableW && x > 0) {
+        x = 0;
+        row += 1;
+      }
+      t.setPosition(PADDING + x, HEADER_H + 6 + row * CHIP_ROW_H);
+      x += w + CHIP_GAP;
+    }
+  }
+
   private renderRows(): void {
-    const events = this.getWorld().events;
+    const events = this.getFilteredEvents();
     const start = this.scrollOffset;
 
     for (let i = 0; i < MAX_VISIBLE; i++) {
@@ -325,7 +450,9 @@ export class EventLogPanel {
       const evIdx = start + i;
       if (evIdx < events.length) {
         const ev = events[evIdx]!;
-        t.setText(formatEventRow(ev));
+        const full = formatEventRow(ev);
+        this.fullRowTexts[i] = full;
+        ellipsizeText(t, full, ROW_MAX_W);
         // SIGN eventy: barva dle 5stavového semaforu (rating z amount = nový pct).
         if (ev.verb === "SIGN" && ev.amount != null) {
           t.setColor(RATING_COLOR[statusRating(ev.amount)] ?? UI_TEXT_DIM);
@@ -335,10 +462,11 @@ export class EventLogPanel {
         t.setVisible(true);
       } else {
         t.setVisible(false);
+        this.fullRowTexts[i] = "";
       }
     }
 
-    this.footerText.setText(`${events.length} events`);
+    // S29 iterace: footer count retirován.
 
     // Scrollbar thumb — reflects row-based scroll position.
     const total = events.length;
@@ -348,7 +476,7 @@ export class EventLogPanel {
       const travel = BODY_H - thumbH;
       const maxOff = total - MAX_VISIBLE;
       const pos = maxOff > 0 ? (this.scrollOffset / maxOff) * travel : 0;
-      this.scrollThumb.setSize(8, thumbH).setY(HEADER_H + pos).setVisible(true);
+      this.scrollThumb.setSize(8, thumbH).setY(BODY_TOP_Y + pos).setVisible(true);
       this.scrollTrack.setVisible(true);
     } else {
       this.scrollThumb.setVisible(false);

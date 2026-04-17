@@ -28,6 +28,8 @@ import {
   PANEL_PADDING as PADDING,
   PANEL_BG_ALPHA,
   PANEL_HEADER_H as HEADER_H,
+  PANEL_HALF_H,
+  PANEL_WIDTH_STD,
   SCROLLBAR_W,
   SCROLLBAR_GAP,
   SCROLL_STEP,
@@ -36,10 +38,10 @@ import {
 } from "./ui/panel_helpers";
 import { dockManager } from "./ui/dock_manager";
 
-const PANEL_W = 420;
+const PANEL_W = PANEL_WIDTH_STD;
 
 // S24 KISS: pevná velikost panelu (baseline 720 - 60 - 60 - 24 = 576).
-const PANEL_H = 576;
+const PANEL_H = PANEL_HALF_H;
 
 // Scroll area — starts below rating row, ends at panel bottom.
 const SCROLL_TOP = HEADER_H + 28;

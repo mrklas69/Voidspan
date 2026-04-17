@@ -88,9 +88,21 @@ export const ENERGY_SEED = 12;
 // §6 Decay — entropie (S21)
 // ============================================================================
 
-// HP drain per game day jako podíl hp_max. Všechny vrstvy (skeleton, covered, module).
-// 0.01 = 1% hp_max per game day → SolarArray (500 HP) ztrácí 5 HP/den → 0 za ~100 dní.
-export const DECAY_RATE_PER_GAME_DAY = 0.01;
+// HP drain per game day jako podíl hp_max.
+// S29: 150× zpomaleno (z 0.01 na 0.0000667) — continuous decay drží pouze pozadí
+// (~1 % HP / 10 h wall), reálné poškození přichází vzácnými asteroid hity
+// (scheduledEvents slot 9). Axiom: entropie v kosmu existuje, ale je dominována
+// diskrétními událostmi, ne monotónním drainem.
+export const DECAY_RATE_PER_GAME_DAY = 0.0000667;
+
+// Asteroid scripted event — rate + damage range. Rate = pravděpodobnost per tick.
+// 1× / 10 h wall = 1× / 144 000 ticků (při TICK_MS 250, 960 ticků/game day,
+// 150 game days = 10 h wall). Stochastické — nevyžaduje per-tick cooldown state.
+export const ASTEROID_HIT_PROB_PER_TICK = 1 / 144_000;
+// HP ratio damage: uniform random v rozsahu [min, max] × hp_max.
+export const ASTEROID_DAMAGE_HP_RATIO: readonly [number, number] = [0.05, 0.20];
+// Vizuální flash na postiženém modulu (segment renderer) — 600 ms wall = 3 ticky.
+export const ASTEROID_FLASH_TICKS = 3;
 
 // ============================================================================
 // §7 Aktéři (S21)

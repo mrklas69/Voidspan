@@ -35,12 +35,11 @@ describe("MODULE_DEFS catalog invariants", () => {
     }
   });
 
-  it("HP, WD, cena jsou nezáporné a max_hp > 0", () => {
+  it("HP + WD jsou nezáporné a max_hp > 0", () => {
     for (const def of Object.values(MODULE_DEFS)) {
       expect(def.max_hp).toBeGreaterThan(0);
       expect(def.wd_to_build).toBeGreaterThanOrEqual(0);
       expect(def.wd_to_demolish).toBeGreaterThanOrEqual(0);
-      expect(def.cost_coin).toBeGreaterThanOrEqual(0);
     }
   });
 

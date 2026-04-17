@@ -2,7 +2,7 @@
 // Mock localStorage přes globalThis assignment (žádný jsdom potřeba).
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { loadPanelOpenPref, savePanelOpenPref } from "./panel_helpers";
+import { loadPanelOpenPref, savePanelOpenPref, ellipsizePrefix } from "./panel_helpers";
 
 type LSStub = {
   getItem(k: string): string | null;
@@ -64,5 +64,47 @@ describe("panel_helpers — LS pref", () => {
   it("incognito mode: setItem throws → save nehází", () => {
     setLS(brokenLocalStorage());
     expect(() => savePanelOpenPref("foo", true)).not.toThrow();
+  });
+});
+
+describe("panel_helpers — ellipsizePrefix (pure logic)", () => {
+  // Mock měřicí funkce: každý znak 10 px (hrubá aproximace monospace).
+  const measureEach10 = (s: string) => s.length * 10;
+
+  it("text se vejde → vrátí beze změny", () => {
+    expect(ellipsizePrefix("short", 100, measureEach10)).toBe("short");
+  });
+
+  it("prázdný text → beze změny", () => {
+    expect(ellipsizePrefix("", 10, measureEach10)).toBe("");
+  });
+
+  it("přesně hraniční šířka → beze změny (≤ maxW)", () => {
+    // "abc" = 3 znaky × 10 = 30 px, maxW = 30 → fits exactly.
+    expect(ellipsizePrefix("abc", 30, measureEach10)).toBe("abc");
+  });
+
+  it("přeteká → oříznuto s ellipsis", () => {
+    // "CommandPost" = 11 × 10 = 110 px, maxW = 100.
+    // Ellipsis "…" je 1 unicode code unit (U+2026), takže length = 1.
+    // Binary search najde nejdelší prefix + "…" ≤ 100 px.
+    // "CommandPo…" = 9 prefix + 1 ellipsis = 10 chars × 10 = 100 px ✓ (nejdelší fit).
+    const result = ellipsizePrefix("CommandPost", 100, measureEach10);
+    expect(result.endsWith("…")).toBe(true);
+    expect(measureEach10(result)).toBeLessThanOrEqual(100);
+    expect(result).toBe("CommandPo…");
+  });
+
+  it("extrémně úzké maxW → jen ellipsis", () => {
+    // maxW = 10 → "…" samo (1 × 10 = 10 ≤ 10), žádný prefix.
+    const result = ellipsizePrefix("CommandPost", 10, measureEach10);
+    expect(result).toBe("…");
+  });
+
+  it("unicode v textu — zachází po JS znacích (code units)", () => {
+    // České znaky = stejně jako ASCII v UTF-16 code units (1 per char).
+    const result = ellipsizePrefix("Žluťoučký kůň", 100, measureEach10);
+    expect(result.endsWith("…")).toBe(true);
+    expect(measureEach10(result)).toBeLessThanOrEqual(100);
   });
 });

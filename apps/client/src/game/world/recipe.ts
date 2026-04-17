@@ -1,19 +1,26 @@
-// Recipe helpers (S25) — modulové recepty pro repair/build (per-HP rate).
+// Recipe helpers (S25) — modulové recepty pro repair/build.
 // FVP KISS (S26): bez subtypů, ploché Solids/Fluids.
 // S28: bay-layered recepty (BAY_DEFS skeleton/covered) retirovány s layered bay axiomem.
+// S29: katalog drží TOTAL hodnoty (full build cost), runtime API nadále pracuje
+//      s per-HP rate × scale (hp_delta). Převod total → per-HP = total / hp_max.
 
 import type { World, Task, ResourceRecipe } from "../model";
 import { MODULE_DEFS } from "../model";
 import { RECIPE_MIN_HP_EPSILON } from "../tuning";
 import { recordFlow } from "./flow";
 
-// Vrátí recipe pro target tasku (modul). null = no recipe (eternal/service nebo neznámý target).
+// Vrátí per-HP recipe pro target tasku (modul). null = no recipe (eternal/service
+// nebo neznámý target). Převádí katalog total → per-HP = total / hp_max.
 export function getTaskRecipe(w: World, task: Task): ResourceRecipe | null {
-  if (task.target.moduleId !== undefined) {
-    const mod = w.modules[task.target.moduleId];
-    if (mod) return MODULE_DEFS[mod.kind].recipe;
-  }
-  return null;
+  if (task.target.moduleId === undefined) return null;
+  const mod = w.modules[task.target.moduleId];
+  if (!mod) return null;
+  const def = MODULE_DEFS[mod.kind];
+  if (def.max_hp <= 0) return null;
+  return {
+    solids: (def.recipe.solids ?? 0) / def.max_hp,
+    fluids: (def.recipe.fluids ?? 0) / def.max_hp,
+  };
 }
 
 // Vrátí jméno první chybějící kategorie ("Solids" / "Fluids") nebo null.

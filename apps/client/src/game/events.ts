@@ -16,7 +16,7 @@ export type VerbEntry = {
 // glyphy, které VT323 latin-subset nemá → browser fallback na monospace rozbíjel
 // baseline. Bezpečné držet: `× · » − ↑ ↓ ¤` (Latin-1 + latin subset arrows).
 export const VERB_CATALOG: Record<EventVerb, VerbEntry> = {
-  BOOT: { icon: "*",  label: "start simulace" },
+  SYST: { icon: "*",  label: "systémová událost" },
   SPWN: { icon: "+",  label: "spawn" },
   DEAD: { icon: "x",  label: "aktér umřel" },
   ARRV: { icon: "↓",  label: "landing / dokování" },

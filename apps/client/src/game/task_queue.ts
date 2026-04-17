@@ -8,6 +8,7 @@
 import Phaser from "phaser";
 import type { World, Task, TaskStatus } from "./model";
 import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./world";
+import type { TooltipManager } from "./tooltip";
 import {
   COL_HULL_DARK,
   UI_BORDER_DIM,
@@ -16,7 +17,6 @@ import {
   UI_TEXT_DIM,
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
-  FONT_SIZE_TIP,
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
   HEX_WARN_AMBER,
@@ -30,15 +30,20 @@ import {
   PANEL_PADDING as PADDING,
   PANEL_BG_ALPHA,
   PANEL_HEADER_H as HEADER_H,
+  PANEL_HALF_H,
+  PANEL_VERT_GAP,
+  PANEL_WIDTH_STD,
   loadPanelOpenPref,
   savePanelOpenPref,
+  ellipsizeText,
 } from "./ui/panel_helpers";
 import { dockManager } from "./ui/dock_manager";
 
-const PANEL_W = 420;
+const PANEL_W = PANEL_WIDTH_STD;
 const ROW_H = 20;
-const FOOTER_H = 28;
-const PANEL_H = 576;
+// S29 iterace: footer retirován → FOOTER_H 0 → víc místa pro body rows.
+const FOOTER_H = 0;
+const PANEL_H = PANEL_HALF_H;
 const BODY_H = PANEL_H - HEADER_H - FOOTER_H;
 const MAX_VISIBLE = Math.floor(BODY_H / ROW_H);
 
@@ -68,30 +73,32 @@ function progressBar(pct: number, width = 10): string {
   return `${"█".repeat(filled)}${"░".repeat(width - filled)}`;
 }
 
-// Formát řádku: [čas] Název [bar]pct% (eta)
-// Eternal: jen label.
-// Completed: čas dokončení.
-// Active/Pending/Paused: čas vytvoření + progress + ETA.
-// Failed: čas dokončení + "FAILED".
-function formatTaskRow(w: World, task: Task): string {
+// Split řádku na 2 části (S29): lead (čas + název) se ellipsizuje zleva,
+// suffix (bar + pct + eta / OK / FAILED) je right-aligned a drží plnou šířku.
+// Izomorfismus s ModulesPanel kind/stats columny.
+//
+// Eternal: lead = label, suffix = "" (jen label).
+// Completed: lead = `[t] name`, suffix = "OK".
+// Failed:    lead = `[t] name`, suffix = "X FAILED".
+// Active/Pending/Paused: lead = `[t] name`, suffix = "bar pct% (eta)".
+
+function formatTaskLead(w: World, task: Task): string {
   const name = describeTaskTarget(w, task);
-
-  if (task.status === "eternal") {
-    return name; // label už obsahuje vše („QuarterMaster v2.3 — Active")
-  }
-
-  if (task.status === "completed") {
+  if (task.status === "eternal") return name;
+  if (task.status === "completed" || task.status === "failed") {
     const t = task.completedAt != null ? formatGameTimeShort(task.completedAt) : "—";
-    return `[${t}] ${name} OK`;
+    return `[${t}] ${name}`;
   }
+  // pending / active / paused.
+  return `[${formatGameTimeShort(task.createdAt)}] ${name}`;
+}
 
-  if (task.status === "failed") {
-    const t = task.completedAt != null ? formatGameTimeShort(task.completedAt) : "—";
-    return `[${t}] ${name} X FAILED`;
-  }
+function formatTaskSuffix(w: World, task: Task): string {
+  if (task.status === "eternal") return "";
+  if (task.status === "completed") return "OK";
+  if (task.status === "failed") return "X FAILED";
 
   // pending / active / paused — progres + ETA.
-  const t = formatGameTimeShort(task.createdAt);
   const pct = task.wd_total > 0 ? Math.min(100, (task.wd_done / task.wd_total) * 100) : 0;
   const bar = progressBar(pct);
   const pctStr = `${Math.round(pct)}%`.padStart(4, " ");
@@ -104,7 +111,7 @@ function formatTaskRow(w: World, task: Task): string {
   } else {
     eta = "(pending)";
   }
-  return `[${t}] ${name} ${bar}${pctStr} ${eta}`;
+  return `${bar}${pctStr} ${eta}`;
 }
 
 export class TaskQueuePanel {
@@ -114,8 +121,14 @@ export class TaskQueuePanel {
   private container!: Phaser.GameObjects.Container;
   private titleText!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
-  private footerText!: Phaser.GameObjects.Text;
-  private rowTexts: Phaser.GameObjects.Text[] = [];
+  // footerText retirován (S29 iterace) — user preference čistší UI.
+  // S29 pair per row: leadText (ellipsize) + suffixText (right-aligned dynamic x).
+  private rowPairs: Array<{
+    leadText: Phaser.GameObjects.Text;
+    suffixText: Phaser.GameObjects.Text;
+  }> = [];
+  // Full (pre-ellipsize) lead + suffix per row — tooltip zobrazí kompletní řádek.
+  private fullRows: Array<{ lead: string; suffix: string }> = [];
 
   private visible = false;
   private onToggleOpen?: () => void; // callback — zavři jiné panely před otevřením
@@ -135,8 +148,9 @@ export class TaskQueuePanel {
   }
 
   private build(): void {
+    // S29 pozice: vpravo dole (pod EventLogem). HUD + margin + EventLog + vert gap.
     const x = CANVAS_W - PANEL_W - MARGIN;
-    const y = HUD_H + MARGIN;
+    const y = HUD_H + MARGIN + PANEL_HALF_H + PANEL_VERT_GAP;
 
     this.container = this.scene.add.container(x, y).setDepth(DEPTH);
 
@@ -178,33 +192,32 @@ export class TaskQueuePanel {
       .setOrigin(0, 0);
     this.container.add(underline);
 
-    // Body rows — pre-allocate MAX_VISIBLE text objects.
+    // Body rows — pre-allocate MAX_VISIBLE row pairs (lead + suffix).
+    // lead je left-aligned (x=PADDING), suffix je right-aligned (x se dopočítá
+    // per-row v render() podle jeho měřené šířky — right edge = PANEL_W - PADDING).
     for (let i = 0; i < MAX_VISIBLE; i++) {
       const rowY = HEADER_H + i * ROW_H;
-      const t = this.scene.add
+      const leadText = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
           fontSize: FONT_SIZE_SIDEPANEL,
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);
-      this.rowTexts.push(t);
-      this.container.add(t);
+      const suffixText = this.scene.add
+        .text(PANEL_W - PADDING, rowY, "", {
+          fontFamily: FONT_FAMILY,
+          fontSize: FONT_SIZE_SIDEPANEL,
+          color: UI_TEXT_PRIMARY,
+        })
+        .setOrigin(1, 0); // right-anchored — x = pravá hrana textu
+      this.rowPairs.push({ leadText, suffixText });
+      this.fullRows.push({ lead: "", suffix: "" });
+      this.container.add(leadText);
+      this.container.add(suffixText);
     }
 
-    this.footerText = this.scene.add
-      .text(PADDING, PANEL_H - FOOTER_H + 4, "", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_TIP,
-        color: UI_TEXT_DIM,
-      })
-      .setOrigin(0, 0);
-    this.container.add(this.footerText);
-
-    const footerLine = this.scene.add
-      .rectangle(PADDING, PANEL_H - FOOTER_H, PANEL_W - 2 * PADDING, 1, UI_BORDER_DIM)
-      .setOrigin(0, 0);
-    this.container.add(footerLine);
+    // S29 iterace: footer (count + underline) retirován — čistší UI.
   }
 
   toggle(): void {
@@ -214,6 +227,19 @@ export class TaskQueuePanel {
     saveVisiblePref(this.visible);
     if (this.visible) this.render();
     dockManager.notifyChange();
+  }
+
+  // S29 — tooltip na leadText: pokud byl ořezán, ukaž plný řádek (lead + suffix).
+  attachTooltips(tooltips: TooltipManager): void {
+    for (let i = 0; i < MAX_VISIBLE; i++) {
+      const pair = this.rowPairs[i]!;
+      tooltips.attach(pair.leadText, () => {
+        const full = this.fullRows[i];
+        if (!full || !full.lead) return null;
+        if (pair.leadText.text === full.lead) return null; // nebyl ořez
+        return full.suffix ? `${full.lead}  ${full.suffix}` : full.lead;
+      });
+    }
   }
 
   isOpen(): boolean {
@@ -245,28 +271,48 @@ export class TaskQueuePanel {
     });
 
     const visibleCount = Math.min(sorted.length, MAX_VISIBLE);
+    const GAP = 8;
+    const rightEdge = PANEL_W - PADDING;
     for (let i = 0; i < MAX_VISIBLE; i++) {
-      const t = this.rowTexts[i]!;
+      const pair = this.rowPairs[i]!;
       if (i < visibleCount) {
         const task = sorted[i]!;
-        t.setText(formatTaskRow(this.getWorld(), task));
-        t.setColor(STATUS_COLOR[task.status]);
-        t.setVisible(true);
+        const color = STATUS_COLOR[task.status];
+        const w = this.getWorld();
+
+        // 1) Suffix nejdřív — setText, Phaser přepočítá width; .x zůstává
+        //    PANEL_W - PADDING (origin 1,0 = right edge).
+        const suffixStr = formatTaskSuffix(w, task);
+        pair.suffixText.setText(suffixStr);
+        pair.suffixText.setColor(color);
+        pair.suffixText.setVisible(true);
+
+        // 2) Lead budget = pravá hrana suffixu − (jeho šířka + gap) − PADDING.
+        //    Když je suffix prázdný (eternal), celá šířka patří leadu.
+        const suffixLeftX = suffixStr.length === 0
+          ? rightEdge
+          : rightEdge - pair.suffixText.width - GAP;
+        const leadMaxW = suffixLeftX - PADDING;
+
+        const leadStr = formatTaskLead(w, task);
+        this.fullRows[i] = { lead: leadStr, suffix: suffixStr };
+        ellipsizeText(pair.leadText, leadStr, leadMaxW);
+        pair.leadText.setColor(color);
+        pair.leadText.setVisible(true);
       } else {
-        t.setVisible(false);
+        pair.leadText.setVisible(false);
+        pair.suffixText.setVisible(false);
+        this.fullRows[i] = { lead: "", suffix: "" };
       }
     }
 
-    const overflow = sorted.length - visibleCount;
-    this.footerText.setText(
-      overflow > 0 ? `${sorted.length} tasks (+${overflow} skrytých)` : `${sorted.length} tasks`,
-    );
+    // S29 iterace: footer count retirován.
   }
 
   // S24 KISS: panel má pevnou velikost, resize jen posune container do rohu.
   relayout(): void {
     const x = CANVAS_W - PANEL_W - MARGIN;
-    const y = HUD_H + MARGIN;
+    const y = HUD_H + MARGIN + PANEL_HALF_H + PANEL_VERT_GAP;
     this.container.setPosition(x, y);
   }
 }

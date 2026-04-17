@@ -487,6 +487,7 @@ Návrat odhad: ~150 LOC se 3 testy (collision, splash, spawn rate). Není urgent
 - **Role „Archivář"** — hráčská pozice spravující Legacy Letter Archive.
 - **Paralelní belty v síti** — server hostí víc kolonií, hráči migrují mezi nimi přes kapsle.
 - **Q-Rarity-Codes (S25)** — code letter per rarity tier (`[C]` Common, `[U]` Uncommon, `[R]` Rare, `[X]` Exclusive, `[E]` Epic) pro UI badges v inventory / market / drop tables. Konflikt s `[E]` jako hotkey pro Event Log? Možná `[ε]` Epic nebo jiná konvence. Rozhodnout až přijde item registr.
+- **`?welcome` URL param (S29)** — force-show welcome dialog bez ohledu na LS flag. Use case: invite link v pozvánce P1–P4, QA clean-state sharing, re-share „podívej se na úvod". Dnes zbytečné (první návštěva = LS prázdný = welcome sám; re-show přes Help [H] tlačítko „Zobrazit uvítání"). Implementace ~10 LOC: `new URLSearchParams(location.search).has("welcome")` → `resetWelcome()` + `openWelcomeDialog()`. Aktivovat až bude pozvánka.
 
 ---
 

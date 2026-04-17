@@ -20,7 +20,8 @@ import {
 } from "./palette";
 
 const DEPTH = 2000; // nad tooltipy (1000)
-const PANEL_W = 520;
+const PANEL_W_1COL = 520;
+const PANEL_W_2COL = 720; // širší panel pro dvousloupcový obsah (např. Help)
 const PANEL_MIN_H = 240;
 const PADDING = 24;
 // Overlay jen lehce zatmí svět — hvězdy pod panelem mají prosvítat
@@ -30,7 +31,11 @@ const PANEL_BG_ALPHA = 0.9;
 
 export interface ModalOptions {
   title: string;
-  body: string;
+  // Buď `body` (single-column), NEBO `bodyLeft` + `bodyRight` (2 sloupce).
+  // Pokud jsou nastaveny oba 2-col stringy, body se ignoruje a panel je širší.
+  body?: string;
+  bodyLeft?: string;
+  bodyRight?: string;
   onClose?: () => void;
   // Volitelné druhé tlačítko vedle Close (vlevo). Jeho onClick se volá PŘED
   // zavřením modalu, pokud chce caller modal zavřít sám, zavolá si close()
@@ -75,17 +80,33 @@ export class ModalManager {
     overlay.on("pointerdown", () => this.close(opts.onClose));
     this.layer.push(overlay);
 
-    // Nejdřív změř body text (bez přidání), ať určíme výšku panelu.
+    // 2-col mode: pokud caller dodal bodyLeft + bodyRight, panel se rozšíří
+    // a text se vykreslí do dvou sloupců (gap = PADDING).
+    const twoCol = opts.bodyLeft !== undefined && opts.bodyRight !== undefined;
+    const PANEL_W = twoCol ? PANEL_W_2COL : PANEL_W_1COL;
+    const bodyWrapW = twoCol ? (PANEL_W - 3 * PADDING) / 2 : PANEL_W - 2 * PADDING;
+
     const bodyStyle = {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_PANEL,
       color: UI_TEXT_PRIMARY,
-      wordWrap: { width: PANEL_W - 2 * PADDING },
+      wordWrap: { width: bodyWrapW },
       lineSpacing: 4,
     };
-    const probeBody = this.scene.add.text(0, 0, opts.body, bodyStyle).setVisible(false);
-    const bodyH = probeBody.height;
-    probeBody.destroy();
+
+    // Změř výšku (bez přidání do scéna layeru) — v 2-col max z obou sloupců.
+    let bodyH: number;
+    if (twoCol) {
+      const probeL = this.scene.add.text(0, 0, opts.bodyLeft!, bodyStyle).setVisible(false);
+      const probeR = this.scene.add.text(0, 0, opts.bodyRight!, bodyStyle).setVisible(false);
+      bodyH = Math.max(probeL.height, probeR.height);
+      probeL.destroy();
+      probeR.destroy();
+    } else {
+      const probeBody = this.scene.add.text(0, 0, opts.body ?? "", bodyStyle).setVisible(false);
+      bodyH = probeBody.height;
+      probeBody.destroy();
+    }
 
     const titleH = 36;
     const closeH = 30; // tlačítko −25 %
@@ -122,11 +143,22 @@ export class ModalManager {
       .setDepth(DEPTH + 3);
     this.layer.push(title, underline);
 
-    // Body text.
-    const body = this.scene.add
-      .text(panelX + PADDING, underlineY + 16, opts.body, bodyStyle)
-      .setDepth(DEPTH + 3);
-    this.layer.push(body);
+    // Body text — 1 sloupec nebo 2 sloupce (gap = PADDING mezi nimi).
+    const bodyY = underlineY + 16;
+    if (twoCol) {
+      const leftText = this.scene.add
+        .text(panelX + PADDING, bodyY, opts.bodyLeft!, bodyStyle)
+        .setDepth(DEPTH + 3);
+      const rightText = this.scene.add
+        .text(panelX + PADDING + bodyWrapW + PADDING, bodyY, opts.bodyRight!, bodyStyle)
+        .setDepth(DEPTH + 3);
+      this.layer.push(leftText, rightText);
+    } else {
+      const body = this.scene.add
+        .text(panelX + PADDING, bodyY, opts.body ?? "", bodyStyle)
+        .setDepth(DEPTH + 3);
+      this.layer.push(body);
+    }
 
     // Close button — bottom-right v panelu. Bg rect + label, hover highlight.
     const btnW = 75; // tlačítko −25 %

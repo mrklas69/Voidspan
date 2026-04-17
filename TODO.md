@@ -6,7 +6,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
 Většina implementována v S21. Zbývající úkoly:
 
-- [ ] **Lazy filter chips** — chip pro verb se objeví až při prvním výskytu v sezení. Toggle visibility per `verb:csq` key. `TICK` default off. (Data tracking hotový — `seenVerbs` set.)
+- [x] **Lazy filter chips (S30)** — per-verb (ne verb:csq), wrap 2 řádky, abecední flow layout, LS persist, default all ON (TICK default OFF retirován v iteraci). Chip font 9 px, underline pryč.
 - [ ] **IDEAS — click-through navigation** — klik na event s `loc` = camera jump + bay select. P2+ (odloženo, IDEAS banka).
 
 ---

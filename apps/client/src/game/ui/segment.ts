@@ -206,6 +206,20 @@ export class SegmentPanel {
 
       // Overlay — damage + trajectory.
       if (overlay) {
+        // S29 Asteroid flash: při aktivním flashUntilTick přepiš overlay na
+        // ostře červenou s vysokou alpha (bez pulse, jen solid hit signal).
+        // Aplikuje na všechny bays modulu (root + ref) skrz moduleId resolving.
+        const flashingModuleId =
+          bay.kind === "module_root" ? bay.moduleId :
+          bay.kind === "module_ref" ? bay.moduleId : undefined;
+        if (flashingModuleId) {
+          const flashMod = w.modules[flashingModuleId];
+          if (flashMod && flashMod.flashUntilTick !== undefined && w.tick < flashMod.flashUntilTick) {
+            overlay.setFillStyle(UI_TRAJ_FALLING, 0.85);
+            continue;
+          }
+        }
+
         const outer = getOuterHP(w, i);
         if (!outer) {
           overlay.setFillStyle(UI_TRAJ_STATIC, 0);

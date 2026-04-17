@@ -5,12 +5,14 @@
 // Žádný Phaser import — testovatelné samostatně.
 
 import type { World } from "../model";
+import { appendEvent } from "../events";
 import { decayTick } from "./decay";
 import { protocolTick } from "./protocol";
 import { assignIdleActors, progressTasks, cleanupOldTasks } from "./task";
 import { productionTick } from "./production";
 import { recomputeStatus } from "./status";
 import { advanceFlowDay } from "./flow";
+import { scheduledEvents } from "./scheduled";
 
 // === Re-exporty pro stávající konzumenty (UI, testy) ===
 
@@ -87,11 +89,31 @@ function resourceDrain(_w: World): void { /* no-op v FVP */ }
 
 function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue — dnes řeší protocolTick */ }
 
-function actorLifeTick(_w: World): void {
-  // S25 KISS retire: air + food drain odstraněno. Bez nich nikdo neumírá v FVP.
-  // Až přijde wake-up + edibles bucket (P2+), znovu přidat HP drain při deficitu.
+function actorLifeTick(w: World): void {
+  // S29 cryo failure: MedCore drží life-support cryo lůžek. Pokud všechny
+  // MedCore instance mají hp ≤ 0, crew v cryo nemá jak přežít → hromadná smrt.
+  // Jednorázový event; po něm je cryoAlive.length = 0 a funkce už nic nedělá.
+  //
+  // Rationale: FVP endgame bez interakce = S/F dojdou → QM nemůže opravovat →
+  // asteroid → MedCore HP=0 → crew dies. „Kus šrotu bez života doslova."
+  // Wake-up mechanismus (probuzení při E=0, HOMELESS drain atd.) = Release 2.
+
+  const cryoAlive = w.actors.filter((a) => a.state === "cryo");
+  if (cryoAlive.length === 0) return;
+
+  const medcores = Object.values(w.modules).filter((m) => m.kind === "MedCore");
+  if (medcores.some((m) => m.hp > 0)) return; // aspoň 1 MedCore žije → OK
+
+  // Katastrofa: všechny MedCore padly. Hromadný DEAD:CRIT event (1 řádek v
+  // logu) + per-actor state flip (ne 32 events — zahltilo by log).
+  for (const a of cryoAlive) a.state = "dead";
+  appendEvent(w, "DEAD", {
+    csq: "CRIT",
+    amount: cryoAlive.length,
+    loc: medcores[0]?.id,
+    text: `MedCore zničen — ${cryoAlive.length} kolonistů zemřelo v cryo (life-support kolaps)`,
+  });
 }
 
 function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
-function scheduledEvents(_w: World): void { /* TODO: events bank trigger */ }
 function appendEventLog(_w: World): void { /* Events se emitují in-place přes appendEvent(). Slot zachován pro axiom pipeline pořadí. */ }
