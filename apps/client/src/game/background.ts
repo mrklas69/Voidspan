@@ -29,7 +29,7 @@ const DRIFT_MAGNITUDE_PX = 30;
 const DRIFT_PERIOD_MS = 240_000;
 // Buffer = chunks mimo viewport, které držíme (plynulý scroll bez popu).
 const CHUNK_BUFFER = 1;
-// Depth pořadí (uvnitř Containeru relativně). DSO depths jsou per-part v M42_PARTS.
+// Depth pořadí (uvnitř Containeru relativně). DSO depths jsou per-part v M110_PARTS.
 const DEPTH_STAR = 0;
 const DEPTH_CLUSTER = 2;
 
@@ -39,21 +39,21 @@ const MEDIUM_PER_CHUNK = 28;
 const LARGE_PER_CHUNK = 5;
 const TWINKLE_RATIO = 0.18;
 const CLUSTER_CHANCE = 0.55;
-// Random DSO retirován (S29): nahrazen jediným pečlivě composed M-42 Orion
-// Nebula (10 SVG parts, fixní world pozice, viz M42_PARTS níže).
+// Random DSO retirován (S29): nahrazen jediným pečlivě composed deep-sky
+// objektem. S29 → M-42 Orion Nebula. S32 → M-31 Andromeda + satelity. S32
+// iterace → redukce na samotné M-110 (user preference: dostačující difuzní
+// eliptická galaxie, plná M-31 kompozice byla vizuálně přeplněná).
 
-// === M-42 Orion Nebula (S29) — 10 SVG parts ===
-// Fixed world position, scale 0.55× native viewBox. Composing order (depth):
-//   −6 halo_outer → −5 halo_middle → −4 wisps (E/W/N) → −3 m43_blue →
-//   −2 core_glow → −1 dark_bay → 0 trapezium → +1 stars_accent
-// Blend ADD pro emission glow (aditivně se skládá svit), NORMAL pro dark_bay
-// (tmavá negace — Fish Mouth Dark Nebula blokuje zadní emisi).
+// === M-110 (S32) — 1 SVG part ===
+// Fixed world position. M-110 je protáhlejší difuzní eliptická satelitní
+// galaxie, ponechán charakter z původní kompozice (rotace -20°, gold-amber
+// gradient). Array struktura ponechána pro případné rozšíření.
 
-const M42_CENTER_X = 220;
-const M42_CENTER_Y = 180;
-const M42_SCALE = 0.55;
+const M110_CENTER_X = 220;
+const M110_CENTER_Y = 180;
+const M110_SCALE = 0.6;
 
-type M42Part = {
+type M110Part = {
   key: string;
   file: string;
   dx: number;
@@ -63,22 +63,16 @@ type M42Part = {
   depth: number;
 };
 
-// S29 iterace 2: wisps (06/07/08) retirovány — vizuál přeplněný, M-42 je
-// charakteristická hlavně halem + core + dark bay + Trapeziem + M43 sousedem.
-const M42_PARTS: readonly M42Part[] = [
-  { key: "m42_halo_outer",   file: "01_halo_outer.svg",   dx:  0,   dy:  0,   alpha: 0.45, blend: Phaser.BlendModes.ADD,    depth: -6 },
-  { key: "m42_halo_middle",  file: "02_halo_middle.svg",  dx:  10,  dy:  30,  alpha: 0.60, blend: Phaser.BlendModes.ADD,    depth: -5 },
-  { key: "m42_m43_blue",     file: "09_m43_blue.svg",     dx: -43,  dy: -103, alpha: 0.55, blend: Phaser.BlendModes.ADD,    depth: -3 },
-  { key: "m42_core_glow",    file: "03_core_glow.svg",    dx:  5,   dy:  25,  alpha: 0.85, blend: Phaser.BlendModes.ADD,    depth: -2 },
-  { key: "m42_dark_bay",     file: "05_dark_bay.svg",     dx:  25,  dy:  25,  alpha: 0.80, blend: Phaser.BlendModes.NORMAL, depth: -1 },
-  { key: "m42_trapezium",    file: "04_trapezium.svg",    dx:  5,   dy:  15,  alpha: 1.00, blend: Phaser.BlendModes.ADD,    depth:  0 },
-  { key: "m42_stars_accent", file: "10_stars_accent.svg", dx:  0,   dy: -45,  alpha: 0.85, blend: Phaser.BlendModes.ADD,    depth:  1 },
+// Offset (80, 110) před M110_SCALE — původní pozice satelitu M-32 v S32
+// iteraci M-31; po retire celé galaxie drží samotný M-110 tuto pozici.
+const M110_PARTS: readonly M110Part[] = [
+  { key: "m110", file: "m110.svg", dx: 80, dy: 110, alpha: 0.85, blend: Phaser.BlendModes.ADD, depth: 0 },
 ];
 
 // Preload helper — volá GameScene.preload() před BackgroundSystem.
-export function preloadM42(scene: Phaser.Scene): void {
-  for (const p of M42_PARTS) {
-    scene.load.svg(p.key, `assets/dso/m42/${p.file}`);
+export function preloadM110(scene: Phaser.Scene): void {
+  for (const p of M110_PARTS) {
+    scene.load.svg(p.key, `assets/dso/m110/${p.file}`);
   }
 }
 
@@ -126,20 +120,21 @@ export class BackgroundSystem {
     this.container = scene.add.container(0, 0);
     this.container.setDepth(-10); // pod vším herním obsahem
 
-    this.buildM42();
+    this.buildM110();
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
-  // M-42 staví se jednou při konstrukci — fixní world pozice, nepatří do
-  // chunk systému (chunk eviction by ji ničila). 10 Image objektů na M42_PARTS.
-  private buildM42(): void {
-    for (const p of M42_PARTS) {
+  // M-110 staví se jednou při konstrukci — fixní world pozice, nepatří do
+  // chunk systému (chunk eviction by ji ničila). 1 Image objekt (array drží
+  // pattern pro případné rozšíření).
+  private buildM110(): void {
+    for (const p of M110_PARTS) {
       if (!this.scene.textures.exists(p.key)) continue; // SVG preload selhal
       const img = this.scene.add
-        .image(M42_CENTER_X + p.dx * M42_SCALE, M42_CENTER_Y + p.dy * M42_SCALE, p.key)
+        .image(M110_CENTER_X + p.dx * M110_SCALE, M110_CENTER_Y + p.dy * M110_SCALE, p.key)
         .setOrigin(0.5, 0.5)
-        .setScale(M42_SCALE)
+        .setScale(M110_SCALE)
         .setAlpha(p.alpha)
         .setBlendMode(p.blend)
         .setDepth(p.depth);
@@ -210,7 +205,7 @@ export class BackgroundSystem {
     const y0 = cy * CHUNK_SIZE;
     const objs: Phaser.GameObjects.GameObject[] = [];
 
-    // Random DSO retirováno (S29) — nahrazeno jedinou M-42 (viz buildM42).
+    // Random DSO retirováno (S29) — nahrazeno jediným DSO (M-42 → M-110 v S32, viz buildM110).
 
     // --- Malé hvězdy ---
     for (let i = 0; i < SMALL_PER_CHUNK; i++) {
@@ -306,5 +301,5 @@ export class BackgroundSystem {
     return objs;
   }
 
-  // makeDso retirováno v S29 — nahrazeno buildM42 (fixed SVG composition).
+  // makeDso retirováno v S29 — nahrazeno buildM110 (fixed SVG composition, S32).
 }

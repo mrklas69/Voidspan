@@ -16,7 +16,7 @@
 //   S16b: #080808 (bg-near-black) sloučeno s #0a0a10 (void-black) — byly
 //         k nerozeznání. UI_BG/UI_PANEL_BG nyní čtou z VOID_BLACK.
 //   S16c: přidán #40c0c0 (coolant-cyan) jako studený status akcent —
-//         voda, chladivo, led, štíty, Flux.water/coolant subtypy.
+//         voda, chladivo, led, štíty, Fluids subtyp (water / coolant — P2+).
 
 // --- Svět: studený kov, void (01-07) ---
 export const HEX_VOID_BLACK    = "#0a0a10"; // 01
@@ -109,7 +109,7 @@ export const UI_STATUS_ALERT   = HEX_ALERT_RED;         // LOSS, damaged, fatal
 export const UI_STATUS_WARN    = HEX_WARN_AMBER;        // warning threshold
 export const UI_STATUS_INFO    = HEX_INFO_BLUE;         // dock, fleet, neutral
 export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
-export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / štíty (Flux.water/coolant)
+export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / štíty (Fluids subtyp — P2+)
 
 // ============================================================================
 // 2b. Dashboard semafor (S25) — 5-color rating pro UI metriky
@@ -153,11 +153,11 @@ export function ratingColor(pct: number): string {
 export const FONT_FAMILY    = '"Atkinson Hyperlegible", system-ui, sans-serif';
 // S28: 3-level hierarchie (sjednocení napříč). Větší = vnější, menší = vnitřní.
 //   CHROME — Top Bar + Bottom Bar (vnější chrome aplikace)
-//   PANEL  — všechny floating panely (Info/Moduly/Události/Úkoly), Help modal, welcome
+//   PANEL  — všechny floating panely (Info/Moduly/Události/Úkoly), Help modal, QM terminál
 //   TIP    — tooltipy + footer/btn/hint texty (nejmenší čitelný)
 // S29 Atkinson bump -2 px: sans má větší x-height než VT323 → menší velikost
 // vypadá stejně čitelně a textů se vejde víc.
 export const FONT_SIZE_CHROME    = "22px"; // Top Bar, Bottom Bar
-export const FONT_SIZE_PANEL     = "20px"; // modal, welcome, commandButton, ActorsPanel
+export const FONT_SIZE_PANEL     = "20px"; // modal (Help / QM terminál), commandButton, ActorsPanel
 export const FONT_SIZE_SIDEPANEL = "18px"; // boční panely I / M / E / T (-2 px vůči PANEL, vyšší hustota dat)
 export const FONT_SIZE_TIP       = "18px"; // tooltipy + drobné texty (footer, btn, hotkey hints)

@@ -13,6 +13,7 @@ import {
   SEED_FLUIDS,
   SEED_COIN,
   SEED_CREW_CRYO,
+  SEED_DRONES,
   FLOW_WINDOW_GAME_DAYS,
   ENERGY_SEED,
   ACTOR_HP_MAX,
@@ -138,7 +139,7 @@ export function createInitialWorld(): World {
       integrity: { pct: 100, level: "ok" },
     },
     energyMax: 0, // přepočte se v recomputeStatus níže
-    drones: 23,   // počet pracovních dronů — převodník E→WD
+    drones: SEED_DRONES,   // počet pracovních dronů — převodník E→WD
     next_task_id: 1,
     software: {
       quartermaster: {

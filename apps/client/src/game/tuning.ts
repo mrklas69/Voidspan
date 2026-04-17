@@ -38,7 +38,7 @@ export const TICKS_PER_WALL_MINUTE = TICKS_PER_SECOND * 60;
 // Kalibrace: SEED_SOLIDS = dřívější metal+components; SEED_FLUIDS = water+coolant.
 export const SEED_SOLIDS = 90;      // ploché Solids (repair/build material)
 export const SEED_FLUIDS = 50;      // ploché Fluids (chladicí/provozní média)
-export const SEED_COIN = 20;        // Kredo — CAL-B2 dock cost budget
+export const SEED_COIN = 20;        // Coin (◎) — CAL-B2 dock cost budget
 
 // Max kapacita S/F — FVP fix 100 (KISS). P2+ Storage-based (Σ capacity_s modulů).
 export const SOLIDS_MAX = 100;
@@ -52,11 +52,12 @@ export const FLUIDS_MAX = 100;
 export const FLOW_WINDOW_GAME_DAYS = 10;
 
 // ============================================================================
-// §3 HP axiom (S18) — layered bay vrstvy a WD konverze
+// §3 HP axiom (S28 KISS — void ↔ module, retire S18 layered bay)
 // ============================================================================
 
 // Module HP_MAX je v `model.ts` MODULE_DEFS tabulce (per module kind).
 // Bay vrstvy (skeleton/covered) retirovány v S28 — void se staví rovnou na modul.
+// HP žije výhradně na Module instanci.
 
 // WD_PER_HP = kolik work-day jednotek stojí oprava 1 HP.
 // Kalibrace P1: s HP_MAX v řádech stovek drží repair task desítky WD, což je
@@ -111,14 +112,20 @@ export const ASTEROID_FLASH_TICKS = 3;
 // HP aktéra — baseline. 100 = plné zdraví.
 export const ACTOR_HP_MAX = 100;
 
-// HP drain per tick při nedostatku (air=0 nebo food=0).
-// 100 HP / (1 game hour = 240 ticků) ≈ smrt za 1 herní hodinu bez zdrojů.
+// HP drain per tick při nedostatku (wake-up + HOMELESS mechanika, R2).
+// 100 HP / (1 game hour = 240 ticků) ≈ smrt za 1 herní hodinu bez zázemí.
+// V FVP nepoužito (posádka drží cryo) — seed pro R2 kalibraci.
 export const ACTOR_HP_DRAIN_PER_TICK = ACTOR_HP_MAX / (TICKS_PER_GAME_DAY / 16);
 
 // Počet členů posádky v cryo na startu (S26). Vazba: kapacita MedCore = 32
 // cryolůžek. FVP drží všech 32 v cryo, hráč = jeden z nich (id=`player`),
 // ostatních 31 jako `colonist_01..31`. Probuzení přijde s wake-up mechanismem.
 export const SEED_CREW_CRYO = 32;
+
+// Počet pracovních dronů (fixní číslo, nemá HP). Drones = převodník E→WD,
+// 1 drone = 1 W při práci na productive tasku. Seed držíme na 23, aby QM
+// zvládal typický repair backlog (1-2 aktivní tasky paralelně).
+export const SEED_DRONES = 23;
 
 // ============================================================================
 // §7 Status tree prahy (S20/S21)

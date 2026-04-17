@@ -1,13 +1,11 @@
-// Datový model — layered bay axiom (S18).
+// Datový model — void ↔ module axiom (S28 KISS, retire S18 layered bay).
 //
-// **Layered bay axiom:** každý bay má vrstvový stack:
-//   void → skeleton → covered → module
-// Vnější vrstva je jediná, která se renderuje a má HP. Vnitřní vrstvy
-// logicky existují (při zničení vnější vrstvy se odhalí další), ale HP
-// se u nich nesleduje — nové odhalení startuje na HP_MAX.
+// Bay je jedno ze dvou stavů: `void` (prázdný slot, hvězdy prosvítají)
+// nebo projekce modulu (`module_root` = primární bay instance modulu,
+// `module_ref` = další bays multi-bay modulu s odkazem na root).
 //
-// Axiom nelze stavět na poškozeném základu: stavba začíná povinnou
-// opravou stávající vnější vrstvy, pak teprve přibývá nová.
+// HP žije **výhradně na Module instanci** (po S28; dříve per bay vrstva).
+// Oprava = drain recipe × hp_delta, destrukce = `mod.hp <= 0`.
 //
 // Indexace segmentu: 2 řady × 8 sloupců, row-major → idx = row*8 + col.
 
@@ -332,8 +330,10 @@ export type World = {
 // Monotónní, „hmotnost + kritičnost". Playtest ladí.
 
 // === MODULE_DEFS ===
-// recipe je per-HP rate. Total build cost = recipe × max_hp. Per-tick repair
-// drain = recipe × hp_delta. Sparse subtypy nepoužité jsou implicit 0.
+// recipe je **TOTAL** surovinový balík pro build 0 → hp_max (S30 reprezentace —
+// lidsky čitelné celkové ceny, ne desetinné per-HP rates). Runtime API
+// (`world/recipe.ts`) dělí hp_max pro per-tick drain `recipe × hp_delta / hp_max`.
+// Sparse: složka, která se neuvádí, = 0.
 export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
   SolarArray: {
     kind: "SolarArray",
@@ -361,7 +361,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 60,
     max_hp: 1240,
     recipe: { solids: 211, fluids: 62 },
-    description: "Nefunkční zbytek startovního motoru. K demontáži pro získání místa.",
+    description: "Nefunkční zbytek startovního motoru. Zadní kotva layoutu lodi (2×2, cols 6-7).",
   },
   Dock: {
     kind: "Dock",
@@ -375,7 +375,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 20,
     max_hp: 1000,
     recipe: { solids: 120 },
-    description: "Přístaviště flotily. WIN podmínka: ≥1 modul flotily připojen.",
+    description: "Přístaviště flotily. Vstup pro kapsle + docking mechaniku (R2).",
   },
   Habitat: {
     kind: "Habitat",
@@ -389,7 +389,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 8,
     max_hp: 700,
     recipe: { solids: 56, fluids: 14 },
-    description: "Obytný modul. P1: jeden probuzený kolonista (hráč).",
+    description: "Obytný modul pro probuzené kolonisty. FVP: posádka drží cryo, probuzení přijde v R2.",
   },
   Storage: {
     kind: "Storage",
@@ -403,7 +403,7 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     wd_to_demolish: 6,
     max_hp: 650,
     recipe: { solids: 36 },
-    description: "Sklad zásob (jídlo, kapalný kyslík). Kapacita ladí kalibrace.",
+    description: "Sklad surovin (Solids + Fluids). Kapacita ladí kalibrace (FVP fix 100).",
   },
   MedCore: {
     kind: "MedCore",

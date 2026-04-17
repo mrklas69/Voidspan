@@ -43,51 +43,56 @@ export {
 // Axiom: svět žije nepřetržitě. Simulace nekončí WIN/LOSS, končí jen vypnutím serveru.
 // Observer perspektiva = bez GAME_OVER. Player perspektiva (P2+) má GAME_OVER per hráč.
 //
-// Pipeline sloty (některé dnes no-op, dolaďují se iterativně — viz TODO
-// „Perpetual Observer — full implementation"). Axiom-level pořadí je kánon,
-// i když těla funkcí budou prázdná do implementace jednotlivých kusů:
+// Pipeline sloty. Axiom-level pořadí je kánon; některé sloty jsou dnes
+// prázdné stuby a naplní se postupně (viz TODO „Perpetual Observer — full
+// implementation"):
 //
-//   1) decayTick           — entropie snižuje HP nerepaired vrstev (per game-day)
-//   2) resourceDrain       — spotřeba per-capita (TODO: n_alive × per_actor_rate)
-//   3) autoEnqueueTasks    — priority queue (critical HP → repair, chybějící zásoba → produce)
-//   4) assignIdleActors    — volné drony → task dle allowed_actors + priority
+//   1) decayTick           — entropie snižuje HP (per game-day)
+//   2) resourceDrain       — per-capita drain (R2, wake-up + edible items)
+//   3a) protocolTick       — QuarterMaster gate + enqueue repairs (S24)
+//   3b) autoEnqueueTasks   — priority queue (critical HP → repair, chybějící zásoba → produce; R2)
+//   4) assignIdleActors    — volné aktéry → task dle allowed_actors + priority
 //   5) progressTasks       — WD delta, HP/resource sync, completion
-//   6) actorLifeTick       — HP drain aktérů při nedostatku; HP=0 → state="dead" (ne LOSS!)
-//   7) productionTick      — SolarArray → E, Greenhouse → food, MedCore → heal
-//   8) arrivalsTick        — kapsle na orbitu, Network Arc signály
-//   9) scheduledEvents     — scripted events bank (SCENARIO §5)
+//   5b) cleanupOldTasks    — autoclean completed/failed po TASK_AUTOCLEAN_TICKS (S24)
+//   6) actorLifeTick       — cryo failure (MedCore HP=0 → 32× DEAD, S30);
+//                            R2: HP drain probuzených + HOMELESS logika
+//   7) productionTick      — SolarArray → E, software draw, drone charge
+//   8) arrivalsTick        — kapsle na orbitu, Network Arc signály (R2)
+//   9) scheduledEvents     — scripted events bank (asteroid hit, SCENARIO §5)
 //  10) recomputeStatus     — agregace Status tree (I–IV) pro Observer UI
-//  11) appendEventLog      — telemetrie (deaths, births, arrivals, milestones)
+//  11) advanceFlowDay      — rotace rolling-window KPI bufferu (S26)
+//
+// Events se emitují **in-place** přes `appendEvent()` v místě, kde vzniká
+// signál (nikoli v dedikovaném batch slotu). Původní slot 11 „appendEventLog"
+// retirován v S32 auditu — in-place přístup je data-driven pravda.
 //
 // win/loss retirováno (S21). Phase scénář retirován (S23).
 export function stepWorld(w: World): void {
   w.tick += 1;
 
   decayTick(w);           // slot 1
-  resourceDrain(w);       // slot 2 — TODO: per-capita drain
-  protocolTick(w);        // slot 3a (S24) — QuarterMaster: gate + enqueue repairs
-  autoEnqueueTasks(w);    // slot 3 — no-op; dnes řeší protocolTick
+  resourceDrain(w);       // slot 2 — stub (R2 per-capita drain)
+  protocolTick(w);        // slot 3a (S24)
+  autoEnqueueTasks(w);    // slot 3b — stub (dnes řeší protocolTick)
   assignIdleActors(w);    // slot 4
   progressTasks(w);       // slot 5
-  cleanupOldTasks(w);     // slot 5b (S24) — autoclean completed/failed po TASK_AUTOCLEAN_TICKS
-  actorLifeTick(w);       // slot 6 — no-op do implementace actor HP
+  cleanupOldTasks(w);     // slot 5b (S24)
+  actorLifeTick(w);       // slot 6 — S30 cryo failure
   productionTick(w);      // slot 7
-  arrivalsTick(w);        // slot 8 — no-op
-  scheduledEvents(w);     // slot 9 — no-op
+  arrivalsTick(w);        // slot 8 — stub (R2 kapsle)
+  scheduledEvents(w);     // slot 9 — S30 asteroid
   recomputeStatus(w);     // slot 10
-  appendEventLog(w);      // slot 11 — no-op
-  advanceFlowDay(w);      // slot 12 (S26) — rotace rolling-window KPI bufferu
+  advanceFlowDay(w);      // slot 11 (S26) — rotace rolling-window KPI bufferu
 }
 
-// === No-op pipeline sloty — kontrakt zachován, těla doplnit po jednom kuse ===
+// === Stub sloty — kontrakt zachován, těla doplnit s příslušnou mechanikou ===
 
-// Slot 2 — per-capita resource drain.
-// S25 KISS retire: air + food odstraněny — žádný drain v FVP. Stovky sezení
-// crew spí v cryo, atmosféra je 24th-cent recyklovaná. Až přijde wake-up +
-// item registr s edible attributem, doplnit drain edible bucketu (water?).
-function resourceDrain(_w: World): void { /* no-op v FVP */ }
+// Slot 2 — per-capita resource drain. V FVP no-op (crew v cryo, atmosféra
+// 24th-cent recyklovaná, food/air retired S25). Naplní se v R2 s wake-up +
+// item registrem (edible bucketu — water?).
+function resourceDrain(_w: World): void { /* R2 */ }
 
-function autoEnqueueTasks(_w: World): void { /* TODO: priority-based task enqueue — dnes řeší protocolTick */ }
+function autoEnqueueTasks(_w: World): void { /* R2: priority queue — dnes řeší protocolTick */ }
 
 function actorLifeTick(w: World): void {
   // S29 cryo failure: MedCore drží life-support cryo lůžek. Pokud všechny
@@ -115,5 +120,4 @@ function actorLifeTick(w: World): void {
   });
 }
 
-function arrivalsTick(_w: World): void { /* TODO: kapsle / Network Arc signály */ }
-function appendEventLog(_w: World): void { /* Events se emitují in-place přes appendEvent(). Slot zachován pro axiom pipeline pořadí. */ }
+function arrivalsTick(_w: World): void { /* R2: kapsle / Network Arc signály */ }

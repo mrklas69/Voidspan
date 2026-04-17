@@ -22,8 +22,9 @@ import {
 import { CANVAS_W, HUD_ROW_Y, COL_TEXT, COL_TEXT_ACCENT } from "./layout";
 import { BrandIcon } from "./brand_icon";
 
-// Vertikální offset BrandIcon, aby kroužek opticky seděl s baseline VT323.
-// HUD_ROW_Y je top textu; ikona má height 26 px, písmo HUD ~24 px → +2 nahoru.
+// Vertikální offset BrandIcon, aby kroužek opticky seděl s baseline Atkinson
+// Hyperlegible HUD textu. HUD_ROW_Y je top textu; ikona má height 26 px,
+// písmo HUD 22 px → -2 nahoru.
 const BRAND_Y_OFFSET = -2;
 
 export class HeaderPanel {

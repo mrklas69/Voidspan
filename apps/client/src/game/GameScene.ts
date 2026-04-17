@@ -6,8 +6,13 @@
 import Phaser from "phaser";
 import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
-import { WelcomeDialog, shouldShowWelcome, resetWelcome } from "./welcome";
-import { BackgroundSystem, preloadM42 } from "./background";
+import {
+  shouldShowTerminal,
+  markTerminalDismissed,
+  TERMINAL_TITLE,
+  TERMINAL_BODY,
+} from "./terminal";
+import { BackgroundSystem, preloadM110 } from "./background";
 import {
   createInitialWorld,
   stepWorld,
@@ -37,7 +42,6 @@ export class GameScene extends Phaser.Scene {
 
   private tooltips!: TooltipManager;
   private modal!: ModalManager;
-  private welcome?: WelcomeDialog;
   private background!: BackgroundSystem;
 
   private header!: HeaderPanel;
@@ -71,12 +75,11 @@ export class GameScene extends Phaser.Scene {
     // PNG ponechány v public/assets/bays/ pro případný návrat. segment.ts má
     // guard přes textures.exists — chybějící klíč schová sprite bezpečně.
     // Asteroid sprite retirován — viz IDEAS „Asteroid system (P2+)".
+    // Welcome hero splash retirován v S32 — nahrazen QM Terminal modal (bez obrázku).
 
-    // Hero splash pro Welcome dialog (400×300 indexed PNG, 16-color paleta).
-    this.load.image("welcome_hero", "assets/splash/welcome.png");
-
-    // M-42 Orion Nebula — 10 SVG parts (S29). Fixed composition, retired random DSO.
-    preloadM42(this);
+    // M-110 (S32) — eliptická satelitní galaxie, 1 SVG part. Iterace po
+    // zkušenosti s plnou M-31 kompozicí (přeplněná — KISS redukce).
+    preloadM110(this);
 
     // Potlač chyby při chybějícím souboru.
     this.load.on("loaderror", () => {
@@ -133,21 +136,20 @@ export class GameScene extends Phaser.Scene {
     // S24: resize handler — recomputeLayout + relayout všech panelů.
     this.scale.on("resize", this.handleResize, this);
 
-    // Welcome dialog — jen pro prvního návštěvníka (nebo dokud nezaškrtne
-    // "Již nezobrazovat"). Otevírá se po vytvoření všech panelů, aby dialog
-    // překryl už rozeběhnutou scénu (nezastavuje čas — axiom S19).
-    if (shouldShowWelcome()) {
-      this.welcome = new WelcomeDialog(this);
-      this.welcome.open();
+    // QM Terminal (S32) — onboarding modal, nahrazuje Welcome dialog. Auto-open
+    // pro prvního návštěvníka; user ho pak může kdykoli otevřít přes [Q].
+    // Neblokuje simulaci (axiom S19 — modal overlay, čas běží dál).
+    if (shouldShowTerminal()) {
+      this.openTerminalModal();
     }
   }
 
   // === Globální ESC handler (F5) ============================================
-  // Pořadí priority: modal (5.x) → welcome dialog → floating panely (M/I/E/T).
-  // Lokální ESC listenery v Modal/Welcome odebrány — jeden handler řídí vše.
+  // Pořadí priority: modal (Help nebo QM Terminal, S32 sdílejí ModalManager) →
+  // floating panely (M/I/E/T). Lokální ESC listenery v Modal odebrány — jeden
+  // handler řídí vše.
   private handleEscape(): void {
     if (this.modal.isOpen()) { this.modal.closeFromEsc(); return; }
-    if (this.welcome?.isOpen()) { this.welcome.close(); return; }
     if (this.modulesPanel.isOpen()) { this.modulesPanel.close(); return; }
     if (this.infoPanel.isOpen()) { this.infoPanel.close(); return; }
     if (this.taskQueue.isOpen()) { this.taskQueue.close(); return; }
@@ -184,6 +186,7 @@ export class GameScene extends Phaser.Scene {
         "  [M]     panel Moduly\n" +
         "  [E]     panel Události\n" +
         "  [T]     panel Úkoly\n" +
+        "  [Q]uery QM terminál\n" +
         "  [H]     tato nápověda\n" +
         "  [ESC]   zavřít dialog\n" +
         "\n" +
@@ -201,20 +204,19 @@ export class GameScene extends Phaser.Scene {
         "Kolonie běží bez tebe.\n" +
         "Nemusíš nic řešit. Pozoruj,\n" +
         "jak autopilot drží systém naživu.",
-      action: {
-        label: "Zobrazit uvítání",
-        onClick: () => this.openWelcomeDialog(),
-      },
     });
   }
 
-  // Otevře Welcome dialog „na vyžádání" z Help modalu. Resetuje dismiss flag,
-  // aby se uvítání objevilo i při příštím F5. Lazy create — pokud hráč už
-  // dřív flagu dismissnul, instance `welcome` může být undefined.
-  private openWelcomeDialog(): void {
-    resetWelcome();
-    if (!this.welcome) this.welcome = new WelcomeDialog(this);
-    this.welcome.open();
+  // QM Terminal modal — onboarding briefing od QuarterMastera. Volá se auto při
+  // prvním spuštění (shouldShowTerminal = LS flag false) a manuálně přes [Q].
+  // Po zavření markTerminalDismissed — auto-open se příště neopakuje, [Q] je
+  // vždy k dispozici. B varianta (IDEAS): dynamické live commands.
+  private openTerminalModal(): void {
+    this.modal.open({
+      title: TERMINAL_TITLE,
+      body: TERMINAL_BODY,
+      onClose: () => markTerminalDismissed(),
+    });
   }
 
   // === Log (Bottom Bar) ====================================================
@@ -232,6 +234,7 @@ export class GameScene extends Phaser.Scene {
       { text: "[M]odules", action: () => this.modulesPanel.toggle() },
       { text: "[E]vents", action: () => this.eventLog.toggle() },
       { text: "[T]asks", action: () => this.taskQueue.toggle() },
+      { text: "[Q]uery", action: () => this.openTerminalModal() },
       { text: "[H]elp", action: () => this.openHelpModal() },
     ];
 
@@ -291,6 +294,9 @@ export class GameScene extends Phaser.Scene {
           break;
         case "m":
           this.modulesPanel.toggle();
+          break;
+        case "q":
+          this.openTerminalModal();
           break;
         case "h":
           this.openHelpModal();

@@ -96,12 +96,23 @@ export class TooltipManager {
 
   // Přidá hover handler na cílový objekt. Provider se volá při show.
   // Target musí být interactive (jinak Phaser hover eventy neposílá).
+  //
+  // **Kurzor ruky (globální chování S32):** hand cursor se dynamicky nastavuje
+  // jen když `provider()` vrací non-null — tj. řádek opravdu má tooltip obsah
+  // (typicky: zkrácený řádek drží plnou verzi v tooltip). Když provider vrátí
+  // null (řádek se celý vešel, prázdný pool slot), cursor je default.
+  // Izomorfismus „kurzor signalizuje dostupnou akci/infotip".
+  //
+  // Klikatelné prvky (close/scrollbar/chips/Bottom Bar) si volají vlastní
+  // `setInteractive({ useHandCursor: true })` — Phaser spravuje jejich cursor
+  // interně přes pointerover/out, naše `setDefaultCursor` se s tím nekříží
+  // (hover se vždy nachází buď nad interactivem s cursorem, nebo nad pozadím).
   attach(
     target: InteractiveGameObject,
     provider: () => string | TooltipContent | null,
   ): void {
     if (!target.input) {
-      target.setInteractive({ useHandCursor: true });
+      target.setInteractive();
     }
 
     let hovering = false;
@@ -111,6 +122,7 @@ export class TooltipManager {
       this.activeProvider = provider;
       this.lastPointer = { x: pointer.x, y: pointer.y };
       const content = provider();
+      this.updateCursor(content !== null);
       if (!content) return;
       this.schedule(pointer.x, pointer.y, content);
     });
@@ -118,11 +130,13 @@ export class TooltipManager {
     // HP-unified axiom (S16): tooltip musí reflektovat živá data (např. hp/hp_max
     // se mění spojitě během opravy). Na každý pointermove znovu zavoláme provider
     // a když je tooltip viditelný, přepíšeme text + přepozicujeme bg.
+    // Cursor se aktualizuje i bez viditelného tooltipu — user ho vidí hned.
     target.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (!hovering) return;
       this.lastPointer = { x: pointer.x, y: pointer.y };
+      const fresh = provider();
+      this.updateCursor(fresh !== null);
       if (this.visible) {
-        const fresh = provider();
         if (fresh) this.show(pointer.x, pointer.y, fresh);
         else this.hide();
       }
@@ -130,8 +144,17 @@ export class TooltipManager {
 
     target.on("pointerout", () => {
       hovering = false;
+      this.updateCursor(false);
       this.hide();
     });
+  }
+
+  // Globální cursor update — Phaser setDefaultCursor mění CSS cursor na canvas.
+  // Interaktivní prvky s vlastním useHandCursor (close button, chips, ...) si
+  // cursor spravují samy přes Phaser internal pointerover/out handlery, naše
+  // volání se neaplikuje, dokud je hover nad jejich objektem.
+  private updateCursor(hasTooltip: boolean): void {
+    this.scene.input.setDefaultCursor(hasTooltip ? "pointer" : "default");
   }
 
   private schedule(x: number, y: number, content: string | TooltipContent): void {

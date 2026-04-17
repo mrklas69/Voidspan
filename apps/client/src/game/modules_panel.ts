@@ -1,6 +1,6 @@
-// ModulesPanel — floating panel layer 3.5 (levý okraj, mutex s InfoPanel).
-// Hotkey [M] toggle. Per-module stats: status, HP%, power. Task progress je v [T].
-// Struktura + scroll kopírují InfoPanel (S22 dialog + S24 KISS fix panel).
+// ModulesPanel — floating panel layer 3.5, bottom-left slot. Hotkey [M] toggle.
+// 5-sloupcová tabulka: Kind (id) status HP% task_state. 5-color semafor per řádek.
+// Scroll: pixel-based (stejný pattern jako InfoPanel).
 
 import Phaser from "phaser";
 import type { World, Module, Task } from "./model";
@@ -8,43 +8,27 @@ import { STATUS_LABELS, statusRating } from "./model";
 import type { TooltipManager } from "./tooltip";
 
 import {
-  COL_HULL_DARK,
   COL_HULL_MID,
   COL_TEXT_WHITE,
-  UI_BORDER_DIM,
-  UI_TEXT_ACCENT,
   UI_TEXT_PRIMARY,
   UI_MASK_WHITE,
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
   RATING_COLOR,
 } from "./palette";
-import { HUD_H } from "./ui/layout";
 import {
-  PANEL_DEPTH as DEPTH,
-  PANEL_MARGIN as MARGIN,
   PANEL_PADDING as PADDING,
-  PANEL_BG_ALPHA,
   PANEL_HEADER_H as HEADER_H,
-  PANEL_HALF_H,
-  PANEL_VERT_GAP,
-  PANEL_WIDTH_STD,
   SCROLLBAR_W,
   SCROLLBAR_GAP,
   SCROLL_STEP,
-  loadPanelOpenPref,
-  savePanelOpenPref,
   ellipsizeText,
 } from "./ui/panel_helpers";
-import { dockManager } from "./ui/dock_manager";
-
-const PANEL_W = PANEL_WIDTH_STD;
-const PANEL_H = PANEL_HALF_H;
+import { FloatingPanel } from "./ui/floating_panel";
 
 // S31: 3 řádky agregátů odstraněny, rating semafor zůstává. Seznam modulů
-// začíná pod rating řádkem s zebra stripes.
+// začíná pod rating řádkem.
 const SCROLL_TOP = HEADER_H + 28;
-const SCROLL_H = PANEL_H - SCROLL_TOP - 4;
 
 // S29/S31 per-row layout: kindIdText (ellipsize na fix column) + statsText
 // (fix x = KIND_COL_W). Formát: "Habitat (habitat_1)" | "poškozeno 85% plán".
@@ -52,11 +36,6 @@ const MOD_ROW_H = 24;       // font 18 + lineSpacing 6
 const KIND_COL_W = 220;     // fixní šířka kind + id sloupce
 const KIND_ELLIPSIS_W = KIND_COL_W - 8;  // ellipsize budget, 8 px gap
 const MAX_MODULE_ROWS = 24; // pool (FVP max 16 bays × 1 modul, rezerva)
-
-const LS_KEY = "voidspan.modulespanel.open";
-
-const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
-const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
 // Status modulu slovně (3. sloupec tabulky).
 // S31: porovnání s hpPct (displayed int), ne s raw hp — jinak floating-point
@@ -70,7 +49,7 @@ function moduleStatusCs(mod: Module, hpPct: number): string {
   return "OK";
 }
 
-// Task state 5. sloupec: plán / oprava... / nelze. Null = žádný aktivní task.
+// Task state 5. sloupec: plán / oprava... / nelze. Prázdné = žádný aktivní task.
 function moduleTaskState(tasks: Task[], moduleId: string): string {
   const t = tasks.find(
     (x) => x.target.moduleId === moduleId &&
@@ -83,23 +62,21 @@ function moduleTaskState(tasks: Task[], moduleId: string): string {
   return "";
 }
 
-export class ModulesPanel {
-  private scene: Phaser.Scene;
+export class ModulesPanel extends FloatingPanel {
   private getWorld: () => World;
 
-  private container!: Phaser.GameObjects.Container;
   private ratingLabel!: Phaser.GameObjects.Text;
   private ratingValue!: Phaser.GameObjects.Text;
   private moduleRows: Array<{
     kindIdText: Phaser.GameObjects.Text;
     statsText: Phaser.GameObjects.Text;
   }> = [];
-  // S29 full (pre-ellipsize) kindId + stats per row — tooltip zobrazí oba spojené.
+  // S29 full (pre-ellipsize) kindId + stats per row — tooltip spojí oba.
   private fullRowData: Array<{ kindId: string; stats: string }> = [];
-  private visible = false;
 
   // Scroll state.
   private scrollContent!: Phaser.GameObjects.Container;
+  private scrollH = 0;
   private scrollOffset = 0;
   private maxScroll = 0;
   private scrollTrack!: Phaser.GameObjects.Rectangle;
@@ -109,64 +86,19 @@ export class ModulesPanel {
   private dragY: number | null = null;
   private dragOffset = 0;
 
-  private onToggleOpenCb?: () => void;
-
   constructor(scene: Phaser.Scene, getWorld: () => World) {
-    this.scene = scene;
+    super(scene, {
+      dockId: "modules",
+      lsKey: "voidspan.modulespanel.open",
+      title: "Moduly",
+      slot: "bottom-left",
+    });
     this.getWorld = getWorld;
-    this.build();
-    this.visible = loadVisiblePref();
-    this.container.setVisible(this.visible);
-    if (this.visible) this.renderBody();
-    dockManager.register("modules", "left", PANEL_W, () => this.visible);
+    this.init();
   }
 
-  private build(): void {
-    // S29 pozice: vlevo dole (pod InfoPanelem). HUD + margin + InfoPanel + vert gap.
-    const x = MARGIN;
-    const y = HUD_H + MARGIN + PANEL_HALF_H + PANEL_VERT_GAP;
-
-    this.container = this.scene.add.container(x, y).setDepth(DEPTH);
-
-    const bg = this.scene.add
-      .rectangle(0, 0, PANEL_W, PANEL_H, COL_HULL_DARK, PANEL_BG_ALPHA)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, UI_BORDER_DIM)
-      .setInteractive();
-    bg.on("pointerdown", (p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.dragY = p.y;
-      this.dragOffset = this.scrollOffset;
-    });
-    this.container.add(bg);
-
-    const titleText = this.scene.add
-      .text(PADDING, PADDING, "Moduly", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_SIDEPANEL,
-        color: UI_TEXT_ACCENT,
-      })
-      .setOrigin(0, 0);
-    this.container.add(titleText);
-
-    const closeBtn = this.scene.add
-      .text(PANEL_W - PADDING, PADDING, "X", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_SIDEPANEL,
-        color: UI_TEXT_ACCENT,
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.toggle();
-    });
-    this.container.add(closeBtn);
-
-    const underline = this.scene.add
-      .rectangle(PADDING, HEADER_H - 2, PANEL_W - 2 * PADDING, 1, UI_BORDER_DIM)
-      .setOrigin(0, 0);
-    this.container.add(underline);
+  protected buildBody(): void {
+    this.scrollH = this.panelH - SCROLL_TOP - 4;
 
     // Rating — fixed nad scroll area. Po vzoru InfoPanelu.
     this.ratingLabel = this.scene.add
@@ -186,7 +118,7 @@ export class ModulesPanel {
       .setOrigin(0, 0);
     this.container.add(this.ratingValue);
 
-    const contentW = PANEL_W - 2 * PADDING - SCROLLBAR_W - SCROLLBAR_GAP;
+    const contentW = this.panelW - 2 * PADDING - SCROLLBAR_W - SCROLLBAR_GAP;
     this.scrollContent = this.scene.add.container(PADDING, SCROLL_TOP);
     this.container.add(this.scrollContent);
 
@@ -194,7 +126,6 @@ export class ModulesPanel {
     // (fix x = KIND_COL_W).
     for (let i = 0; i < MAX_MODULE_ROWS; i++) {
       const rowY = i * MOD_ROW_H;
-
       const kindIdText = this.scene.add
         .text(0, rowY, "", {
           fontFamily: FONT_FAMILY,
@@ -215,14 +146,15 @@ export class ModulesPanel {
       this.scrollContent.add(statsText);
     }
 
+    const { x, y } = this.computePosition();
     const maskGraphics = this.scene.make.graphics({});
     maskGraphics.fillStyle(UI_MASK_WHITE);
-    maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, contentW, SCROLL_H);
+    maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, contentW, this.scrollH);
     this.scrollContent.setMask(maskGraphics.createGeometryMask());
 
-    const sbX = PANEL_W - SCROLLBAR_W - 4;
+    const sbX = this.panelW - SCROLLBAR_W - 4;
     this.scrollTrack = this.scene.add
-      .rectangle(sbX, SCROLL_TOP, SCROLLBAR_W, SCROLL_H, COL_HULL_MID, 0.3)
+      .rectangle(sbX, SCROLL_TOP, SCROLLBAR_W, this.scrollH, COL_HULL_MID, 0.3)
       .setOrigin(0, 0)
       .setVisible(false);
     this.container.add(this.scrollTrack);
@@ -236,7 +168,7 @@ export class ModulesPanel {
     this.scrollThumb.on("drag", (_p: Phaser.Input.Pointer, _dragX: number, dragY: number) => {
       if (this.maxScroll <= 0) return;
       const thumbH = this.scrollThumb.height;
-      const travel = SCROLL_H - thumbH;
+      const travel = this.scrollH - thumbH;
       const clampedY = Math.max(SCROLL_TOP, Math.min(SCROLL_TOP + travel, dragY));
       const ratio = travel > 0 ? (clampedY - SCROLL_TOP) / travel : 0;
       this.setScroll(ratio * this.maxScroll);
@@ -248,20 +180,21 @@ export class ModulesPanel {
       ev.stopPropagation();
       if (this.maxScroll <= 0) return;
       const thumbH = this.scrollThumb.height;
-      const travel = SCROLL_H - thumbH;
+      const travel = this.scrollH - thumbH;
       const ratio = Math.max(0, Math.min(1, (ly - thumbH / 2) / travel));
       this.setScroll(ratio * this.maxScroll);
     });
 
     this.scene.input.on("wheel", (pointer: Phaser.Input.Pointer, _objs: Phaser.GameObjects.GameObject[], _dx: number, dy: number) => {
-      if (!this.visible || this.maxScroll <= 0) return;
-      if (pointer.x >= x && pointer.x <= x + PANEL_W && pointer.y >= y && pointer.y <= y + PANEL_H) {
+      if (!this.isOpen() || this.maxScroll <= 0) return;
+      const pos = this.computePosition();
+      if (pointer.x >= pos.x && pointer.x <= pos.x + this.panelW && pointer.y >= pos.y && pointer.y <= pos.y + this.panelH) {
         this.setScroll(this.scrollOffset + (dy > 0 ? SCROLL_STEP : -SCROLL_STEP));
       }
     });
 
     this.scene.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      if (this.dragY === null || !this.visible) return;
+      if (this.dragY === null || !this.isOpen()) return;
       const dy = this.dragY - pointer.y;
       this.setScroll(this.dragOffset + dy);
     });
@@ -269,6 +202,20 @@ export class ModulesPanel {
     this.scene.input.on("pointerup", () => {
       this.dragY = null;
     });
+  }
+
+  protected override onBgPointerDown(p: Phaser.Input.Pointer): void {
+    this.dragY = p.y;
+    this.dragOffset = this.scrollOffset;
+  }
+
+  protected override onOpen(): void {
+    this.scrollOffset = 0;
+    this.dragY = null;
+  }
+
+  protected override onClose(): void {
+    this.dragY = null;
   }
 
   private setScroll(next: number): void {
@@ -285,9 +232,9 @@ export class ModulesPanel {
     }
     this.scrollTrack.setVisible(true);
     this.scrollThumb.setVisible(true);
-    const ratio = SCROLL_H / (SCROLL_H + this.maxScroll);
-    const thumbH = Math.max(20, Math.floor(SCROLL_H * ratio));
-    const travel = SCROLL_H - thumbH;
+    const ratio = this.scrollH / (this.scrollH + this.maxScroll);
+    const thumbH = Math.max(20, Math.floor(this.scrollH * ratio));
+    const travel = this.scrollH - thumbH;
     const pos = this.maxScroll > 0 ? (this.scrollOffset / this.maxScroll) * travel : 0;
     this.scrollThumb.setSize(SCROLLBAR_W, thumbH);
     this.scrollThumb.setY(SCROLL_TOP + pos);
@@ -307,46 +254,12 @@ export class ModulesPanel {
     }
   }
 
-  setOnToggleOpen(cb: () => void): void {
-    this.onToggleOpenCb = cb;
-  }
-
-  toggle(): void {
-    this.visible = !this.visible;
-    this.container.setVisible(this.visible);
-    saveVisiblePref(this.visible);
-    this.dragY = null;
-    if (this.visible) {
-      this.scrollOffset = 0;
-      this.renderBody();
-      this.onToggleOpenCb?.();
-    }
-    dockManager.notifyChange();
-  }
-
-  isOpen(): boolean {
-    return this.visible;
-  }
-
-  close(): void {
-    if (!this.visible) return;
-    this.visible = false;
-    this.container.setVisible(false);
-    saveVisiblePref(false);
-    this.dragY = null;
-    dockManager.notifyChange();
-  }
-
-  render(): void {
-    if (!this.visible) return;
-    this.renderBody();
-  }
-
-  private renderBody(): void {
+  protected renderBody(): void {
     const w = this.getWorld();
     const mods = Object.values(w.modules);
 
-    // Rating — avg HP modulů (= w.status.base.pct). 5-color semafor sdílí metriku s HP textem.
+    // Rating — avg HP modulů (= w.status.base.pct). 5-color semafor sdílí
+    // metriku s HP textem (izomorfismus).
     const rating = statusRating(w.status.base.pct);
     const label = STATUS_LABELS[rating];
     this.ratingValue.setText(`${label.cs} (${label.en}) — ${Math.round(w.status.base.pct)}%`);
@@ -396,7 +309,7 @@ export class ModulesPanel {
       this.fullRowData[i] = { kindId: kindIdFull, stats: statsFull };
       ellipsizeText(row.kindIdText, kindIdFull, KIND_ELLIPSIS_W);
       row.statsText.setText(statsFull);
-      // 5-barevný semafor per řádek — barva sdílí metriku s hpPct (izomorfismus).
+      // 5-barevný semafor per řádek — barva sdílí metriku s hpPct.
       const rowColor = RATING_COLOR[statusRating(hpPct)];
       row.kindIdText.setColor(rowColor);
       row.statsText.setColor(rowColor);
@@ -404,9 +317,8 @@ export class ModulesPanel {
       row.statsText.setVisible(true);
     }
 
-    // Total výška scrollContent = module rows (zobrazené) × ROW_H.
     const totalH = visibleCount * MOD_ROW_H;
-    this.maxScroll = Math.max(0, totalH - SCROLL_H);
+    this.maxScroll = Math.max(0, totalH - this.scrollH);
     this.scrollOffset = Math.min(this.scrollOffset, this.maxScroll);
     this.scrollContent.y = SCROLL_TOP - this.scrollOffset;
     this.updateScrollbar();
