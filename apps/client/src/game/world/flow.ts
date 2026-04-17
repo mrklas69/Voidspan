@@ -57,3 +57,16 @@ export function averageFlow(w: World, cat: FlowCategory, dir: FlowDirection): nu
   for (let i = last - w.flow.filled; i < last; i++) sum += buf[i] ?? 0;
   return sum / w.flow.filled;
 }
+
+// S31: partial today extrapolace — akumulovaný bucket × (DAY / elapsed) = rate/day.
+// Slouží jako fallback, když `averageFlow` vrací 0 (filled === 0, prvních 10 dnů
+// po startu). Zobrazuje "co se děje teď", ne stabilizovaný průměr.
+export function currentDayRate(w: World, cat: FlowCategory, dir: FlowDirection): number {
+  const ring = w.flow[cat];
+  const buf = dir === "in" ? ring.inBuf : ring.outBuf;
+  const partial = buf[buf.length - 1] ?? 0;
+  if (partial <= 0) return 0;
+  const elapsed = w.tick % TICKS_PER_GAME_DAY;
+  if (elapsed <= 0) return 0;
+  return partial * (TICKS_PER_GAME_DAY / elapsed);
+}

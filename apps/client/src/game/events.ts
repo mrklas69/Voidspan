@@ -13,33 +13,17 @@ export type VerbEntry = {
 };
 
 // S27 Font glyph fallback fix: ASCII / Latin-1 substituce za exotické Unicode
-// glyphy, které VT323 latin-subset nemá → browser fallback na monospace rozbíjel
-// baseline. Bezpečné držet: `× · » − ↑ ↓ ¤` (Latin-1 + latin subset arrows).
+// glyphy, které latin-subset nemá. Bezpečné držet: `× · » − ¤`.
+// S31: katalog zredukován z 25 → 9 (jen verby, které v FVP v0.7 reálně emituje).
 export const VERB_CATALOG: Record<EventVerb, VerbEntry> = {
   SYST: { icon: "*",  label: "systémová událost" },
-  SPWN: { icon: "+",  label: "spawn" },
   DEAD: { icon: "x",  label: "aktér umřel" },
-  ARRV: { icon: "↓",  label: "landing / dokování" },
-  DPRT: { icon: "↑",  label: "odlet" },
-  REPR: { icon: "+",  label: "repair" },
-  BLD:  { icon: "+",  label: "build" },
-  DEMO: { icon: "v",  label: "demolish" },
   DMG:  { icon: "×",  label: "damage" },
   DECY: { icon: "\\", label: "decay" },
   DRN:  { icon: "−",  label: "resource drain" },
-  PROD: { icon: "*",  label: "produkce" },
-  HAUL: { icon: ">",  label: "transport" },
   ASSN: { icon: "»",  label: "task assigned" },
   CMPL: { icon: "OK", label: "task completed" },
-  FAIL: { icon: "!",  label: "task failed" },
-  IDLE: { icon: "·",  label: "idle" },
-  WAKE: { icon: "~",  label: "probuzen" },
-  DOCK: { icon: "()", label: "dock event" },
-  TICK: { icon: "·",  label: "tick marker" },
   SIGN: { icon: ">>", label: "signal — level change" },
-  EVNT: { icon: "<>", label: "scripted event" },
-  SAY:  { icon: "\"", label: "dialog" },
-  RPRT: { icon: "»»", label: "systémová zpráva" },
   TASK: { icon: "#",  label: "změna stavu úkolu" },
 };
 
@@ -47,16 +31,17 @@ export const VERB_CATALOG: Record<EventVerb, VerbEntry> = {
 //
 // Pure function: verb × csq → severity.
 // Pravidla (GLOSSARY §Severity — barva):
-//   crit:    DEAD:*, DMG:CRIT, DRN:CRIT, FAIL:*
+//   crit:    DEAD:*, DMG:CRIT, DRN:CRIT
 //   warn:    DECY:*, DMG:*, DRN:*
-//   pos:     REPR:OK, BLD:OK, CMPL:OK, PROD:OK, WAKE:*
-//   neutral: vše ostatní (TICK, IDLE, ASSN, HAUL, RPRT, ...)
+//   pos:     CMPL:OK
+//   neutral: ASSN, SIGN, SYST
+// S31: CRIT_VERBS.FAIL, POS_VERBS.WAKE, POS_ON_OK.{REPR,BLD,PROD} retirováno
+// společně s verb retirem — viz EventVerb comment v model.ts.
 
-const CRIT_VERBS: Set<EventVerb> = new Set(["DEAD", "FAIL"]);
+const CRIT_VERBS: Set<EventVerb> = new Set(["DEAD"]);
 const WARN_VERBS: Set<EventVerb> = new Set(["DECY"]);
 const CRIT_OR_WARN_VERBS: Set<EventVerb> = new Set(["DMG", "DRN"]);
-const POS_VERBS: Set<EventVerb> = new Set(["WAKE"]);
-const POS_ON_OK: Set<EventVerb> = new Set(["REPR", "BLD", "CMPL", "PROD"]);
+const POS_ON_OK: Set<EventVerb> = new Set(["CMPL"]);
 
 export function severity(verb: EventVerb, csq?: EventCsq): EventSeverity {
   if (CRIT_VERBS.has(verb)) return "crit";
@@ -64,7 +49,6 @@ export function severity(verb: EventVerb, csq?: EventCsq): EventSeverity {
     return csq === "CRIT" ? "crit" : "warn";
   }
   if (WARN_VERBS.has(verb)) return "warn";
-  if (POS_VERBS.has(verb)) return "pos";
   if (POS_ON_OK.has(verb) && csq === "OK") return "pos";
   // S24 TASK: START/RESUME = pos, PAUSE = warn, FAIL = crit.
   if (verb === "TASK") {

@@ -3,8 +3,8 @@
 // Struktura + scroll kopírují InfoPanel (S22 dialog + S24 KISS fix panel).
 
 import Phaser from "phaser";
-import type { World, Module } from "./model";
-import { MODULE_DEFS, STATUS_LABELS, statusRating } from "./model";
+import type { World, Module, Task } from "./model";
+import { STATUS_LABELS, statusRating } from "./model";
 import type { TooltipManager } from "./tooltip";
 
 import {
@@ -18,7 +18,6 @@ import {
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
   RATING_COLOR,
-  ratingColor,
 } from "./palette";
 import { HUD_H } from "./ui/layout";
 import {
@@ -42,19 +41,16 @@ import { dockManager } from "./ui/dock_manager";
 const PANEL_W = PANEL_WIDTH_STD;
 const PANEL_H = PANEL_HALF_H;
 
-// Rating řádek (Stav modulů: …) sedí mezi headerem a scroll area — paralelně s InfoPanel.
+// S31: 3 řádky agregátů odstraněny, rating semafor zůstává. Seznam modulů
+// začíná pod rating řádkem s zebra stripes.
 const SCROLL_TOP = HEADER_H + 28;
 const SCROLL_H = PANEL_H - SCROLL_TOP - 4;
 
-// S29 per-row layout — bodyText jeden blob retirován, každý modul má vlastní
-// pair Text objektů: kindIdText (ellipsize) + statsText (fix x). Umožní:
-//   1) ellipsize jen kind názvu, ne celého řádku (CommandPost → CommandPo…)
-//   2) stats sloupec zarovnaný napříč moduly
-//   3) budoucí barvu HP/P per-řádek (dnes ne — neutral color)
+// S29/S31 per-row layout: kindIdText (ellipsize na fix column) + statsText
+// (fix x = KIND_COL_W). Formát: "Habitat (habitat_1)" | "poškozeno 85% plán".
 const MOD_ROW_H = 24;       // font 18 + lineSpacing 6
-const HEADER_BLOCK_H = 72;  // 3 řádky header (Celkem / prod / prázdný separator)
-const KIND_COL_W = 220;     // fixní šířka icon + kind (id) sloupce
-const KIND_ELLIPSIS_W = KIND_COL_W - 8;  // ellipsize budget, 8 px gap před statsText
+const KIND_COL_W = 220;     // fixní šířka kind + id sloupce
+const KIND_ELLIPSIS_W = KIND_COL_W - 8;  // ellipsize budget, 8 px gap
 const MAX_MODULE_ROWS = 24; // pool (FVP max 16 bays × 1 modul, rezerva)
 
 const LS_KEY = "voidspan.modulespanel.open";
@@ -62,16 +58,29 @@ const LS_KEY = "voidspan.modulespanel.open";
 const loadVisiblePref = () => loadPanelOpenPref(LS_KEY);
 const saveVisiblePref = (v: boolean) => savePanelOpenPref(LS_KEY, v);
 
-// Status ikona per modul. Hraje roli „lampička" — rating barví HP text.
-// S27 font fix: ASCII glyphy (VT323 latin-subset nemá ●○▯▼✕ → fallback rozbíjel
-// baseline). · zachováno (Latin-1 middle dot je v subsetu).
-function statusIcon(mod: Module): string {
-  if (mod.hp <= 0) return "X";
-  if (mod.status === "online") return "o";
-  if (mod.status === "offline") return "_";
-  if (mod.status === "building") return "^";
-  if (mod.status === "demolishing") return "v";
-  return "·";
+// Status modulu slovně (3. sloupec tabulky).
+// S31: porovnání s hpPct (displayed int), ne s raw hp — jinak floating-point
+// artefakt (hp=99.5 → round=100, ale hp<hp_max → "poškozeno 100%").
+function moduleStatusCs(mod: Module, hpPct: number): string {
+  if (mod.hp <= 0) return "zničeno";
+  if (mod.status === "offline") return "offline";
+  if (mod.status === "building") return "staví";
+  if (mod.status === "demolishing") return "demoluje";
+  if (hpPct < 100) return "poškozeno";
+  return "OK";
+}
+
+// Task state 5. sloupec: plán / oprava... / nelze. Null = žádný aktivní task.
+function moduleTaskState(tasks: Task[], moduleId: string): string {
+  const t = tasks.find(
+    (x) => x.target.moduleId === moduleId &&
+    (x.status === "pending" || x.status === "active" || x.status === "paused"),
+  );
+  if (!t) return "";
+  if (t.status === "pending") return "plán";
+  if (t.status === "active") return "oprava...";
+  if (t.status === "paused") return "nelze";
+  return "";
 }
 
 export class ModulesPanel {
@@ -81,7 +90,6 @@ export class ModulesPanel {
   private container!: Phaser.GameObjects.Container;
   private ratingLabel!: Phaser.GameObjects.Text;
   private ratingValue!: Phaser.GameObjects.Text;
-  private headerText!: Phaser.GameObjects.Text;
   private moduleRows: Array<{
     kindIdText: Phaser.GameObjects.Text;
     statsText: Phaser.GameObjects.Text;
@@ -182,22 +190,11 @@ export class ModulesPanel {
     this.scrollContent = this.scene.add.container(PADDING, SCROLL_TOP);
     this.container.add(this.scrollContent);
 
-    // Header (3 řádky: Celkem / prod / prázdný separator) — wordWrap off, stručné
-    // agregáty se vždy vejdou. Per-row module texty jsou zvlášť (pool níže).
-    this.headerText = this.scene.add
-      .text(0, 0, "", {
-        fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_SIDEPANEL,
-        color: UI_TEXT_PRIMARY,
-        lineSpacing: 6,
-      })
-      .setOrigin(0, 0);
-    this.scrollContent.add(this.headerText);
-
-    // Per-row module pool — dvojice Text per modul: kindIdText (ellipsize na
-    // KIND_ELLIPSIS_W) + statsText (fix x = KIND_COL_W). WordWrap off napříč.
+    // Per-row module pool: kindIdText (ellipsize na KIND_ELLIPSIS_W) + statsText
+    // (fix x = KIND_COL_W).
     for (let i = 0; i < MAX_MODULE_ROWS; i++) {
-      const rowY = HEADER_BLOCK_H + i * MOD_ROW_H;
+      const rowY = i * MOD_ROW_H;
+
       const kindIdText = this.scene.add
         .text(0, rowY, "", {
           fontFamily: FONT_FAMILY,
@@ -371,38 +368,13 @@ export class ModulesPanel {
       return a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id);
     });
 
-    // Agregáty pro header: production / consumption / HP avg.
-    let production = 0;
-    let consumption = 0;
-    let hpSum = 0;
-    let hpCount = 0;
-    for (const mod of mods) {
-      if (mod.hp_max <= 0) continue;
-      const hpRatio = mod.hp / mod.hp_max;
-      hpSum += hpRatio * 100;
-      hpCount++;
-      if (mod.status === "online") {
-        const pw = MODULE_DEFS[mod.kind].power_w * hpRatio;
-        if (pw > 0) production += pw;
-        else consumption += pw;
-      }
-    }
-    const hpAvg = hpCount > 0 ? Math.round(hpSum / hpCount) : 0;
-    const net = production + consumption;
-    const netSign = net >= 0 ? "+" : "";
-
-    // Header — 3 řádky agregátů, prázdný separator.
-    this.headerText.setText(
-      [
-        `Celkem: ${mods.length}  HP avg ${hpAvg}%  E ${netSign}${net.toFixed(1)} W`,
-        `  prod +${production.toFixed(1)} W  / spotřeba ${consumption.toFixed(1)} W`,
-        "",
-      ].join("\n"),
-    );
-
-    // Per-module řádky — pool pair textů, ellipsize kind na fix column, stats
-    // na fixní x (KIND_COL_W). Přebytek modulů nad MAX_MODULE_ROWS se skryje
-    // (FVP max 16 bays, reálně ~10 modulů).
+    // Per-module řádky — 5-sloupcový formát:
+    //   1. kind    "Habitat"
+    //   2. (id)    "(habitat_1)"
+    //   3. status  "OK / poškozeno / zničeno / offline / staví / demoluje"
+    //   4. HP%     "85%"
+    //   5. task    "plán / oprava... / nelze" (prázdné = žádný aktivní task)
+    // Sloupce 1+2 v kindIdText (ellipsize), 3+4+5 v statsText (fix x).
     const visibleCount = Math.min(mods.length, MAX_MODULE_ROWS);
     for (let i = 0; i < MAX_MODULE_ROWS; i++) {
       const row = this.moduleRows[i]!;
@@ -413,33 +385,27 @@ export class ModulesPanel {
         continue;
       }
       const mod = mods[i]!;
-      const def = MODULE_DEFS[mod.kind];
       const hpPct = mod.hp_max > 0 ? Math.round((mod.hp / mod.hp_max) * 100) : 0;
-      const hpRatio = mod.hp_max > 0 ? mod.hp / mod.hp_max : 0;
-      const pw = mod.status === "online" ? def.power_w * hpRatio : 0;
-      const pwStr = pw === 0 ? "—" : `${pw > 0 ? "+" : ""}${pw.toFixed(1)} W`;
-      const capStr = def.capacity_wh
-        ? `  Cap ${Math.round((def.capacity_wh ?? 0) * hpRatio)}/${def.capacity_wh} Wh`
-        : "";
-      const statusTag =
-        mod.status === "offline" ? " [offline]" :
-        mod.status === "building" ? " [build]" :
-        mod.status === "demolishing" ? " [demo]" : "";
+      const statusCs = moduleStatusCs(mod, hpPct);
+      const taskState = moduleTaskState(w.tasks, mod.id);
 
-      const kindIdFull = `${statusIcon(mod)} ${mod.kind} (${mod.id})`;
-      const statsFull = `HP ${hpPct}%  P ${pwStr}${capStr}${statusTag}`;
+      const kindIdFull = `${mod.kind} (${mod.id})`;
+      const statsFull = taskState
+        ? `${statusCs} ${hpPct}% ${taskState}`
+        : `${statusCs} ${hpPct}%`;
       this.fullRowData[i] = { kindId: kindIdFull, stats: statsFull };
       ellipsizeText(row.kindIdText, kindIdFull, KIND_ELLIPSIS_W);
       row.statsText.setText(statsFull);
+      // 5-barevný semafor per řádek — barva sdílí metriku s hpPct (izomorfismus).
+      const rowColor = RATING_COLOR[statusRating(hpPct)];
+      row.kindIdText.setColor(rowColor);
+      row.statsText.setColor(rowColor);
       row.kindIdText.setVisible(true);
       row.statsText.setVisible(true);
     }
 
-    // Barva HP textu per rating — zatím neutral color (viz komentář build()).
-    void ratingColor; // rezerva pro budoucí rozlišení per-řádek
-
-    // Total výška scrollContent = header + module rows (zobrazené) × ROW_H.
-    const totalH = HEADER_BLOCK_H + visibleCount * MOD_ROW_H;
+    // Total výška scrollContent = module rows (zobrazené) × ROW_H.
+    const totalH = visibleCount * MOD_ROW_H;
     this.maxScroll = Math.max(0, totalH - SCROLL_H);
     this.scrollOffset = Math.min(this.scrollOffset, this.maxScroll);
     this.scrollContent.y = SCROLL_TOP - this.scrollOffset;

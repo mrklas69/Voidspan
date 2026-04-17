@@ -1,7 +1,7 @@
 # Voidspan — FVP Observer Edition
 Playtest guide — co sledovat, co řešit, co říct autorovi.
 
-Verze: **v0.7** · 2026-04-16
+Verze: **v0.8** · 2026-04-17
 
 ---
 

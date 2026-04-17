@@ -13,13 +13,13 @@
 
 // === Event Log System (S20 kánon, GLOSSARY §Event Log System) ===
 
+// S31: redukce z 25 → 9. Retirováno 16 verbů, které v FVP v0.7 neemituje
+// žádný kód (SPWN, ARRV, DPRT, REPR, BLD, DEMO, PROD, HAUL, FAIL, IDLE,
+// WAKE, DOCK, TICK, EVNT, SAY, RPRT). Vrátí se až s konkrétní mechanikou
+// (wake-up → WAKE, capsule drops → ARRV, build commands → BLD/DEMO, ...).
 export type EventVerb =
-  | "SYST" | "SPWN" | "DEAD" | "ARRV" | "DPRT"
-  | "REPR" | "BLD"  | "DEMO" | "DMG"  | "DECY"
-  | "DRN"  | "PROD" | "HAUL" | "ASSN" | "CMPL"
-  | "FAIL" | "IDLE" | "WAKE" | "DOCK" | "TICK"
-  | "SIGN" | "EVNT" | "SAY"  | "RPRT"
-  | "TASK"; // S24 — task status change (START/PAUSE/RESUME), QuarterMaster
+  | "SYST" | "DEAD" | "DECY" | "DMG"  | "DRN"
+  | "SIGN" | "ASSN" | "TASK" | "CMPL";
 
 export type EventCsq = "OK" | "FAIL" | "PARTIAL" | "CRIT" | "START" | "PAUSE" | "RESUME";
 

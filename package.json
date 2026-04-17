@@ -1,6 +1,6 @@
 {
   "name": "voidspan",
-  "version": "0.6",
+  "version": "0.8",
   "private": true,
   "description": "Voidspan — text strategy / colony sim (POC_P1)",
   "scripts": {

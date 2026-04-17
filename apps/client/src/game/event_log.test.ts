@@ -37,18 +37,18 @@ describe("event_log — lazy filter chips LS persist", () => {
   it("první spuštění (prázdné LS) → všechny verbs default ON (prázdná mapa)", () => {
     const filters = loadVerbFilters();
     expect(filters.size).toBe(0);
-    expect(filters.has("TICK")).toBe(false); // absence = default ON
-    expect(filters.has("BLD")).toBe(false);
+    expect(filters.has("ASSN")).toBe(false); // absence = default ON
+    expect(filters.has("DMG")).toBe(false);
   });
 
   it("save + load roundtrip zachová OFF stavy", () => {
     const f = new Map<EventVerb, boolean>();
-    f.set("BLD", false);
+    f.set("ASSN", false);
     f.set("DMG", false);
     saveVerbFilters(f);
 
     const loaded = loadVerbFilters();
-    expect(loaded.get("BLD")).toBe(false);
+    expect(loaded.get("ASSN")).toBe(false);
     expect(loaded.get("DMG")).toBe(false);
   });
 
@@ -60,8 +60,8 @@ describe("event_log — lazy filter chips LS persist", () => {
 
   it("ON stavy se neukládají (default ON = absence klíče)", () => {
     const f = new Map<EventVerb, boolean>();
-    f.set("BLD", true);  // ON — neukládat
-    f.set("DMG", false); // OFF — uložit
+    f.set("ASSN", true);  // ON — neukládat
+    f.set("DMG", false);  // OFF — uložit
     saveVerbFilters(f);
 
     const raw = (globalThis as unknown as LSGlobal).localStorage.getItem(FILTER_LS_KEY);
@@ -85,7 +85,7 @@ describe("event_log — lazy filter chips LS persist", () => {
   it("incognito (setItem throws) → save nehází", () => {
     setLS(brokenLocalStorage());
     const f = new Map<EventVerb, boolean>();
-    f.set("BLD", false);
+    f.set("DMG", false);
     expect(() => saveVerbFilters(f)).not.toThrow();
   });
 });

@@ -7,7 +7,7 @@ import pkg from "../../../package.json";
 import type { World } from "../model";
 import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "../model";
 import { formatResource, formatScalar } from "../format";
-import { formatGameTime, computeWork, averageFlow, formatEta } from "../world";
+import { formatGameTime, computeWork, averageFlow, currentDayRate, formatEta } from "../world";
 import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "../tuning";
 import { TooltipManager, type TooltipContent } from "../tooltip";
 import {
@@ -273,12 +273,15 @@ export class HeaderPanel {
     const rating = statusRating(pct);
     const ratingLabel = STATUS_LABELS[rating];
 
-    const avgIn = averageFlow(w, cat, "in");
-    const avgOut = averageFlow(w, cat, "out");
+    // S31: když okno ještě neprobublalo (filled === 0), fallback na partial
+    // today extrapolaci — uživatel vidí "co se děje teď", ne 0.
+    const usePartial = w.flow.filled === 0;
+    const avgIn = usePartial ? currentDayRate(w, cat, "in") : averageFlow(w, cat, "in");
+    const avgOut = usePartial ? currentDayRate(w, cat, "out") : averageFlow(w, cat, "out");
     const net = avgIn - avgOut;
 
-    const windowLabel = w.flow.filled === 0
-      ? `(zatím bez dat)`
+    const windowLabel = usePartial
+      ? `(dnes zatím)`
       : `(avg ${w.flow.filled}/${FLOW_WINDOW_GAME_DAYS}d)`;
 
     const activeRepairs = w.tasks.filter((t) => t.status === "active" && t.kind === "repair").length;

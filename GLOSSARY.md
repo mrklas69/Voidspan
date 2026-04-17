@@ -611,37 +611,44 @@ type Event = {
 
 **Severity je odvozená**, ne uložená — pure lookup `verb×csq → severity` v jednom zdroji pravdy. UI renderer jen čte.
 
-### Verb Catalog (FVP seed)
+### Verb Catalog — v0.7 (S31 redukce)
 
-Čtyřznakové (monospace rytmus). Unicode ikona + význam.
+Čtyřznakové (monospace rytmus). S31: redukováno z 25 → **9 aktivních verbů**, které v FVP v0.7 reálně emituje kód. Retirované verby viz sekce níže (vrátí se s konkrétní mechanikou).
 
-| Verb | Icon | Význam |
+| Verb | Icon | Význam | Emitent |
+|---|---|---|---|
+| `SYST` | `*`  | systémová událost (dřív BOOT) | `world/init.ts` (start simulace), `world/production.ts` (SW offline) |
+| `DEAD` | `x`  | aktér umřel (state=dead) | `world/index.ts` (cryo failure aggregate) |
+| `DMG`  | `×`  | damage event (HP drop) | `world/scheduled.ts` (asteroid hit) |
+| `DECY` | `\`  | decay (entropie HP drain bez útoku) | `world/decay.ts` |
+| `DRN`  | `−`  | resource drain | `world/production.ts` (energy depleted, resource low) |
+| `ASSN` | `»`  | task assigned | `world/task.ts` |
+| `CMPL` | `OK` | task completed | `world/task.ts` |
+| `SIGN` | `>>` | signal — level change (Status tree threshold crossed) | `world/status.ts` |
+| `TASK` | `#`  | změna stavu úkolu (START / PAUSE / RESUME / FAIL) | `world/protocol.ts` (QuarterMaster) |
+
+### Retirované verby (S31 — návrat s mechanikou)
+
+16 verbů odebraných z `EventVerb` union v S31, protože je žádný kód v0.7 neemituje. Katalog nese data-driven pravdu: co existuje v typu = co můžeš dnes v logu vidět. Verby přidáme zpátky, až přijde jejich mechanika:
+
+| Verb | Návratový trigger | Release |
 |---|---|---|
-| `BOOT` | `◉` | start simulace |
-| `SPWN` | `+` | spawn (kolonista, modul, kapsle) |
-| `DEAD` | `†` | aktér umřel (state=dead) |
-| `ARRV` | `↓` | landing / dokování |
-| `DPRT` | `↑` | odlet |
-| `REPR` | `✓` | repair task (complete nebo start) |
-| `BLD ` | `▲` | build task |
-| `DEMO` | `▽` | demolish |
-| `DMG ` | `×` | damage event (HP drop) |
-| `DECY` | `↘` | decay (entropie HP drain bez útoku) |
-| `DRN ` | `−` | resource drain (air / food / water) |
-| `PROD` | `*` | produkce (solar E, Greenhouse food) |
-| `HAUL` | `→` | transport materiálu |
-| `ASSN` | `»` | task assigned |
-| `CMPL` | `✓✓` | task completed |
-| `FAIL` | `!` | task failed |
-| `IDLE` | `·` | aktér idle |
-| `WAKE` | `☆` | aktér probuzen |
-| `DOCK` | `⊙` | dock event |
-| `TICK` | `·` | rytmický marker (default filtered off) |
-| `STAT` | `§` | Status tree threshold crossed |
-| `EVNT` | `◆` | scripted narativní event (SCENARIO §5) |
-| `SAY ` | `"` | dialog (P2+ chat) |
-| `RPRT` | `»»` | systémová zpráva |
-| `TASK` | `◈` | změna stavu úkolu (S24 — START / PAUSE / RESUME / FAIL) |
+| `WAKE` | wake-up mechanismus (první kolonista z cryo) | R2 #1 |
+| `ARRV` | scripted capsule drops | R2 #4 |
+| `DPRT` | odlet (zatím žádná mechanika) | P2+ |
+| `SPWN` | spawn nové entity (capsule → actor, nová loď) | R2 / P2+ |
+| `BLD` | build task (Commands palette `[B]`) | R2 #3 |
+| `DEMO` | demolish task (Commands palette `[D]`) | R2 #3 |
+| `REPR` | kandidát na retire CMPL — dokončení repair tasku emituje `REPR:OK` místo `CMPL:OK` | S31+ rozhodnutí |
+| `PROD` | jednorázový production event (hotová várka, milestone) | P2+ |
+| `HAUL` | transport dron (Drone capacity types b) | P2+ |
+| `FAIL` | duplicitní s `TASK:FAIL` — ke konsolidaci | S31+ rozhodnutí |
+| `IDLE` | per-actor state transition event (dnes state na aktéru, ne event) | P2+ |
+| `DOCK` | dokování kapsle / lodi | P2+ |
+| `TICK` | rytmický marker | P2+ (pokud bude potřeba) |
+| `EVNT` | scripted narativní events bank (SCENARIO §5) | P2+ |
+| `SAY` | dialog (P2+ chat / kolonie vzkazy) | P2+ |
+| `RPRT` | systémová zpráva (dnes pokrývá `SYST`) | P2+ nebo nevrátí |
 
 ### Consequence
 
@@ -651,13 +658,12 @@ Klíč filteru + dataset = `verb:csq` (např. `REPR:OK`, `DMG:CRIT`, `TASK:PAUSE
 
 ### Severity — barva
 
-| Severity | Paleta token | Vzor případů |
+| Severity | Paleta token | Vzor případů (v0.7) |
 |---|---|---|
-| `crit` | `UI_STATUS_ALERT` (red) | `DEAD:*`, `DMG:CRIT`, `DRN:CRIT`, `FAIL:*` |
-| `warn` | `UI_STATUS_WARN` (amber) | `DECY:*`, `DMG:*`, `DRN:*` |
-| `pos`  | `UI_STATUS_OK` (green) | `REPR:OK`, `BLD:OK`, `CMPL:OK`, `PROD:OK`, `WAKE:*`, `TASK:START`, `TASK:RESUME` |
-| `warn` | `UI_STATUS_WARN` (amber) | `TASK:PAUSE` (S24) |
-| `neutral` | `UI_TEXT_DIM` (amber dim) | `TICK`, `IDLE`, `ASSN`, `HAUL`, `MOV`, `RPRT:*` |
+| `crit` | `UI_STATUS_ALERT` (red) | `DEAD:*`, `DMG:CRIT`, `DRN:CRIT`, `TASK:FAIL` |
+| `warn` | `UI_STATUS_WARN` (amber) | `DECY:*`, `DMG:*`, `DRN:*`, `TASK:PAUSE` |
+| `pos`  | `UI_STATUS_OK` (green) | `CMPL:OK`, `TASK:START`, `TASK:RESUME`, `TASK:OK` |
+| `neutral` | `UI_TEXT_DIM` (amber dim) | `SYST`, `ASSN`, `SIGN` |
 
 Mapping je pure function (`severity(verb, csq)`) — žádný switch rozesetý po UI.
 
@@ -667,9 +673,9 @@ Mapping je pure function (`severity(verb, csq)`) — žádný switch rozesetý p
 
 ### Filter chips (UX)
 
-**Lazy emergence axiom (S20):** filter chip pro daný verb se objeví **až při prvním výskytu** toho druhu eventu v aktuálním sezení. UI není přeplněné 23 čipy od startu; roste postupně, jak simulace generuje skutečnost.
+**Lazy emergence axiom (S20):** filter chip pro daný verb se objeví **až při prvním výskytu** toho druhu eventu v aktuálním sezení. UI není přeplněné 9 čipy od startu; roste postupně, jak simulace generuje skutečnost.
 
-Toggle visibility per verb. `TICK` defaultně off (jinak zaplácne log). Plná historie zůstává v bufferu, jen se skrývá render.
+Toggle visibility per verb. Default: všechny ON (S30). OFF stavy se ukládají do LS (`voidspan.eventlog.filters` = JSON array OFF verbů). Plná historie zůstává v bufferu, jen se skrývá render.
 
 ### UI — Event Log Card (layer 3.5 floating)
 

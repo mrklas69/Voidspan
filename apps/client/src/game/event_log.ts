@@ -171,7 +171,11 @@ export class EventLogPanel {
     this.build();
     this.visible = loadVisiblePref();
     this.container.setVisible(this.visible);
-    if (this.visible) this.renderRows();
+    if (this.visible) {
+      this.syncSeenVerbs();
+      this.rebuildChips();
+      this.renderRows();
+    }
     dockManager.register("events", "right", PANEL_W, () => this.visible);
   }
 
@@ -324,9 +328,19 @@ export class EventLogPanel {
     if (this.visible) {
       this.autoScroll = true;
       this.lastRenderedCount = -1; // force re-render
+      // Synchronně dopl Shot history do seenVerbs + vytvoř chipy — bez 1-frame
+      // delay, když se panel otevře s už existujícími eventy.
+      this.syncSeenVerbs();
+      this.rebuildChips();
       this.renderRows();
     }
     dockManager.notifyChange();
+  }
+
+  // Pre-populate seenVerbs z aktuální event buffer. Použito v constructoru a
+  // při toggle (open). Zbavuje 1-frame delay mezi eventem a odpovídajícím chipem.
+  private syncSeenVerbs(): void {
+    for (const ev of this.getWorld().events) this.seenVerbs.add(ev.verb);
   }
 
   isOpen(): boolean {

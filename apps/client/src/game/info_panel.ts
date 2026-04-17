@@ -6,7 +6,7 @@
 
 import Phaser from "phaser";
 import type { World } from "./model";
-import { STATUS_LABELS, statusRating } from "./model";
+import { STATUS_LABELS, statusRating, isProductiveTask } from "./model";
 import type { TooltipManager } from "./tooltip";
 
 import {
@@ -159,9 +159,10 @@ export class InfoPanel {
     this.scrollContent = this.scene.add.container(PADDING, SCROLL_TOP);
     this.container.add(this.scrollContent);
 
-    // Dvousloupcový layout: ikony (X=0) + labely+hodnoty (X=16).
-    // Oba texty mají shodný font/size/lineSpacing → řádky se zarovnají vertikálně.
-    const COL_OFFSET = 16;
+    // S31: hierarchický formát (izomorfní s kvintet tooltips) — labels jako
+    // kapitoly, values jako odsazené podkapitoly. iconText zůstane prázdný,
+    // vše jde do bodyText jediným blobem.
+    const COL_OFFSET = 0;
     this.iconText = this.scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
@@ -331,6 +332,14 @@ export class InfoPanel {
     const alive = w.actors.filter((a) => a.state === "idle" || a.state === "working").length;
     const dead = w.actors.filter((a) => a.state === "dead").length;
 
+    // Drony — working / idle / offline. Izomorfní rozklad s Posádkou.
+    // V FVP všichni drony sdílí stav (E=0 → offline, active task → working, jinak idle).
+    const droneOnline = w.resources.energy > 0;
+    const hasActiveWork = w.tasks.some(isProductiveTask);
+    const droneWorking = droneOnline && hasActiveWork ? w.drones : 0;
+    const droneIdle = droneOnline && !hasActiveWork ? w.drones : 0;
+    const droneOffline = !droneOnline ? w.drones : 0;
+
     // Základna — online/offline/destroyed.
     // S26: Zásoby + Energie + HP avg řádky odstraněny — detail v Top Bar infotipech.
     const mods = Object.values(w.modules);
@@ -350,17 +359,19 @@ export class InfoPanel {
     this.ratingValue.setColor(RATING_COLOR[rating]);
     this.ratingValue.setX(PADDING + this.ratingLabel.width);
 
-    // Dvousloupcový layout: ikony (levý sloupec) + labely (pravý sloupec).
-    const icons: string[] = [];
-    const lines: string[] = [];
+    // Hierarchický formát (kapitola + odsazené podkapitoly).
+    // Izomorfní s kvintet tooltips (E/W/S/F headers v header.ts).
+    const I = "   ";
+    const lines: string[] = [
+      `Posádka:`,
+      `${I}${cryo} cryo / ${alive} alive / ${dead} dead`,
+      `Drony:`,
+      `${I}${droneWorking} working / ${droneIdle} idle / ${droneOffline} offline`,
+      `Základna:`,
+      `${I}${online} online / ${offline} offline / ${destroyed} destroyed`,
+    ];
 
-    // I. Aktuální stav (Zásoby + Energie — viz Top Bar infotipy)
-    // S27 font fix: ☻⌂ ikony dropnuté (VT323 latin-subset je nemá → fallback rozbíjel
-    // baseline). Labely "Posádka:" / "Základna:" nesou význam samy o sobě.
-    icons.push(""); lines.push(`Posádka:  ${cryo} cryo / ${alive} alive / ${dead} dead`);
-    icons.push(""); lines.push(`Základna: ${online} online / ${offline} offline / ${destroyed} destroyed`);
-
-    this.iconText.setText(icons.join("\n"));
+    this.iconText.setText("");
     this.bodyText.setText(lines.join("\n"));
 
     // Scroll — compute total content height, update maxScroll.
