@@ -142,18 +142,22 @@ export function ratingColor(pct: number): string {
 }
 
 // ============================================================================
-// 3. Typografie — VT323 size scale (style-guide §2)
+// 3. Typografie — Atkinson Hyperlegible size scale (style-guide §2)
 // ============================================================================
-// VT323 je CRT terminál font (Google Fonts, OFL) — plná podpora české
-// diakritiky (S26 upgrade z Jersey 25, který fallbackoval na monospace pro
-// ě/š/č/ř… → vizuální mix). Drž tyto velikosti, jinak rozbiješ rytmus UI.
-// Jednotky px, tak jak je přijímá Phaser Text a CSS font-size.
+// Atkinson Hyperlegible (Google Fonts, OFL) — sans navržený Braille Institutem
+// pro max čitelnost, plná podpora české diakritiky. Upgrade z VT323 (pixelart
+// CRT), který byl cool, ale přetejkal a byl nečitelný v malých velikostech.
+// Fallback: IBM Plex Mono (viz index.html komentář). Drž tyto velikosti, jinak
+// rozbiješ rytmus UI. Jednotky px, tak jak je přijímá Phaser Text a CSS.
 
-export const FONT_FAMILY    = '"VT323", monospace';
+export const FONT_FAMILY    = '"Atkinson Hyperlegible", system-ui, sans-serif';
 // S28: 3-level hierarchie (sjednocení napříč). Větší = vnější, menší = vnitřní.
 //   CHROME — Top Bar + Bottom Bar (vnější chrome aplikace)
 //   PANEL  — všechny floating panely (Info/Moduly/Události/Úkoly), Help modal, welcome
 //   TIP    — tooltipy + footer/btn/hint texty (nejmenší čitelný)
-export const FONT_SIZE_CHROME = "24px"; // Top Bar, Bottom Bar
-export const FONT_SIZE_PANEL  = "22px"; // hlavičky + content všech panelů, modal, welcome
-export const FONT_SIZE_TIP    = "20px"; // tooltipy + drobné texty (footer, btn, hotkey hints)
+// S29 Atkinson bump -2 px: sans má větší x-height než VT323 → menší velikost
+// vypadá stejně čitelně a textů se vejde víc.
+export const FONT_SIZE_CHROME    = "22px"; // Top Bar, Bottom Bar
+export const FONT_SIZE_PANEL     = "20px"; // modal, welcome, commandButton, ActorsPanel
+export const FONT_SIZE_SIDEPANEL = "18px"; // boční panely I / M / E / T (-2 px vůči PANEL, vyšší hustota dat)
+export const FONT_SIZE_TIP       = "18px"; // tooltipy + drobné texty (footer, btn, hotkey hints)

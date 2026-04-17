@@ -32,6 +32,10 @@ export interface ModalOptions {
   title: string;
   body: string;
   onClose?: () => void;
+  // Volitelné druhé tlačítko vedle Close (vlevo). Jeho onClick se volá PŘED
+  // zavřením modalu, pokud chce caller modal zavřít sám, zavolá si close()
+  // nebo nechá default (tlačítko zavírá modal po onClick).
+  action?: { label: string; onClick: () => void };
 }
 
 export class ModalManager {
@@ -148,6 +152,43 @@ export class ModalManager {
       this.close(opts.onClose);
     });
     this.layer.push(btnBg, btnLabel);
+
+    // Volitelné action tlačítko vlevo od Close (šířka dle textu + padding 16).
+    // Klik: onClick() → close modal. Action jsou akce „udělej a odejdi".
+    if (opts.action) {
+      const GAP = 8;
+      // Širší podle délky labelu — měříme přes skrytý probe text.
+      const probe = this.scene.add.text(0, 0, opts.action.label, {
+        fontFamily: FONT_FAMILY,
+        fontSize: FONT_SIZE_TIP,
+      }).setVisible(false);
+      const actionW = Math.max(btnW, Math.ceil(probe.width) + 24);
+      probe.destroy();
+      const actionX = btnX - GAP - actionW;
+
+      const actionBg = this.scene.add
+        .rectangle(actionX, btnY, actionW, closeH, UI_BORDER_DIM)
+        .setOrigin(0, 0)
+        .setDepth(DEPTH + 3)
+        .setInteractive({ useHandCursor: true });
+      const actionLabel = this.scene.add
+        .text(actionX + actionW / 2, btnY + closeH / 2, opts.action.label, {
+          fontFamily: FONT_FAMILY,
+          fontSize: FONT_SIZE_TIP,
+          color: UI_TEXT_ACCENT,
+        })
+        .setOrigin(0.5, 0.5)
+        .setDepth(DEPTH + 4);
+      actionBg.on("pointerover", () => actionBg.setFillStyle(UI_SELECT_STROKE));
+      actionBg.on("pointerout", () => actionBg.setFillStyle(UI_BORDER_DIM));
+      const actionFn = opts.action.onClick;
+      actionBg.on("pointerdown", (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
+        this.close(opts.onClose);
+        actionFn();
+      });
+      this.layer.push(actionBg, actionLabel);
+    }
 
     // ESC řeší globální handler v GameScene (F5).
   }

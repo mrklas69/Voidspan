@@ -18,7 +18,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_MASK_WHITE,
   FONT_FAMILY,
-  FONT_SIZE_PANEL,
+  FONT_SIZE_SIDEPANEL,
   RATING_COLOR,
 } from "./palette";
 import { HUD_H } from "./ui/layout";
@@ -105,7 +105,7 @@ export class InfoPanel {
     const titleText = this.scene.add
       .text(PADDING, PADDING, "Info", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -115,7 +115,7 @@ export class InfoPanel {
     const closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -136,7 +136,7 @@ export class InfoPanel {
     this.ratingLabel = this.scene.add
       .text(PADDING, HEADER_H + 4, "Stav základny: ", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_PRIMARY,
       })
       .setOrigin(0, 0)
@@ -146,7 +146,7 @@ export class InfoPanel {
     this.ratingValue = this.scene.add
       .text(0, HEADER_H + 4, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
       })
       .setOrigin(0, 0)
       .setInteractive();
@@ -163,7 +163,7 @@ export class InfoPanel {
     this.iconText = this.scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
       })
@@ -173,7 +173,7 @@ export class InfoPanel {
     this.bodyText = this.scene.add
       .text(COL_OFFSET, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
         wordWrap: { width: contentW - COL_OFFSET },

@@ -42,7 +42,10 @@ const MEDIUM_PER_CHUNK = 28;
 const LARGE_PER_CHUNK = 5;
 const TWINKLE_RATIO = 0.18;
 const CLUSTER_CHANCE = 0.55;
-const DSO_CHANCE = 0.35;
+// DSO jsou vzácné výjevy — 1/8 původní hustoty (0.35 → 0.04375).
+// Dřív se zjevovaly v každém 3. chunku, což je v kosmu nerealistické (reálná
+// DSO hustota v úhlovém úhlu je řády pod hvězdnou). Rarity zvyšuje dopad výskytu.
+const DSO_CHANCE = 0.35 / 8;
 
 // Deterministic RNG — mulberry32.
 function mulberry32(seed: number): () => number {

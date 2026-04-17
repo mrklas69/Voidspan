@@ -16,7 +16,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_MASK_WHITE,
   FONT_FAMILY,
-  FONT_SIZE_PANEL,
+  FONT_SIZE_SIDEPANEL,
   RATING_COLOR,
   ratingColor,
 } from "./palette";
@@ -113,7 +113,7 @@ export class ModulesPanel {
     const titleText = this.scene.add
       .text(PADDING, PADDING, "Moduly", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -122,7 +122,7 @@ export class ModulesPanel {
     const closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -142,7 +142,7 @@ export class ModulesPanel {
     this.ratingLabel = this.scene.add
       .text(PADDING, HEADER_H + 4, "Stav modulů: ", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_PRIMARY,
       })
       .setOrigin(0, 0);
@@ -151,7 +151,7 @@ export class ModulesPanel {
     this.ratingValue = this.scene.add
       .text(0, HEADER_H + 4, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
       })
       .setOrigin(0, 0);
     this.container.add(this.ratingValue);
@@ -167,7 +167,7 @@ export class ModulesPanel {
     this.bodyText = this.scene.add
       .text(0, 0, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_PRIMARY,
         lineSpacing: 6,
         wordWrap: { width: contentW },

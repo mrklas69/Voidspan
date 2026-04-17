@@ -4,12 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>⊙ Voidspan — POC P1</title>
-    <!-- VT323 — CRT terminál font, Google Fonts OFL. Plná podpora české
-         diakritiky (S26 upgrade z Jersey 25, který fallbackoval na monospace
-         pro ě/š/č/ř → vizuální font-mix). -->
+    <!-- Atkinson Hyperlegible — sans navržený Braille Institutem pro maximální
+         čitelnost, plná podpora české diakritiky. Upgrade z VT323 (CRT pixelart —
+         cool, ale nečitelný + přetékal). Pokud se sans neosvědčí v tabulkových
+         layoutech, náhradní kandidát je IBM Plex Mono. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
     <style>
       /* Reset + top-centrované plátno na hull-dark pozadí (POC_P1 §16: 1280×720 baseline).
          align-items: flex-start → když scale.FIT zmenší canvas kvůli úzké šířce,
@@ -19,7 +20,7 @@
         padding: 0;
         background: #1a1e28; /* HEX_HULL_DARK — slot 02, palette.ts */
         color: #ddd;
-        font-family: "VT323", ui-monospace, Consolas, monospace;
+        font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
         overflow: hidden;
       }
       #game {

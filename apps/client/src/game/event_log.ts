@@ -16,7 +16,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_DIM,
   FONT_FAMILY,
-  FONT_SIZE_PANEL,
+  FONT_SIZE_SIDEPANEL,
   FONT_SIZE_TIP,
   HEX_ALERT_RED,
   HEX_WARN_ORANGE,
@@ -142,7 +142,7 @@ export class EventLogPanel {
     this.titleText = this.scene.add
       .text(PADDING, PADDING, "Event Log", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(0, 0);
@@ -152,7 +152,7 @@ export class EventLogPanel {
     this.closeBtn = this.scene.add
       .text(PANEL_W - PADDING, PADDING, "X", {
         fontFamily: FONT_FAMILY,
-        fontSize: FONT_SIZE_PANEL,
+        fontSize: FONT_SIZE_SIDEPANEL,
         color: UI_TEXT_ACCENT,
       })
       .setOrigin(1, 0)
@@ -175,7 +175,7 @@ export class EventLogPanel {
       const t = this.scene.add
         .text(PADDING, rowY, "", {
           fontFamily: FONT_FAMILY,
-          fontSize: FONT_SIZE_PANEL,
+          fontSize: FONT_SIZE_SIDEPANEL,
           color: UI_TEXT_PRIMARY,
         })
         .setOrigin(0, 0);

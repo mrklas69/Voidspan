@@ -85,6 +85,17 @@ function markDismissed(): void {
   }
 }
 
+// Reset dismiss flagu — volá se z Help modalu pro znovuzobrazení uvítání.
+// Caller musí dialog otevřít ručně (WelcomeDialog.open()); tahle fce jen
+// smaže LS pref, aby se uvítání objevilo i při příštím F5.
+export function resetWelcome(): void {
+  try {
+    localStorage.removeItem(DISMISS_KEY);
+  } catch {
+    // Storage nedostupné — nic.
+  }
+}
+
 const DEPTH = 3000;
 const PANEL_W = 600;
 const PANEL_H = 420; // bez hero image — header + body + bottom row

@@ -6,7 +6,7 @@
 import Phaser from "phaser";
 import { TooltipManager } from "./tooltip";
 import { ModalManager } from "./modal";
-import { WelcomeDialog, shouldShowWelcome } from "./welcome";
+import { WelcomeDialog, shouldShowWelcome, resetWelcome } from "./welcome";
 import { BackgroundSystem } from "./background";
 import {
   createInitialWorld,
@@ -201,7 +201,20 @@ export class GameScene extends Phaser.Scene {
         "Pozoruj, jak autopilot drží systém naživu.\n" +
         "\n" +
         "Voidspan — FVP Observer Edition · v0.7",
+      action: {
+        label: "Zobrazit uvítání",
+        onClick: () => this.openWelcomeDialog(),
+      },
     });
+  }
+
+  // Otevře Welcome dialog „na vyžádání" z Help modalu. Resetuje dismiss flag,
+  // aby se uvítání objevilo i při příštím F5. Lazy create — pokud hráč už
+  // dřív flagu dismissnul, instance `welcome` může být undefined.
+  private openWelcomeDialog(): void {
+    resetWelcome();
+    if (!this.welcome) this.welcome = new WelcomeDialog(this);
+    this.welcome.open();
   }
 
   // === Log (Bottom Bar) ====================================================

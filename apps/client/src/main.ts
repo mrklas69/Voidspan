@@ -21,23 +21,25 @@ const config: Phaser.Types.Core.GameConfig = {
   pixelArt: true,
 };
 
-// Počkej, než browser doručí VT323 (Google Fonts async).
-// Bez toho Phaser nakreslí texty fallback monospacem a teprve při prvním
-// setText po doručení fontu se re-vykreslí — viditelný font swap. Po načtení
-// fontu startujeme Phaser deterministicky.
+// Počkej, než browser doručí Atkinson Hyperlegible (Google Fonts async).
+// Bez toho Phaser nakreslí texty fallback fontem a teprve při prvním setText
+// po doručení fontu se re-vykreslí — viditelný font swap. Po načtení fontu
+// startujeme Phaser deterministicky. (Viz memory feedback_font_preload.md.)
 async function boot(): Promise<void> {
   if (document.fonts && typeof document.fonts.load === "function") {
     try {
       // Načti všechny používané velikosti naráz — každá velikost je
       // zvlášť font face entry (browser cache per-size).
+      // S29: globální bump -2 px po přechodu na Atkinson Hyperlegible
+      // (větší x-height než VT323 → menší velikosti stačí).
       await Promise.all([
-        document.fonts.load('18px "VT323"'),
-        document.fonts.load('20px "VT323"'),
-        document.fonts.load('22px "VT323"'),
-        document.fonts.load('24px "VT323"'),
-        document.fonts.load('30px "VT323"'),
-        document.fonts.load('38px "VT323"'),
-        document.fonts.load('50px "VT323"'),
+        document.fonts.load('16px "Atkinson Hyperlegible"'),
+        document.fonts.load('18px "Atkinson Hyperlegible"'),
+        document.fonts.load('20px "Atkinson Hyperlegible"'),
+        document.fonts.load('22px "Atkinson Hyperlegible"'),
+        document.fonts.load('28px "Atkinson Hyperlegible"'),
+        document.fonts.load('36px "Atkinson Hyperlegible"'),
+        document.fonts.load('48px "Atkinson Hyperlegible"'),
       ]);
     } catch {
       // I když font load selže (offline / síť), spustíme hru s fallback fontem —
