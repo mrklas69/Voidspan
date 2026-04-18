@@ -22,9 +22,9 @@ export const HUD_H = 60;
 export const HUD_ROW_Y = 18;
 export const LOG_H = 60;
 
-export const BAY_NATIVE = 40;
-export const BAY_SCALE = 2;
-export const BAY_PX = BAY_NATIVE * BAY_SCALE; // 80
+// BAY_PX = render velikost bay v px. Historicky odvozeno z pixel art 40×40
+// zdrojů × scale 2 (BAY_NATIVE/BAY_SCALE retirovány s PNG pipeline v S36).
+export const BAY_PX = 80;
 export const SEGMENT_W = 8 * BAY_PX; // 640
 export const SEGMENT_H = 2 * BAY_PX; // 160
 
@@ -52,7 +52,7 @@ export function recomputeLayout(vw: number, vh: number): void {
 }
 
 // Setter pro DockManager — segment se re-centruje dle otevřených panelů.
-// Volá se z DockManager.onChange listeneru v SegmentPanel + z GameScene.handleResize.
+// Volá se z DockManager.onChange listeneru v ShipRender + z GameScene.handleResize.
 export function setSegmentX(x: number): void {
   SEGMENT_X = Math.max(0, Math.round(x));
 }

@@ -189,13 +189,5 @@ export const PROTOCOL_PAUSE_RATING = 2;
 // Autoclean completed/failed tasks — 1 h wall = 14400 ticků (při TICK_MS 250).
 export const TASK_AUTOCLEAN_TICKS = TICKS_PER_SECOND * 3600;
 
-// ============================================================================
-// §11 Ship render (S35)
-// ============================================================================
-
-// Feature flag pro procedural ship render (Phaser.Graphics outline + Tabler
-// SVG glyph + status modulace, viz palette-preview.html §2/§3). Default true
-// od S35. `SegmentPanel` (starý PNG) zůstává v kódu jako rollback — pokud
-// v budoucnu něco vizuálně selže, přepnutím flag na false se vrátí původní
-// chování bez jiné změny. Cílové retire SegmentPanel v S36 po stabilizaci.
-export const USE_PROCEDURAL_RENDER = true;
+// §11 Ship render: SegmentPanel (PNG) retired v S36 — ShipRender (procedural)
+// je jediný renderer. Flag USE_PROCEDURAL_RENDER odstraněn s fallback kódem.

@@ -5,6 +5,7 @@
 import Phaser from "phaser";
 import type { World, Module, Task } from "./model";
 import { STATUS_LABELS, statusRating } from "./model";
+import { findActiveTaskForModule } from "./world";
 import type { TooltipManager } from "./tooltip";
 
 import {
@@ -51,10 +52,7 @@ function moduleStatusCs(mod: Module, hpPct: number): string {
 
 // Task state 5. sloupec: plán / oprava... / nelze. Prázdné = žádný aktivní task.
 function moduleTaskState(tasks: Task[], moduleId: string): string {
-  const t = tasks.find(
-    (x) => x.target.moduleId === moduleId &&
-    (x.status === "pending" || x.status === "active" || x.status === "paused"),
-  );
+  const t = findActiveTaskForModule(tasks, moduleId);
   if (!t) return "";
   if (t.status === "pending") return "plán";
   if (t.status === "active") return "oprava...";

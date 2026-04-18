@@ -1,5 +1,5 @@
 // Sanity testy pro statický katalog (MODULE_DEFS / ACTOR_DEFS / TASK_DEFS).
-// Chytá typos: nesoulad kind vs klíč, prázdné asset, nesmyslné HP/WD, chybějící popis.
+// Chytá typos: nesoulad kind vs klíč, nesmyslné HP/WD, chybějící popis.
 // Levné — běží za ~10 ms, drží invarianty při editaci katalogu.
 
 import { describe, it, expect } from "vitest";
@@ -12,18 +12,10 @@ describe("MODULE_DEFS catalog invariants", () => {
     }
   });
 
-  it("každý modul má neprázdné label, asset, description", () => {
+  it("každý modul má neprázdné label, description", () => {
     for (const def of Object.values(MODULE_DEFS)) {
       expect(def.label.length).toBeGreaterThan(0);
-      expect(def.asset.length).toBeGreaterThan(0);
       expect(def.description.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("asset filename je lowercase snake_case + .png (konvence)", () => {
-    const rx = /^[a-z0-9_]+\.png$/;
-    for (const def of Object.values(MODULE_DEFS)) {
-      expect(def.asset).toMatch(rx);
     }
   });
 

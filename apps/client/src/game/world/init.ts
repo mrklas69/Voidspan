@@ -1,9 +1,16 @@
 // World factory — `createInitialWorld()`.
-// Iniciální svět: kompaktní mateřská loď (S28 KISS — void ↔ module).
-//   - Engine 2×2 fix v zadní části (idx 6 → 6,7,14,15)
-//   - 8 modulů (Hab + 2× Sol + Med + Ass + CP + 2× Sto) přilepených k motoru
-//     ve 4-sloupcovém pásu (cols 2-5 → idx 2,3,4,5,10,11,12,13). Random pořadí.
-//   - Zbylé 4 bays vlevo (cols 0-1) = void — místo pro budoucí expanzi.
+// Iniciální svět: cestovní minimalistická konfigurace (S36). Jediný 2×2 modul =
+// Engine (záď). 8 drobných 1×1 modulů v body, 4 void na čele lodi (první
+// zastavěné při probuzení kolonistů, R2). Deterministický layout (žádný shuffle),
+// user learns anatomy.
+//
+//   Col:  0  1  2  3  4  5  6  7
+//   Row0: .. .. So So St St En En   (energie + zásoby = backup systémy nahoře)
+//   Row1: .. .. Hb Mc As CP En En   (obytné + utility dole)
+//
+// Logika: 2× Solar + 2× Storage = cestovní redundance (obrovské zásoby, záloha E).
+// Čelo (cols 0-1) = void, místo pro expansion při příjezdu k cíli.
+//
 // Wear 85–100 % hp_max + 1 critical damage pro Observer start.
 
 import type { World, Bay, Module, Actor, ModuleKind } from "../model";
@@ -21,7 +28,6 @@ import {
   QM_DRAW_W,
 } from "../tuning";
 import { appendEvent } from "../events";
-import { shuffleInPlace } from "./random";
 import { applyLightWear, applyRandomDamages } from "./damage";
 import { computeEnergyMax } from "./production";
 import { recomputeStatus } from "./status";
@@ -61,29 +67,22 @@ export function createInitialWorld(): World {
     }
   };
 
-  // 2) Engine 2×2 na fixní pozici — kotevní bod (idx 6 → obsadí 6,7,14,15).
-  placeModule("engine_1", "Engine", 6);
-
-  // 3) Tělo lodi — 8 bays přilepených k motoru (cols 2-5, rows 0-1).
-  // Random pořadí drží variaci, ale layout zůstává kompaktní (žádné odlepené moduly).
-  // Zbytek (cols 0-1 = idx 0,1,8,9) zůstává void — místo pro budoucí expanzi.
-  const BODY_IDXS = [2, 3, 4, 5, 10, 11, 12, 13];
-  shuffleInPlace(BODY_IDXS);
-
-  // 4) 8 modulů na BODY_IDXS — Habitat + 2× SolarArray + MedCore + Assembler + CommandPost + 2× Storage.
-  const START_MODULES: Array<[string, ModuleKind]> = [
-    ["habitat_1", "Habitat"],
-    ["solar_1", "SolarArray"],
-    ["solar_2", "SolarArray"],
-    ["medcore_1", "MedCore"],
-    ["assembler_1", "Assembler"],
-    ["commandpost_1", "CommandPost"],
-    ["storage_1", "Storage"],
-    ["storage_2", "Storage"],
+  // 2) Deterministický cestovní layout — 9 modulů, 12 module bays + 4 void (čelo).
+  // Tuple [id, kind, rootIdx]. Pořadí v poli nemá efekt na layout (rootIdx
+  // určuje pozici), jen čitelnost pro review.
+  const START_MODULES: Array<[string, ModuleKind, number]> = [
+    ["engine_1",      "Engine",      6],  // záď 2×2 (cols 6-7, rows 0-1)
+    ["solar_1",       "SolarArray",  2],  // top row
+    ["solar_2",       "SolarArray",  3],
+    ["storage_1",     "Storage",     4],
+    ["storage_2",     "Storage",     5],
+    ["habitat_1",     "Habitat",    10],  // bottom row
+    ["medcore_1",     "MedCore",    11],
+    ["assembler_1",   "Assembler",  12],
+    ["commandpost_1", "CommandPost",13],
   ];
-  for (let i = 0; i < START_MODULES.length; i++) {
-    const [id, kind] = START_MODULES[i]!;
-    placeModule(id, kind, BODY_IDXS[i]!);
+  for (const [id, kind, rootIdx] of START_MODULES) {
+    placeModule(id, kind, rootIdx);
   }
 
   // 5) Lehké opotřebení — všechny moduly random 85–100 % hp_max.

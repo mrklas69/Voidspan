@@ -19,7 +19,6 @@ import {
   TICK_MS,
 } from "./world";
 import type { World } from "./model";
-import { MODULE_DEFS } from "./model";
 import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
 import { ModulesPanel } from "./modules_panel";
@@ -29,9 +28,7 @@ import * as L from "./ui/layout";
 import { COL_TEXT_DIM, recomputeLayout, setSegmentX } from "./ui/layout";
 import { dockManager } from "./ui/dock_manager";
 import { HeaderPanel } from "./ui/header";
-import { SegmentPanel } from "./ui/segment";
 import { ShipRender } from "./ui/ship_render";
-import { USE_PROCEDURAL_RENDER } from "./tuning";
 // S19: ActorsPanel (ui/actors.ts) skrytý — detail bay/modulu jen v hover tooltipu.
 // SideRightPanel retirován v S28 (dead code s layered bay refs).
 // Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panel [K].
@@ -47,10 +44,7 @@ export class GameScene extends Phaser.Scene {
   private background!: BackgroundSystem;
 
   private header!: HeaderPanel;
-  // S35: flag-driven — ShipRender (procedural) nebo SegmentPanel (PNG fallback).
-  // Oba sdílí public API (render / relayout / attachTooltips / moveSelection
-  // / getSelectedBayIdx). Po validaci ShipRender smaže se SegmentPanel (S36).
-  private segment!: SegmentPanel | ShipRender;
+  private segment!: ShipRender;
   private eventLog!: EventLogPanel;
   private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
@@ -63,20 +57,9 @@ export class GameScene extends Phaser.Scene {
     super({ key: "game" });
   }
 
-  // === Preload: načti sprity modulů z MODULE_DEFS ============================
+  // === Preload: Tabler SVG ikony + DSO ======================================
 
   preload(): void {
-    // Module assety: loaduj jen ty, které reálně existují v public/assets/modules/.
-    // Whitelist (S16) drží Phaser bez warningů — jakmile přidáš nový PNG, dopiš kind sem.
-    // Texture key = ModuleKind (matchuje drawBaySprite v SegmentPanel).
-    const AVAILABLE_MODULE_ASSETS: Array<keyof typeof MODULE_DEFS> = [
-      "SolarArray", "Engine", "Dock",
-      "Habitat", "Storage", "MedCore", "Assembler", "CommandPost",
-    ];
-    for (const kind of AVAILABLE_MODULE_ASSETS) {
-      this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
-    }
-
     // S35 Tabler icons — 8 kind glyphs + 1 fallback (cube). SVG rasterizace
     // v Phaser 3.60+ je lossless, výstup tintable přes setTint (stroke="#ffffff"
     // v SVG → tint × white = tint). Scale 2 = 48×48 raster, dost na 40 px bay.
@@ -94,11 +77,10 @@ export class GameScene extends Phaser.Scene {
     for (const [key, name] of TABLER_ICONS) {
       this.load.svg(key, `assets/icons/${name}.svg`, { scale: 2 });
     }
-    // Bay assety (skeleton + cover1-5) retirovány s layered bay axiomem (S28).
-    // PNG ponechány v public/assets/bays/ pro případný návrat. segment.ts má
-    // guard přes textures.exists — chybějící klíč schová sprite bezpečně.
+    // Module PNG assety retirovány v S36 — ShipRender kreslí procedurálně přes
+    // Phaser.Graphics + Tabler SVG glyphy. Starý PNG pipeline (8 modulů,
+    // bay_construction fallback, skeleton/cover z S28) v git history.
     // Asteroid sprite retirován — viz IDEAS „Asteroid system (P2+)".
-    // Welcome hero splash retirován v S32 — nahrazen QM Terminal modal (bez obrázku).
 
     // M-110 (S32) — eliptická satelitní galaxie, 1 SVG part. Iterace po
     // zkušenosti s plnou M-31 kompozicí (přeplněná — KISS redukce).
@@ -131,9 +113,7 @@ export class GameScene extends Phaser.Scene {
     // --- Panely ---
     const getWorld = () => this.world;
     this.header = new HeaderPanel(this, getWorld);
-    this.segment = USE_PROCEDURAL_RENDER
-      ? new ShipRender(this, getWorld)
-      : new SegmentPanel(this, getWorld);
+    this.segment = new ShipRender(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);

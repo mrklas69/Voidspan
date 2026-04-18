@@ -69,13 +69,12 @@ export type ModuleKind =
   | "CommandPost";
 
 // Statická definice modulu — jedna na typ, sdílí všechny instance.
-// DRY: size/asset/power_w/hp_max se neduplikuje do každé instance.
+// DRY: size/power_w/hp_max se neduplikuje do každé instance.
 export type ModuleDef = {
   kind: ModuleKind;
   label: string;
   w: number;
   h: number;
-  asset: string;
   power_w: number;
   capacity_wh?: number; // energetická kapacita modulu (baterie). Výchozí 0.
   wd_to_build: number;
@@ -132,7 +131,6 @@ export type ActorDef = {
   kind: ActorKind;
   label: string;
   power_w: number;
-  asset: string;
   role: string;
 };
 
@@ -340,7 +338,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Solar Array",
     w: 1,
     h: 1,
-    asset: "solar_array.png",
     power_w: 24,
     capacity_wh: 80,
     wd_to_build: 20,
@@ -354,7 +351,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Engine",
     w: 2,
     h: 2,
-    asset: "engine.png",
     power_w: 0,
 
     wd_to_build: 80,
@@ -368,7 +364,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Docking Station",
     w: 2,
     h: 2,
-    asset: "dock.png",
     power_w: -6,
 
     wd_to_build: 48,
@@ -382,7 +377,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Habitat",
     w: 1,
     h: 1,
-    asset: "habitat.png",
     power_w: -2,
 
     wd_to_build: 15,
@@ -396,7 +390,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Storage",
     w: 1,
     h: 1,
-    asset: "storage.png",
     power_w: -1,
 
     wd_to_build: 12,
@@ -410,7 +403,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "MedCore",
     w: 1,
     h: 1,
-    asset: "medcore.png",
     power_w: -3,
 
     wd_to_build: 18,
@@ -424,7 +416,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "Assembler",
     w: 1,
     h: 1,
-    asset: "assembler.png",
     power_w: -4,
 
     wd_to_build: 22,
@@ -438,7 +429,6 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     label: "CommandPost",
     w: 1,
     h: 1,
-    asset: "command_post.png",
     power_w: -2,
 
     wd_to_build: 20,
@@ -454,7 +444,6 @@ export const ACTOR_DEFS: Record<ActorKind, ActorDef> = {
     kind: "player",
     label: "Player",
     power_w: 8,
-    asset: "actor_player.png",
     role: "Hráčův avatar — Founding Colonist #1. Pracuje → HP klesá, jí → HP roste.",
   },
 };

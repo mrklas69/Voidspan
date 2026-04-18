@@ -20,6 +20,7 @@
 import Phaser from "phaser";
 import type { World, Module } from "../model";
 import { MODULE_DEFS } from "../model";
+import { findActiveTaskForModule, isConstructionTask } from "../world";
 import { TooltipManager } from "../tooltip";
 import {
   SEGMENT_X,
@@ -172,7 +173,7 @@ export class ShipRender {
     this.activeTaskModuleIds.clear();
     for (const t of w.tasks) {
       if (t.status !== "active") continue;
-      if (t.kind !== "repair" && t.kind !== "build" && t.kind !== "demolish") continue;
+      if (!isConstructionTask(t)) continue;
       if (t.target.moduleId) this.activeTaskModuleIds.add(t.target.moduleId);
     }
     const phase = (Math.sin(this.scene.time.now * PULSE_RAD_PER_MS) + 1) / 2;
@@ -396,18 +397,13 @@ export class ShipRender {
   // ==========================================================================
 
   private repairStateText(moduleId: string): string | null {
-    const w = this.getWorld();
-    const task = w.tasks.find(
-      (t) => t.kind === "repair" && t.target.moduleId === moduleId,
-    );
-    if (!task) return null;
+    const task = findActiveTaskForModule(this.getWorld().tasks, moduleId);
+    if (!task || task.kind !== "repair") return null;
     const pct = task.wd_total > 0 ? Math.round((task.wd_done / task.wd_total) * 100) : 0;
     switch (task.status) {
-      case "active":    return `Probíhá oprava (${pct}%)`;
-      case "paused":    return `Oprava pozastavena (${pct}%)`;
-      case "pending":   return `Oprava ve frontě`;
-      case "completed": return `Oprava dokončena`;
-      case "failed":    return `Oprava selhala`;
+      case "active":  return `Probíhá oprava (${pct}%)`;
+      case "paused":  return `Oprava pozastavena (${pct}%)`;
+      case "pending": return `Oprava ve frontě`;
       default: return null;
     }
   }

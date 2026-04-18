@@ -1,5 +1,5 @@
 // Unit testy pro world — void ↔ module axiom (S28 layered bay retire).
-// Random layout → testy kontrolují invarianty, ne konkrétní pozice.
+// S36: deterministický cestovní layout (9 modulů, 4 void na čele, bez shuffle).
 
 import { describe, it, expect } from "vitest";
 import {
@@ -26,7 +26,7 @@ describe("createInitialWorld", () => {
     expect(w.resources.energy).toBe(12);
   });
 
-  it("má 16 bays a 9 modulů (Engine + 8 startovních: Hab+2×Sol+Med+Ass+CP+2×Sto)", () => {
+  it("má 16 bays a 9 modulů (Engine + 8 startovních: 2×Sol+2×Sto+Hab+Med+Asm+CP)", () => {
     const w = createInitialWorld();
     expect(w.segment).toHaveLength(16);
     expect(Object.keys(w.modules).length).toBe(9);
@@ -73,11 +73,14 @@ describe("createInitialWorld", () => {
     }
   });
 
-  it("zbytek bays je void (4 prázdné sloty, S28 layered bay retire)", () => {
+  it("4 void bays na čele lodi (cols 0-1 = idx 0,1,8,9)", () => {
     const w = createInitialWorld();
     const voids = w.segment.filter((t) => t.kind === "void").length;
-    // 16 total = 4 engine + 8×1×1 moduly = 12 module bays; zbývá 4 void.
+    // 16 total = 4 Engine + 8× 1×1 moduly = 12 module bays; zbývá 4 void na čele.
     expect(voids).toBe(4);
+    for (const idx of [0, 1, 8, 9]) {
+      expect(w.segment[idx]?.kind).toBe("void");
+    }
   });
 
   it("aspoň jeden modul má critical poškození (< 25 % hp_max, S28 single hit)", () => {

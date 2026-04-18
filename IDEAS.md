@@ -88,6 +88,27 @@ Aktuální verze se zobrazuje v headeru eternal service tasku: `QuarterMaster v2
 
 ---
 
+## Module research & upgrade paths (S36)
+
+Moduly mají **research ladder** — výzkumem + upgradem se mění `MODULE_DEFS` parametry (footprint, power, kapacita). FVP start je **cestovní minimalist** (malé 1×1 moduly, 4 void na čele = expansion space); po příletu k cíli a probuzení kolonistů se loď přestavuje.
+
+**Seed kandidáti (S36 brainstorm):**
+- **SolarArray 1×1 → 2×2 (10× produkce)** — upgrade odemkne velký solar field. 24 W → 240 W. Reflektuje realitu: větší plocha = kvadraticky více panelů. 10× je dramatický skok = „zasloužený" po výzkumu, ne inkrementální +20 %.
+- **Storage 1×1 → 2×1 / 2×2 (rozšíření kapacity)** — FVP má capacity 100 fix, P2+ bude Σ capacity modulů.
+- **Habitat 1×1 → 1×2 (dvojlůžkový)** — kapacita crew scale.
+- **MedCore 1×1 → 1×2 (extended cryo + léčebna)** — probouzení víc kolonistů zároveň.
+
+**Upgrade mechanika (otevřené):**
+- **Q1** Upgrade = rebuild (void + build 2×2) nebo in-place transformace?
+- **Q2** Cost: Solids/Fluids dle nové recipe − stávající recipe? Nebo flat research cost?
+- **Q3** Prerequisites: CommandPost research tier + Assembler production? QuarterMaster verze?
+- **Q4** Reverzibilita — downgrade možný? (Ladí s QM downgrade otázkou.)
+- **Q5** Visual — expanduje 1×1 na 2×2 tak, že zabere sousední void, nebo vyžaduje volné 2×2 místo?
+
+Vazba na **4 void na čele lodi** (S36 cestovní layout): tam se upgrady materializují. Narativní kánon = expansion při příjezdu, ne během tranzitu.
+
+---
+
 ## Protocol DSL (S31+)
 
 QuarterMaster runtime = interpret pravidel. Dnes (v2.3) hardcoded v `world/protocol.ts` (~130 LOC imperativního TS). DSL extrakce = prerekvizita pro v3+ combat, v6 user-editable pravidla a QM Communication Terminal (níže).

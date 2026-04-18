@@ -20,7 +20,7 @@ export { createInitialWorld } from "./init";
 export { formatGameTime, formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./format";
 export { getOuterHP, getBayTrajectory, type OuterHP, type Trajectory } from "./bay";
 export { averageFlow, currentDayRate, type FlowCategory, type FlowDirection } from "./flow";
-export { enqueueRepairTask } from "./task";
+export { enqueueRepairTask, findActiveTaskForModule, isConstructionTask } from "./task";
 export { computeWork } from "./work";
 export { computeEnergyMax } from "./production";
 

@@ -6,6 +6,25 @@ import { TICKS_PER_GAME_DAY, WD_PER_HP, TASK_AUTOCLEAN_TICKS } from "../tuning";
 import { appendEvent } from "../events";
 import { getTaskRecipe, whichResourceMissing, consumeResources } from "./recipe";
 
+// Najde „živý" task pro daný modul — pending/active/paused. completed/failed/
+// eternal ignoruje. Jediný hit (v praxi na modulu běží max jeden stavební task
+// díky idempotent enqueue). Sdílený helper pro ship_render (pulse) +
+// modules_panel (task_state) — izomorfismus row/bay (S36 rule-of-two extract).
+export function findActiveTaskForModule(tasks: Task[], moduleId: string): Task | null {
+  for (const t of tasks) {
+    if (t.target.moduleId !== moduleId) continue;
+    if (t.status === "pending" || t.status === "active" || t.status === "paused") return t;
+  }
+  return null;
+}
+
+// Stavební task = fyzicky mění HP modulu (repair/build/demolish). Service
+// (eternal monitor QM) není stavební. Používá se v ship_renderu pro decision
+// „má pulsovat outline?".
+export function isConstructionTask(task: Task): boolean {
+  return task.kind === "repair" || task.kind === "build" || task.kind === "demolish";
+}
+
 // Enqueue repair task na daný bay. Cíl = modul pod bayem (po S28 jediná vrstva s HP).
 // Idempotent — pokud už task existuje na stejný modul, vrátí false.
 // Bay typu void = nic k opravě (true návrat false).
