@@ -1,8 +1,10 @@
 # art/ — ⊙ Voidspan
 
-Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art ve stylu Dune II (1992).
+Zdrojové grafické assety ⊙ Voidspanu. **40×40 native**, pixel art pro actors / bays / sprites / UI.
 
-**Závazný vzorník:** `apps/client/public/style-guide.html` (dev: `http://localhost:5173/style-guide.html`). Paleta **Voidspan 16 — Hull & Amber**, bay scale 2× (UI font je samostatná osa — od S29 Atkinson Hyperlegible pro čitelnost textu, nesouvisí s art stylem).
+**Závazný vzorník (S35):** `apps/client/public/palette-preview.html` (dev: `http://localhost:5173/palette-preview.html`). Paleta **Voidspan Neon** — 5 rating tónů (výbojky) + per-kind hue pro moduly + amber chrome pro UI. Původní `style-guide.html` (Hull & Amber) = archiv.
+
+**Moduly (S35+):** ShipRender procedurální (`ui/ship_render.ts`) + Tabler SVG ikony (MIT) v `public/assets/icons/`. PNG zdroje v `art/modules/` jsou archiv pro případ návratu k raster pipeline.
 
 ## Struktura
 
@@ -15,14 +17,14 @@ art/
 └── sprites/     # asteroid, ostatní world sprites
 ```
 
-Kategorie zrcadlí `apps/client/public/assets/` (shipped). Moduly v `MODULE_DEFS` v `apps/client/src/game/model.ts` odkazují na soubor přes `asset` pole.
+Kategorie zrcadlí `apps/client/public/assets/` (shipped). `MODULE_DEFS.asset` pole retirováno v S36 (procedural render); moduly se v runtime neregistrují jako PNG, pouze Tabler SVG glyphy.
 
 ## Konvence
 
 - **Rozlišení:** 40×40 px native (tablet primary, baseline 1280×720).
 - **Formát:** PNG, 32-bit RGBA.
 - **Chroma key:** **magenta `#ff00ff`** v source PNG je vždy průhledná. Pipeline ji převede na `alpha=0`. Magenta se NIKDY nesmí objevit v samotném obsahu.
-- **Naming:** `<kind>.png` v lowercase snake_case. Pro moduly musí odpovídat `MODULE_DEFS[kind].asset` v `apps/client/src/game/model.ts`.
+- **Naming:** `<kind>.png` v lowercase snake_case. Moduly už nepoužívají PNG (S35+, ShipRender procedural).
 - **Templates / scratch:** soubory se **prefixem `_`** (např. `_template.png`) build skript ignoruje.
 
 ## Pipeline: source → ship
@@ -37,7 +39,7 @@ Po buildu: **Ctrl+Shift+R** v prohlížeči (kvůli PNG cache).
 
 ## Palette compliance — `pnpm recolor:art`
 
-Každý source PNG musí používat pouze barvy z **Voidspan 16** (viz style-guide §1). Pokud asset vznikl v editoru bez palette swatcheru (nebo předchází definici palety), snapni ho na nejbližší paletu:
+Každý source PNG musí používat pouze barvy z **Voidspan Neon** (viz `palette-preview.html`). Pokud asset vznikl v editoru bez palette swatcheru (nebo předchází definici palety), snapni ho na nejbližší paletu:
 
 ```bash
 pnpm recolor:art -- -SrcPath art/<kat>/<name>.png -DstPath art/<kat>/<name>.png

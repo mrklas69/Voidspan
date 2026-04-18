@@ -185,10 +185,8 @@ export class ModulesPanel extends FloatingPanel {
 
     this.scene.input.on("wheel", (pointer: Phaser.Input.Pointer, _objs: Phaser.GameObjects.GameObject[], _dx: number, dy: number) => {
       if (!this.isOpen() || this.maxScroll <= 0) return;
-      const pos = this.computePosition();
-      if (pointer.x >= pos.x && pointer.x <= pos.x + this.panelW && pointer.y >= pos.y && pointer.y <= pos.y + this.panelH) {
-        this.setScroll(this.scrollOffset + (dy > 0 ? SCROLL_STEP : -SCROLL_STEP));
-      }
+      if (!this.isPointerInBounds(pointer)) return;
+      this.setScroll(this.scrollOffset + (dy > 0 ? SCROLL_STEP : -SCROLL_STEP));
     });
 
     this.scene.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {

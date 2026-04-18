@@ -13,6 +13,7 @@ import { productionTick } from "./production";
 import { recomputeStatus } from "./status";
 import { advanceFlowDay } from "./flow";
 import { scheduledEvents } from "./scheduled";
+import { collapseTick } from "./collapse";
 
 // === Re-exporty pro stávající konzumenty (UI, testy) ===
 
@@ -58,6 +59,7 @@ export {
 //                            R2: HP drain probuzených + HOMELESS logika
 //   7) productionTick      — SolarArray → E, software draw, drone charge
 //   8) arrivalsTick        — kapsle na orbitu, Network Arc signály (R2)
+//   6b) collapseTick       — terminal epitaph (all actors dead → 1× SYST:CRIT)
 //   9) scheduledEvents     — scripted events bank (asteroid hit, SCENARIO §5)
 //  10) recomputeStatus     — agregace Status tree (I–IV) pro Observer UI
 //  11) advanceFlowDay      — rotace rolling-window KPI bufferu (S26)
@@ -78,6 +80,7 @@ export function stepWorld(w: World): void {
   progressTasks(w);       // slot 5
   cleanupOldTasks(w);     // slot 5b (S24)
   actorLifeTick(w);       // slot 6 — S30 cryo failure
+  collapseTick(w);        // slot 6b — terminal epitaph (one-shot)
   productionTick(w);      // slot 7
   arrivalsTick(w);        // slot 8 — stub (R2 kapsle)
   scheduledEvents(w);     // slot 9 — S30 asteroid

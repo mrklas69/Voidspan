@@ -5,6 +5,7 @@ import { TASK_DEFS } from "../model";
 import { TICKS_PER_GAME_DAY, WD_PER_HP, TASK_AUTOCLEAN_TICKS } from "../tuning";
 import { appendEvent } from "../events";
 import { getTaskRecipe, whichResourceMissing, consumeResources } from "./recipe";
+import { taskActionCs } from "./format";
 
 // Najde „živý" task pro daný modul — pending/active/paused. completed/failed/
 // eternal ignoruje. Jediný hit (v praxi na modulu běží max jeden stavební task
@@ -23,6 +24,13 @@ export function findActiveTaskForModule(tasks: Task[], moduleId: string): Task |
 // „má pulsovat outline?".
 export function isConstructionTask(task: Task): boolean {
   return task.kind === "repair" || task.kind === "build" || task.kind === "demolish";
+}
+
+// Event loc pro task — preferuj moduleId, fallback na bay-index tag. Sdílí
+// CMPL / TASK:{START|PAUSE|RESUME} / ASSN, aby byl [Kdy, Kde] header eventu
+// konzistentně vyplněn pokud je lokace zřejmá (axiom „event = věta kdo/co/kdy/kde").
+export function taskLoc(task: Task): string | undefined {
+  return task.target.moduleId ?? (task.target.bayIdx !== undefined ? `bay${task.target.bayIdx}` : undefined);
 }
 
 // Enqueue repair task na daný bay. Cíl = modul pod bayem (po S28 jediná vrstva s HP).
@@ -67,7 +75,7 @@ export function assignIdleActors(w: World): void {
     actor.taskId = task.id;
     task.assigned.push(actor.id);
     if (task.status === "pending") task.status = "active";
-    appendEvent(w, "ASSN", { actor: actor.id, item: task.kind, target: task.id, text: `${actor.id} přiřazen k ${task.kind} (${task.id})` });
+    appendEvent(w, "ASSN", { actor: actor.id, loc: taskLoc(task), item: task.kind, target: task.id, text: actor.id });
   }
 }
 
@@ -141,8 +149,7 @@ function completeTask(w: World, task: Task): void {
     if (mod) mod.hp = mod.hp_max;
   }
 
-  const loc = task.target.moduleId ?? (task.target.bayIdx !== undefined ? `bay${task.target.bayIdx}` : undefined);
-  appendEvent(w, "CMPL", { csq: "OK", loc, item: task.kind, text: `${task.kind} ${task.id} dokončen` });
+  appendEvent(w, "CMPL", { csq: "OK", loc: taskLoc(task), item: task.kind, text: taskActionCs(task) });
 
   for (const aid of task.assigned) {
     const a = w.actors.find((x) => x.id === aid);

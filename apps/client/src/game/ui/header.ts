@@ -4,8 +4,9 @@
 
 import Phaser from "phaser";
 import pkg from "../../../package.json";
-import type { World } from "../model";
+import type { World, TimeSpeed } from "../model";
 import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "../model";
+import { SpeedPopover } from "./speed_popover";
 import { formatResource, formatScalar } from "../format";
 import { formatGameTime, computeWork, averageFlow, currentDayRate, formatEta } from "../world";
 import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "../tuning";
@@ -32,15 +33,23 @@ export class HeaderPanel {
   private appText: Phaser.GameObjects.Text;
   private metaText: Phaser.GameObjects.Text;
   private resourceTexts: Phaser.GameObjects.Text[] = [];
+  private speedPopover: SpeedPopover;
 
   constructor(
     scene: Phaser.Scene,
     private getWorld: () => World,
+    setTimeSpeed: (s: TimeSpeed) => void,
   ) {
     const baseStyle = {
       fontFamily: FONT_FAMILY,
       fontSize: FONT_SIZE_CHROME,
     };
+
+    this.speedPopover = new SpeedPopover(
+      scene,
+      () => this.getWorld().timeSpeed,
+      setTimeSpeed,
+    );
 
     // Top Bar: ⊙ ikona (Graphics, nezávislá na fontu) + AppName + meta + 5 resource bars.
     // Pozice se dopočítávají v render() — celý blok je horizontálně vycentrovaný.
@@ -52,6 +61,15 @@ export class HeaderPanel {
     this.metaText = scene.add.text(0, HUD_ROW_Y, "", {
       ...baseStyle,
       color: COL_TEXT_ACCENT,
+    });
+    // Meta text je klikací — otevírá SpeedPopover. Popover je ukotven
+    // horizontálně na střed metaTextu, vertikálně pod něj (y + height + 4).
+    this.metaText.setInteractive({ useHandCursor: true });
+    this.metaText.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      pointer.event?.stopPropagation();
+      const anchorX = this.metaText.x + this.metaText.width / 2;
+      const anchorY = this.metaText.y + this.metaText.height + 4;
+      this.speedPopover.toggle(anchorX, anchorY);
     });
 
     // 5× resource Text — za meta, pozice dopočítaná v render().
@@ -336,6 +354,10 @@ export class HeaderPanel {
     };
   }
 
+  // Speed popover accessors — pro ESC chain v GameScene.
+  isSpeedPopoverOpen(): boolean { return this.speedPopover.isOpen(); }
+  closeSpeedPopover(): void { this.speedPopover.close(); }
+
   render(): void {
     const w = this.getWorld();
     const time = formatGameTime(w.tick);
@@ -343,8 +365,10 @@ export class HeaderPanel {
     // --- 1) Nejdřív nastavit texty, aby měřené šířky odpovídaly aktuálnímu obsahu ---
     // Brand ikona je Graphics, kreslí se jen jednou v constructoru — žádný setText.
     this.appText.setText("VOIDSPAN");
+    // Suffix ×N jen když > 1 — ×1 je default stav, chrome noise.
+    const speedSuffix = w.timeSpeed > 1 ? ` ×${w.timeSpeed}` : "";
     this.metaText.setText(
-      `v${pkg.version} Teegarden.Belt1.Seg042 ${time}`,
+      `v${pkg.version} Teegarden.Belt1.Seg042 ${time}${speedSuffix}`,
     );
 
     // Resource bary — Energy skalár + Work derivovaný + Solids/Fluids/Coin z modelu.

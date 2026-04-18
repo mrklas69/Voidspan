@@ -61,7 +61,7 @@ function triggerAsteroidHit(w: World): void {
     loc: mod.id,
     item: mod.kind,
     amount: Math.round(damage),
-    text: `Asteroid zasáhl ${mod.kind} — ztráta ${pctLost} % HP (zbývá ${pctNow} %)`,
+    text: `Asteroid −${pctLost} % HP (zbývá ${pctNow} %)`,
   });
   void hpBefore; // dostupné pro budoucí trajectory (Before/After)
 }

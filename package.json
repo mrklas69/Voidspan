@@ -1,6 +1,6 @@
 {
   "name": "voidspan",
-  "version": "0.9",
+  "version": "1.0",
   "private": true,
   "description": "Voidspan — text strategy / colony sim (FVP Observer Edition)",
   "scripts": {

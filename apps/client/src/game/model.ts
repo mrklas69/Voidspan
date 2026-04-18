@@ -288,8 +288,16 @@ export type FlowHistory = {
 
 // === Root state ===
 
+// Uživatelsky nastavitelný násobek rychlosti herního času. 1× = wall time,
+// 10× / 100× / 1000× zrychluje počet ticks per frame úměrně. 1000× = ~4000
+// ticks/s wall, 1 asteroid ~36 s wall (z 1/144_000 per tick). Pozor na
+// framerate — stepWorld logic nemusí stíhat při 1000× na slabších strojích.
+// In-memory only, reload resetuje na 1×. Nastavuje se klikem na čas v Top Baru.
+export type TimeSpeed = 1 | 10 | 100 | 1000;
+
 export type World = {
   tick: number;
+  timeSpeed: TimeSpeed;
   phase: Phase;
   resources: {
     energy: number;
@@ -310,6 +318,10 @@ export type World = {
   // Instalované SW runtime (QuarterMaster v2.3 + budoucí kolegové). Každý má
   // příkon a běží-li, odčerpává E. Source of truth pro verze SW kolonie.
   software: Record<string, Software>;
+  // One-shot flag — po emit finálního „Kolonie ztracena" epitafu nastaveno
+  // true, aby se událost neopakovala. Simulace jede dál (Observer axiom),
+  // ale epitaph má smysl jen jednou — puncuje narrative arc.
+  collapseEmitted: boolean;
 };
 
 // ============================================================================

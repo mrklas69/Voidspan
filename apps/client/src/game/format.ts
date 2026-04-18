@@ -65,7 +65,8 @@ export function formatResource(current: number, max: number, unit: string): stri
 // ASCII progress bar pro task queue. `width` = celkový počet znaků.
 // Příklad: renderBar(50, 10) → "█████░░░░░"
 // Čistá funkce bez Phaser závislostí — testovatelná solo.
+// Clamp na [0, width] — bezpečné pro overflow pct (<0 nebo >100).
 export function renderBar(pct: number, width: number): string {
-  const filled = Math.round((pct / 100) * width);
+  const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
   return "█".repeat(filled) + "░".repeat(width - filled);
 }

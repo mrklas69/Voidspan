@@ -14,7 +14,7 @@ export function decayTick(w: World): void {
     mod.hp = Math.max(0, mod.hp - drain);
     if (mod.hp <= 0 && mod.status === "online") {
       mod.status = "offline";
-      appendEvent(w, "DECY", { csq: "CRIT", loc: mod.id, item: mod.kind, text: `${mod.kind} zničen rozpadem` });
+      appendEvent(w, "DECY", { csq: "CRIT", loc: mod.id, item: mod.kind, text: "zničeno" });
     }
   }
 }

@@ -110,6 +110,7 @@ export function createInitialWorld(): World {
 
   const world: World = {
     tick: 0,
+    timeSpeed: 1,
     phase: "running",
     resources: {
       energy: ENERGY_SEED,
@@ -149,6 +150,7 @@ export function createInitialWorld(): World {
         status: "running",
       },
     },
+    collapseEmitted: false,
   };
 
   world.energyMax = computeEnergyMax(world);

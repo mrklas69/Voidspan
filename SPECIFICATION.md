@@ -5,9 +5,9 @@
 Cílem tohoto dokumentu je poskytnout **úplný a sebe-nosný zdroj** pro programování, nasazení a rozvoj aplikace. Kompletní validovaný dokument **ukončí přípravnou fázi** projektu.
 
 **Verze:** v0.2 (2026-04-13, snapshot po sezení 14) — **nekompletní, viz sekci 10 a 11**.
-**Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (FVP Observer Edition v0.9)**</span>
+**Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (FVP Observer Edition)**</span>
 
-**Poznámka k aktuálnosti (2026-04-18):** Dokument nebyl aktualizován od S14. Od té doby proběhl pivot z P1 single-player puzzle na **Perpetual Observer Simulation** (S20), retire Slab/Flux/Kredo → Solids/Fluids/Coin (S25), retire food/air/water subtypů (S25 KISS), retire `POC_P1.md` (S32). Pro **aktuální** stav kánonu viz `MINDMAP.md` (v4.0), `GLOSSARY.md` (v1.4) a `IDEAS.md`. Tato SPECIFICATION se dostane do v0.3 po konsolidaci FVP.
+**Poznámka k aktuálnosti (2026-04-19):** Dokument nebyl aktualizován od S14. Od té doby: pivot z P1 single-player puzzle na **Perpetual Observer Simulation** (S20), Slab/Flux/Kredo → Solids/Fluids/Coin (S25), food/air/water subtypů retire (S25 KISS), `POC_P1.md` retire (S32), Hull & Amber → **Neon paleta** (S35), SegmentPanel PNG pipeline → **ShipRender procedural + Tabler SVG** (S35–S36), **cestovní layout** (S36, 4 void na čele), **Time speed × Event system redesign × Collapse epitaph** (S37). **Aktuální stav kánonu:** `MINDMAP.md` (v4.4+), `GLOSSARY.md`, `IDEAS.md`. SPECIFICATION se dostane do v0.3 po P2+ konsolidaci (po Player Awakening Edition).
 
 **Changelog v0.1 → v0.2:** Uzavřeno 12 otázek napříč S5–S13 (Q-World-1, Q-P1-*, Q11, Q12, Q13, Q-Player-Schema). E1 (SCENARIO paralelní struktura) vyřešeno v S14. W3 (Resource Model v GLOSSARY/SCENARIO) vyřešeno v S13 sweep. §4.5 Zdroje aktualizováno na Resource Model v0.1 (E/W/S/F/◎).
 

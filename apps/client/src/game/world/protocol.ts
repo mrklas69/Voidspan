@@ -16,8 +16,8 @@ import { statusRating } from "../model";
 import { PROTOCOL_VERSION, PROTOCOL_PAUSE_RATING, PROTOCOL_RESUME_RATING } from "../tuning";
 import { appendEvent } from "../events";
 import { firstMissingRecipeCategory } from "./recipe";
-import { taskActionCs, describeTaskTarget } from "./format";
-import { enqueueRepairTask } from "./task";
+import { taskActionCs } from "./format";
+import { enqueueRepairTask, taskLoc } from "./task";
 
 export function protocolTick(w: World): void {
   const qm = w.software.quartermaster;
@@ -62,9 +62,10 @@ export function protocolTick(w: World): void {
         t.assigned = [];
         appendEvent(w, "TASK", {
           csq: "PAUSE",
+          loc: taskLoc(t),
           target: t.id,
           item: t.kind,
-          text: `Pozastaveno: ${taskActionCs(t)} ${describeTaskTarget(w, t)} — ${reason}`,
+          text: `${taskActionCs(t)} — ${reason}`,
         });
       }
     }
@@ -76,17 +77,19 @@ export function protocolTick(w: World): void {
         t.status = "active";
         appendEvent(w, "TASK", {
           csq: "RESUME",
+          loc: taskLoc(t),
           target: t.id,
           item: t.kind,
-          text: `Obnoveno: ${taskActionCs(t)} ${describeTaskTarget(w, t)}`,
+          text: taskActionCs(t),
         });
       } else if (t.status === "pending") {
         t.status = "active";
         appendEvent(w, "TASK", {
           csq: "START",
+          loc: taskLoc(t),
           target: t.id,
           item: t.kind,
-          text: `Zahájeno: ${taskActionCs(t)} ${describeTaskTarget(w, t)}`,
+          text: taskActionCs(t),
         });
       }
     }
@@ -104,9 +107,10 @@ export function protocolTick(w: World): void {
             last.status = "active";
             appendEvent(w, "TASK", {
               csq: "START",
+              loc: taskLoc(last),
               target: last.id,
               item: last.kind,
-              text: `Zahájeno: ${taskActionCs(last)} ${describeTaskTarget(w, last)}`,
+              text: taskActionCs(last),
             });
           }
         }

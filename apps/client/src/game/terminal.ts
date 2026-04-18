@@ -65,6 +65,7 @@ export function buildTerminalBody(w: World): string {
   const S = Math.round(w.resources.solids);
   const F = Math.round(w.resources.fluids);
   return (
+    `Voidspan v1.0 Observer Edition\n` +
     `BOOT... QuarterMaster v2.3 online\n` +
     `pozorovatel read-only (${OBSERVER_ID})\n` +
     `2387-04-16.12:14 Dokončení establish [OK]\n` +

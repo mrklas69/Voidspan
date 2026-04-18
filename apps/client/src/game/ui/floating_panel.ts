@@ -158,6 +158,15 @@ export abstract class FloatingPanel {
   // scroll startuje zde v I/M/E). Default no-op.
   protected onBgPointerDown(_p: Phaser.Input.Pointer): void { /* override */ }
 
+  // Bounds check pro scene-level listeners (wheel, pointermove). I/M/E scroll
+  // handlery poslouchají celou scénu a musí si samy filtrovat eventy mimo
+  // vlastní panel. Počítá z computePosition() — vždy v sync s relayoutem.
+  protected isPointerInBounds(pointer: Phaser.Input.Pointer): boolean {
+    const { x, y } = this.computePosition();
+    return pointer.x >= x && pointer.x <= x + this.panelW
+        && pointer.y >= y && pointer.y <= y + this.panelH;
+  }
+
   // Volitelné hooky pro otevření/zavření (např. reset scroll, sync seenVerbs).
   protected onOpen(): void { /* override */ }
   protected onClose(): void { /* override */ }

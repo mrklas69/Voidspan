@@ -42,12 +42,30 @@ const CRIT_VERBS: Set<EventVerb> = new Set(["DEAD"]);
 const WARN_VERBS: Set<EventVerb> = new Set(["DECY"]);
 const CRIT_OR_WARN_VERBS: Set<EventVerb> = new Set(["DMG", "DRN"]);
 const POS_ON_OK: Set<EventVerb> = new Set(["CMPL"]);
+// SYST:CRIT = terminal collapse (jednou emitovaný epitaph).
+const CRIT_ON_CRIT: Set<EventVerb> = new Set(["SYST"]);
+
+// === Event icon (csq-aware) ===
+//
+// Axiom „verb = ikona, text = subjekt" — ikona nese akční sémantiku
+// (zahájeno/pauza/dokončeno), text drží jen subjekt (oprava/col_03/...).
+// Tím se eliminuje redundance typu „OK Dokončena oprava" → „OK oprava".
+// TASK event má csq-specifickou ikonu; ostatní verby čtou VERB_CATALOG.
+export function eventIcon(ev: Event): string {
+  if (ev.verb === "TASK") {
+    if (ev.csq === "PAUSE") return "||";
+    if (ev.csq === "START" || ev.csq === "RESUME") return ">";
+    // FAIL + unknown → default TASK icon
+  }
+  return VERB_CATALOG[ev.verb].icon;
+}
 
 export function severity(verb: EventVerb, csq?: EventCsq): EventSeverity {
   if (CRIT_VERBS.has(verb)) return "crit";
   if (CRIT_OR_WARN_VERBS.has(verb)) {
     return csq === "CRIT" ? "crit" : "warn";
   }
+  if (CRIT_ON_CRIT.has(verb) && csq === "CRIT") return "crit";
   if (WARN_VERBS.has(verb)) return "warn";
   if (POS_ON_OK.has(verb) && csq === "OK") return "pos";
   // S24 TASK: START/RESUME = pos, PAUSE = warn, FAIL = crit.

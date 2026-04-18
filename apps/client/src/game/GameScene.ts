@@ -112,7 +112,9 @@ export class GameScene extends Phaser.Scene {
 
     // --- Panely ---
     const getWorld = () => this.world;
-    this.header = new HeaderPanel(this, getWorld);
+    this.header = new HeaderPanel(this, getWorld, (s) => {
+      this.world.timeSpeed = s;
+    });
     this.segment = new ShipRender(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
@@ -155,6 +157,7 @@ export class GameScene extends Phaser.Scene {
   // handler řídí vše.
   private handleEscape(): void {
     if (this.modal.isOpen()) { this.modal.closeFromEsc(); return; }
+    if (this.header.isSpeedPopoverOpen()) { this.header.closeSpeedPopover(); return; }
     if (this.modulesPanel.isOpen()) { this.modulesPanel.close(); return; }
     if (this.infoPanel.isOpen()) { this.infoPanel.close(); return; }
     if (this.taskQueue.isOpen()) { this.taskQueue.close(); return; }
@@ -208,7 +211,13 @@ export class GameScene extends Phaser.Scene {
         "\n" +
         "Kolonie běží bez tebe.\n" +
         "Nemusíš nic řešit. Pozoruj,\n" +
-        "jak autopilot drží systém naživu.",
+        "jak autopilot drží systém\n" +
+        "naživu do úplného vyčerpání\n" +
+        "zdrojů.\n" +
+        "\n" +
+        "Klik na čas v Top Baru\n" +
+        "zrychlí simulaci: ×1 / ×10 /\n" +
+        "×100 / ×1000.",
     });
   }
 
@@ -326,7 +335,9 @@ export class GameScene extends Phaser.Scene {
   // === Tick loop + render ==================================================
 
   override update(_time: number, delta: number): void {
-    this.accumulator += delta;
+    // Time speed — násobí efektivní rychlost akumulátoru. 1× = wall time,
+    // 10× = 10 ticků/frame, 100× = 100 ticků/frame (autopilot zrychlený).
+    this.accumulator += delta * this.world.timeSpeed;
     while (this.accumulator >= TICK_MS) {
       stepWorld(this.world);
       this.accumulator -= TICK_MS;

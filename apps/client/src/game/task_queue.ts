@@ -6,6 +6,7 @@
 import Phaser from "phaser";
 import type { World, Task, TaskStatus } from "./model";
 import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./world";
+import { renderBar } from "./format";
 import type { TooltipManager } from "./tooltip";
 import {
   UI_TEXT_PRIMARY,
@@ -13,10 +14,10 @@ import {
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
   HEX_ALERT_RED,
-  HEX_WARN_ORANGE,
   HEX_WARN_AMBER,
   HEX_OK_GREEN,
   HEX_INFO_BLUE,
+  HEX_COOLANT_CYAN,
 } from "./palette";
 import {
   PANEL_PADDING as PADDING,
@@ -28,25 +29,23 @@ import { FloatingPanel } from "./ui/floating_panel";
 const ROW_H = 20;
 
 // S24 status → barva (5-color semafor, viz GLOSSARY).
+// Cyan pro `active` (ne oranžová) — úmyslně mimo HP rating paletu (red/orange/amber/lime/green),
+// aby task fáze nebyla čtena jako "varování". Cyan sdílí kanonický tón s Fluids/Coolant, tady
+// v task kontextu znamená "probíhá bez problému". Paused zůstává amber (krátkodobá anomálie =
+// akceptovatelný zvuk rating palety).
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  eternal:   HEX_INFO_BLUE,    // modrá = věčný service task
-  active:    HEX_WARN_ORANGE,  // oranžová = probíhá
-  paused:    HEX_WARN_AMBER,   // žlutá = pozastaveno
-  pending:   UI_TEXT_DIM,      // neutral amber = čeká
-  completed: HEX_OK_GREEN,     // zelená = dokončeno
-  failed:    HEX_ALERT_RED,    // červená = neproveditelné
+  eternal:   HEX_INFO_BLUE,     // modrá = věčný service task
+  active:    HEX_COOLANT_CYAN,  // cyan = probíhá (mimo rating paletu)
+  paused:    HEX_WARN_AMBER,    // žlutá = pozastaveno
+  pending:   UI_TEXT_DIM,       // neutral amber = čeká
+  completed: HEX_OK_GREEN,      // zelená = dokončeno
+  failed:    HEX_ALERT_RED,     // červená = neproveditelné
 };
 
 // Řazení sekcí — eternal nahoře (monitor), aktivní, pozastavené, čekající, uzavřené.
 const SECTION_ORDER: TaskStatus[] = [
   "eternal", "active", "paused", "pending", "completed", "failed",
 ];
-
-// Progress bar 10 znaků: ███░░░░░░░ (S24 — block full/empty, bez závorek).
-function progressBar(pct: number, width = 10): string {
-  const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
-  return `${"█".repeat(filled)}${"░".repeat(width - filled)}`;
-}
 
 // Split řádku na 2 části (S29): lead (čas + název) se ellipsizuje zleva,
 // suffix (bar + pct + eta / OK / FAILED) je right-aligned a drží plnou šířku.
@@ -68,7 +67,7 @@ function formatTaskSuffix(w: World, task: Task): string {
 
   // pending / active / paused — progres + ETA.
   const pct = task.wd_total > 0 ? Math.min(100, (task.wd_done / task.wd_total) * 100) : 0;
-  const bar = progressBar(pct);
+  const bar = renderBar(pct, 10);
   const pctStr = `${Math.round(pct)}%`.padStart(4, " ");
   let eta = "";
   if (task.status === "active") {

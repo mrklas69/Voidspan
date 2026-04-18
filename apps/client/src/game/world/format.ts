@@ -68,14 +68,17 @@ export function describeTaskTarget(w: World, task: Task): string {
   return task.id;
 }
 
-// S24: český infinitiv slovesa pro task kind — do event textu.
-const TASK_VERB_CS: Record<string, string> = {
-  repair: "Opravit",
-  demolish: "Demolovat",
-  build: "Postavit",
-  service: "Sledovat",
+// Substantivum ženského rodu — gramatickou shodu s gender-flexibilními
+// prefixy (Zahájena/Pozastavena/Obnovena/Dokončena {noun}), všechny varianty
+// v FVP (oprava/stavba/demolice) jsou ženské. Lokace (moduleId) je v [Kde]
+// hlavičce eventu, text se neopakuje.
+const TASK_NOUN_CS: Record<string, string> = {
+  repair: "oprava",
+  demolish: "demolice",
+  build: "stavba",
+  service: "sledování",
 };
 
 export function taskActionCs(task: Task): string {
-  return TASK_VERB_CS[task.kind] ?? task.kind;
+  return TASK_NOUN_CS[task.kind] ?? task.kind;
 }

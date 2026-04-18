@@ -408,3 +408,45 @@ describe("Flow history (S26)", () => {
   });
 });
 
+// === Collapse epitaph (all dead → 1× SYST:CRIT) ===
+
+describe("collapseTick — terminal epitaph", () => {
+  it("neemituje, dokud někdo žije", () => {
+    const w = createInitialWorld();
+    // Startovní stav — všichni kolonisté v cryo (state !== "dead").
+    const before = w.events.length;
+    stepWorld(w);
+    const systCollapse = w.events.filter(
+      (e) => e.verb === "SYST" && e.csq === "CRIT",
+    );
+    expect(systCollapse.length).toBe(0);
+    expect(w.events.length).toBeGreaterThanOrEqual(before); // jen pro sanity
+    expect(w.collapseEmitted).toBe(false);
+  });
+
+  it("když všichni aktéři zemřou, emituje právě 1× SYST:CRIT epitaph", () => {
+    const w = createInitialWorld();
+    for (const a of w.actors) a.state = "dead";
+    stepWorld(w);
+    const systCollapse = w.events.filter(
+      (e) => e.verb === "SYST" && e.csq === "CRIT",
+    );
+    expect(systCollapse.length).toBe(1);
+    expect(w.collapseEmitted).toBe(true);
+    expect(systCollapse[0]!.amount).toBe(w.actors.length);
+    expect(systCollapse[0]!.text).toContain("Kolonie ztracena");
+  });
+
+  it("druhý tick po collapse už epitaph neopakuje (one-shot)", () => {
+    const w = createInitialWorld();
+    for (const a of w.actors) a.state = "dead";
+    stepWorld(w);
+    stepWorld(w);
+    stepWorld(w);
+    const systCollapse = w.events.filter(
+      (e) => e.verb === "SYST" && e.csq === "CRIT",
+    );
+    expect(systCollapse.length).toBe(1);
+  });
+});
+

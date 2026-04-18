@@ -1,7 +1,7 @@
 # Voidspan — FVP Observer Edition
 Playtest guide — co sledovat, co řešit, co říct autorovi.
 
-Verze: **v0.9** · 2026-04-17
+Verze: **v1.0** · 2026-04-19 — **Observer Edition release**
 
 ---
 
@@ -24,6 +24,11 @@ V tomto vydání jsi **pozorovatel**. Nezasahuješ. Aktivní režim (probuzení 
 5. **Panel Události** [E] (vpravo nahoře) — živá kronika. `SYST` = systémová hláška, `DECY` = rozpad, `DMG` = poškození, `DRN` = nedostatek zdroje, `SIGN` = změna stavu, `ASSN` = přiřazení, `TASK` = lifecycle úkolu, `CMPL` = dokončení, `DEAD` = úmrtí.
 6. **Panel Úkoly** [T] (vpravo dole) — fronta QuarterMastera, který tasky právě běží a proč.
 7. **Query terminál** [Q] — komunikační rozhraní QuarterMastera (otevře se při prvním startu, pak kdykoli stiskem Q).
+8. **Nápověda** [H] — přehled ovládání a tipů (klávesnice + myš/dotyk).
+
+## Rychlost času
+
+Klik na herní čas v horním pruhu otevře popover se 3 volbami: **×10 / ×100 / ×1000**. Defaultně běží reálný čas (×1, bez označení). Zrychlení ti dá šanci dočkat se **úplného vyčerpání zdrojů** — kolonie po pár minutách wall-time vymře, simulace pokračuje jako prázdná loď v prostoru. Klávesová zkratka pro mobilní zařízení neexistuje — ovládání je dotykové.
 
 ## Hrej se svou pozorností
 

@@ -5,7 +5,7 @@
 import Phaser from "phaser";
 import type { World, Event, EventVerb, EventSeverity } from "./model";
 import { statusRating } from "./model";
-import { VERB_CATALOG } from "./events";
+import { eventIcon } from "./events";
 import { formatGameTimeShort } from "./world";
 import type { TooltipManager } from "./tooltip";
 import {
@@ -76,21 +76,23 @@ const SEVERITY_COLOR: Record<EventSeverity, string> = {
   neutral: UI_TEXT_DIM,
 };
 
-// Formát: [KDY, KDE] ICON TEXT — lidská věta (axiom S22).
+// Formát: [KDY, KDE] ICON TEXT — lidská věta.
+// Ikona drží verb-sémantiku (start/pauza/dokončeno/...), text drží jen
+// subjekt (oprava/col_03/...). Žádné opakování verba v textu.
 // Fallback na strukturovaný formát pokud text chybí.
 function formatEventRow(ev: Event): string {
   const time = formatGameTimeShort(ev.tick);
   const spacetime = ev.loc ? `[${time}, ${ev.loc}]` : `[${time}]`;
-  const entry = VERB_CATALOG[ev.verb];
+  const icon = eventIcon(ev);
 
   if (ev.text) {
-    return `${spacetime} ${entry.icon} ${ev.text}`;
+    return `${spacetime} ${icon} ${ev.text}`;
   }
 
   // Fallback — strukturovaný formát pro eventy bez text pole.
   const csqTag = ev.csq ? `:${ev.csq}` : "";
   const actor = ev.actor ?? "";
-  const verb = `${entry.icon} ${ev.verb}${csqTag}`;
+  const verb = `${icon} ${ev.verb}${csqTag}`;
   const amount = ev.amount != null ? `${ev.amount}` : "";
   const item = ev.item ?? "";
   const target = ev.target ? `> ${ev.target}` : "";
@@ -108,7 +110,6 @@ export class EventLogPanel extends FloatingPanel {
   // Scroll state — row-based (ne pixel), rozdíl oproti InfoPanel/ModulesPanel.
   private scrollOffset = 0;
   private autoScroll = true;
-  private lastRenderedCount = -1;
 
   // Lazy filter chips — tracked verbs + per-verb on/off map + rendered chip Texts.
   private seenVerbs = new Set<EventVerb>();
@@ -177,11 +178,14 @@ export class EventLogPanel extends FloatingPanel {
       .setVisible(false);
     this.container.add(this.scrollThumb);
 
-    // Scroll — mouse wheel on bg.
-    this.bg.on("wheel", (_p: Phaser.Input.Pointer, _dx: number, _dy: number, dz: number) => {
+    // Wheel scroll — scene-level + bounds check na panel (izomorfismus s I/M).
+    // Původní `this.bg.on("wheel", ...)` bylo fragile — pokud pointer stál nad
+    // scrollbarem/thumb/row Text, wheel se nedostal na bg.
+    this.scene.input.on("wheel", (pointer: Phaser.Input.Pointer, _objs: Phaser.GameObjects.GameObject[], _dx: number, dy: number) => {
+      if (!this.isOpen() || !this.isPointerInBounds(pointer)) return;
       const total = this.getFilteredEvents().length;
       const maxOffset = Math.max(0, total - this.maxVisible);
-      if (dz > 0) {
+      if (dy > 0) {
         this.scrollOffset = Math.min(maxOffset, this.scrollOffset + 3);
         if (this.scrollOffset >= maxOffset) this.autoScroll = true;
       } else {
@@ -219,7 +223,6 @@ export class EventLogPanel extends FloatingPanel {
 
   protected override onOpen(): void {
     this.autoScroll = true;
-    this.lastRenderedCount = -1; // force re-render
     this.touchDragY = null;
     // Synchronně dopočti history do seenVerbs + vytvoř chipy — bez 1-frame delay.
     this.syncSeenVerbs();
@@ -251,11 +254,13 @@ export class EventLogPanel extends FloatingPanel {
   // Rendering hook — override z FloatingPanel.
   protected renderBody(): void {
     const events = this.getWorld().events;
-    if (events.length !== this.lastRenderedCount) {
-      this.lastRenderedCount = events.length;
-      for (const ev of events) this.seenVerbs.add(ev.verb);
-      this.rebuildChips();
-    }
+    // Ring buffer při nasycení zachovává events.length konstantní (push +
+    // shift), takže length není spolehlivý dirty marker — nový verb (např.
+    // první DMG po asteroidu) se neprojeví v chipech. Re-populate seenVerbs
+    // každý frame (O(500) Set.add = μs); rebuildChips interně gate-uje přes
+    // seenVerbs.size diff, takže reálná DOM práce se děje jen při změně.
+    for (const ev of events) this.seenVerbs.add(ev.verb);
+    this.rebuildChips();
 
     const filteredLen = this.getFilteredEvents().length;
     if (this.autoScroll) {

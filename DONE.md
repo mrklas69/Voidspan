@@ -4,6 +4,21 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 > **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
 
+## 2026-04-19 (Sezení 37 — v1.0 Observer Edition release)
+
+- [x] **v0.9 → v1.0 Observer Edition bump** — `package.json` root + client, `PLAYTEST_GUIDE.md` header, `terminal.ts` QM Terminal první řádek „Voidspan v1.0 Observer Edition".
+- [x] **Time speed control** — `TimeSpeed = 1 | 10 | 100 | 1000`, `World.timeSpeed`, `GameScene.update` násobí accumulator. Nový `SpeedPopover` v Top Baru pod herním časem. Meta text suffix `×N` jen při >1. ESC chain rozšířen.
+- [x] **Event system redesign „verb = ikona, text = subjekt"** — `eventIcon(ev)` csq-aware helper, texty zkráceny (CMPL/ASSN/TASK/DECY/DMG), `TASK_VERB_CS` → `TASK_NOUN_CS` substantiva ženského rodu.
+- [x] **`taskLoc(task)` helper** + `[Kdy, Kde]` konzistence — ASSN + CMPL (task.ts) + TASK:PAUSE/RESUME/START (protocol.ts, 4×).
+- [x] **Collapse epitaph** — `world/collapse.ts` slot 6b, detekce `all actors dead` → one-shot `SYST:CRIT` „Kolonie ztracena. 32 mrtvých. Simulace pokračuje." + 3 unit testy.
+- [x] **EventLog wheel scroll fix** — bg-level `.on("wheel", ..., dz)` četl deltaZ místo deltaY (nikdy nefungovalo); scene-level + bounds check.
+- [x] **EventLog chip ring-buffer fix** — `lastRenderedCount` gate selhával při nasycení 500 events; zrušeno, seenVerbs re-populate every frame.
+- [x] **TaskQueue `active`: orange → cyan** — mimo rating paletu, zabrání vizuální kolize s HP rate-2 warning.
+- [x] **`FloatingPanel.isPointerInBounds(pointer)` extrakce** — 3 konzumenty (EventLog/InfoPanel/ModulesPanel), eliminuje inline bounds duplicitu.
+- [x] **`progressBar` → `renderBar` konsolidace** — task_queue konzumuje format.ts helper (s clampem).
+- [x] **@AUDIT:CODE + @AUDIT:DOCS** — paralelní Explore agenti, dluhy opraveny: art/README.md Neon paleta + procedural moduly; PLAYTEST_GUIDE +[H]elp + Rychlost času; SPECIFICATION header 2026-04-19.
+- [x] **/simplify pass** — bounds helper extrakce (REUSE), 8× S37 version tagů v komentářích smazáno (QUALITY).
+
 ## 2026-04-16 (Sezení 27 — Font glyph fallback fix)
 
 - [x] **Font glyph fallback fix (MINDMAP „Další bagr" #12)** — VT323 latin-subset z Google Fonts nemá geometric/dingbats/exotické arrows → browser fallback rozbíjel baseline. KISS ASCII substituce napříč rendered code.
