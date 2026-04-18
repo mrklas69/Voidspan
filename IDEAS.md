@@ -902,3 +902,113 @@ Původně: rizikový zdroj pouze z forků. **Zrušeno po pivotu.**
 
 ### Paid entry monetizace
 Původně zvažováno (S3): platba za nalodění. **Zrušeno** — free hra, fiktivní účet v pozvánce jen jako narativní rekvizita. Možná buymeacoffee později.
+
+---
+
+## Art pipeline pivot — AI arena brief (S34)
+
+Po S33 pokusu o „painterly modular ship" (pokus 1 tile sheet, pokus 2 per-modul 8 promptů, pokus 3 hull + overlay cesta C) user v S34 integrační test odmítl:
+
+> „Máme zajímavý koncept, ale grafika nezaujme, nevyužívá současné možnosti grafických frameworků. Chci něco efektního, přitom aby LOC grafiky nezabíralo polovinu kódu."
+
+### Diagnóza proč cesty 1-3 selhaly
+
+1. **Retro rip-off.** Chris Foss / Peter Elson painterly styl je 1970s space opera. Vypadá „docela hezky", ale ničím neposouvá Voidspan identitu.
+2. **AI generation roulette.** Modely ignorují footprinty, stíny padají na chroma-key, uniform industrial look napříč všemi moduly. Každý pokus vyžaduje re-generaci, styl drží hlavně náhodou.
+3. **Asset pipeline overhead.** 40×40 native pipeline (`build:assets.ps1`) + hires pipeline (ad-hoc Python) + chroma-key + Pillow dependency + whitelist = velký tech dluh jen pro statický vizuál.
+4. **Nevyužívá framework.** Phaser 3.80 má post-pipeline shadery, Glow FX, particles, tweens — dosud renderujeme PNG sprite s `setScale()` a volíme mezi 40×40 a 2048². Nulová kreativita.
+
+### Nový směr — AI arena soutěž modelů jako herních designérů
+
+Místo generování **jednotlivých assetů** (moduly → jeden po druhém) požádáme AI modely o **celou herní plochu** jako jeden screenshot mockup. Brief = `art/arena_brief.md` (self-contained, copy/paste do areny).
+
+**Požadavky na brief:**
+- 3 zóny: header (metriky) + dolní bar (ovládání) + centrální loď (stavebnice)
+- Modulární stavebnice: dílky 1×1, 1×2, 2×1, 2×2, 1×3, 1×4 na grid 8×2
+- Jasná affordance: build / upgrade / remove
+- **Styl = jen doporučení, ne povinnost** (neon hologram / blueprint / data-viz / cyberpunk / vlastní originál)
+- Anti-vzory: realistická NASA loď, Chris Foss painterly, generic sci-fi UI
+- **Důraz: framework feel** — WebGL shader estetika, ne fotka lodi
+
+**Hodnotící kritéria:**
+- Čitelnost lodi (vidím stavebnici? 8 modulů odlišitelně?)
+- Originalita (ne další klišé)
+- Realizovatelnost v Phaseru bez asset pipeline (LOC ≤500)
+- Konzistence všech 3 zón
+- Affordance pro akce
+
+**Next step po vítězi:** ruční style extraction (2-3 klíčové prvky: paleta + efekt + skladba) + implementační plán. Cesta preference: **procedural** (Phaser.Graphics + shader), ne PNG pipeline.
+
+### Retire (S33 artefakty smazané v S34)
+
+- `art/pokus1.md` — hero tile sheet approach, 5×4 grid, Flux-2-Max selhání
+- `art/prompts/pokus2/` (8 souborů) — per-modul generation, ISS-style tubes vs. compartment-style BELT konflikt
+- `art/prompts/pokus3/hull_tile.md` — hull base tile, vygenerováno ale integrace nevzbudila zájem
+- `scripts/build-assets-hires.py` + `pnpm build:assets:hires` alias — hires pipeline bez downscale, ad-hoc řešení pro painterly PNG
+
+Důvod retiring: git history zachovává obsah (commit S33 @END 2e80df1), ale tyto soubory byly **slepá cesta**. Udržovat je ve working tree vede k pokušení vrátit se k painterly přístupu.
+
+### Style extraction — mix v1 + v2 (user verdict po 2 Gemini iteracích)
+
+User projel 2 kola s Geminim (`art/arena_winners/gemini_1.png` — full hologram dashboard; `gemini_2.png` — zjednodušený blueprint). Hlasoval pro **mix**:
+
+- **Klidový stav = v2 blueprint** — dark navy bg, thin neon outlines, tlumené barvy, čitelné ikony per modul kind. Low LOC, nepřepíná pozornost.
+- **Akční efekty = v1 hologram** — glow outline při select, particle sparks při damage, pulse při build/completion, chromatic glitch při critical event.
+
+**Co z mockupů vzít:**
+
+1. **Paleta per modul kind** (neon outlines):
+   - VELENÍ/CommandPost → zelená
+   - POWER GRID/SolarArray → žlutá/amber
+   - HAB/Habitat → oranžová
+   - SKLAD/Storage → cyan/modrá
+   - LAB/Assembler → magenta/fialová
+   - DOCK → azure
+   - FABRICATOR → amber (same as Solar? TBD)
+   - MOTOR/Engine → cyan bright / teal
+   - MedCore → blue (chybí v mockupech, dotvořit)
+
+2. **Status visualization izomorfismus:**
+   - ONline = zelený outline + solid „ONLINE" label
+   - DAMAGED = yellow dashed outline + zig-zag crack icon
+   - OFFLINE = grey + checkered pattern overlay
+   - staví se = progress bar pod modulem
+   - destroying = reverse progress bar
+
+3. **Modul ikony** — functional glyph (console/lightning/boxes/microscope/arrows), ne realistic render. Realizovatelné přes Phaser.Graphics lineTo() nebo SVG-based sprite.
+
+4. **Void slot = „+" uprostřed dashed border** — clear affordance pro build.
+
+5. **Damage indicator = dashed yellow border + ⚡ icon + optional particle sparks** (blending v1 + v2).
+
+6. **Info panel layout** — header + mini-graph (sparkline HP trend) + issue list + queue counter. Tufte-ish data density, ne decorative.
+
+**Co NEBRAT:**
+
+- Gemini vymyslel moduly mimo náš katalog (SKLAD/LAB/FABRICATOR místo Storage/Assembler/…) — zachovat náš kanon
+- Gemini generoval 1×1 moduly všude — **stavebnice 1×1/1×2/2×2/1×3/1×4 zůstává našim designem, ne Gemini direction**
+- Always-on event timeline strip — E zůstává toggle panel
+- Wireframe globe decor — kosmetika, LOC neplatit
+- Gemini sparkle watermark ✦ (auto)
+
+### Implementation outline (S35+)
+
+Procedurální Phaser render path:
+
+- `ship_render.ts` (nový) — replace `segment.ts` sprite dispatch
+- **Base layer:** Phaser.Graphics per bay — rounded rect outline (8px corner, 2px stroke) v palette color per modul kind
+- **Glow layer:** Phaser.FX.Glow na graphics objekt při `selected` / `damaged` / `completing`
+- **Ikona layer:** per-modul funkční glyph (8 vectorových definic v `module_icons.ts`, každý ~20-40 lineTo() calls)
+- **Status layer:** text label + progress bar (pokud task)
+- **Damage overlay:** Phaser.GameObjects.Particles při `flashUntilTick` (existující), oranžové sparks 2s burst
+- **Void placeholder:** dashed border (Graphics strokeDashedLine helper) + „+" Text
+- **Multi-bay spans:** 1×2 / 2×2 / 1×3 / 1×4 = jeden graphics objekt přes span boundary, label + icon centered
+
+LOC target: ≤500 pro full visual layer retire 40×40 pipeline. `art/` adresář = moodboard + `arena_winners/`, žádné per-entity PNG.
+
+### Otevřené otázky po S34
+
+- **Q1:** Retire `Voidspan 16 Hull & Amber` paleta? Nová paleta = per-modul hue (8 colors) + standardní OK/warn/crit (green/yellow/red). Paleta `_v2.ts` nebo přepsat palette.ts?
+- **Q2:** Stavebnice (1×2, 2×2, 1×3, 1×4) — když Gemini nedodalo, vymyslet které naše moduly budou multi-bay. Návrh: Engine 1×2 (nozzle + reactor), SolarArray 1×3 (panel array), CommandPost 2×2 (hub), MedCore 1×2 (cryo bank). Ostatní 1×1. Zapsat do model.ts jako update w/h.
+- **Q3:** Kdy tahat procedural implementation do kódu? Hned S35 nebo po další iteraci designu (arena kolo 2 se ostatními modely)?
+- **Q4:** Blending v1 glow + v2 blueprint — jak řešit transition (instantní switch při event nebo smooth pulse)?

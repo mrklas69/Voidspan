@@ -28,10 +28,11 @@
       "Bash(xargs:*)",
       "Bash(powershell:*)",
       "Bash(where.exe:*)",
-      "WebFetch(domain:support.forpsi.com)",
-      "WebFetch(domain:www.forpsi.com)",
       "Bash(tasklist:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(python:*)",
+      "WebFetch(domain:support.forpsi.com)",
+      "WebFetch(domain:www.forpsi.com)"
     ]
   }
 }
