@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Voidspan — Neon paleta preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+         Voidspan neon paleta — draft S35 (navazuje na gemini_1+v2 mix)
+         Přepisuje Hull & Amber (style-guide.html) — viz Q1 session log.
+         ============================================================ */
+      :root {
+        --bg-deep: #000510;
+        --bg-panel: rgba(10, 15, 26, 0.85);
+        --border-subtle: #2e3440;
+        --border-mid: #4c5462;
+        --text-primary: #ffd94a;
+        --text-accent: #ffbf00;
+        --text-muted: #8a6820;
+        --text-white: #ffffff;
+
+        /* 5 rating tónů — neon výbojky */
+        --rate-5: #39ff5e;
+        --rate-4: #b8ff2e;
+        --rate-3: #ffb020;
+        --rate-2: #ff6a1f;
+        --rate-1: #ff2850;
+
+        /* 8 per-kind hue */
+        --kind-habitat: #ff9438;
+        --kind-solar: #ffd400;
+        --kind-storage: #00e8ff;
+        --kind-assembler: #ff3cc0;
+        --kind-dock: #3090ff;
+        --kind-engine: #00ffb0;
+        --kind-medcore: #60b8ff;
+        --kind-command: #9b6cff;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        font-family: "Atkinson Hyperlegible", ui-monospace, Consolas, monospace;
+      }
+      body {
+        padding: 32px 48px 96px;
+        font-size: 18px;
+        /* jemná hvězdná textura — mock pozadí */
+        background-image: radial-gradient(1px 1px at 20% 30%, #ffffff22 50%, transparent),
+                          radial-gradient(1px 1px at 70% 60%, #ffffff18 50%, transparent),
+                          radial-gradient(1px 1px at 40% 80%, #ffffff14 50%, transparent),
+                          radial-gradient(1px 1px at 85% 15%, #ffffff20 50%, transparent);
+        background-size: 400px 400px;
+      }
+      h1 {
+        color: var(--text-white);
+        font-weight: 700;
+        font-size: 38px;
+        margin: 0 0 8px 0;
+        letter-spacing: 2px;
+      }
+      .subtitle { color: var(--text-muted); font-size: 18px; margin-bottom: 8px; }
+      .axiom    { color: var(--kind-dock); font-size: 16px; margin-bottom: 32px; }
+      h2 {
+        color: var(--text-white);
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: 1px;
+        margin: 48px 0 12px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 4px;
+      }
+      h3 {
+        color: var(--text-primary);
+        font-weight: 400;
+        font-size: 20px;
+        margin: 24px 0 8px 0;
+      }
+      code {
+        color: var(--text-white);
+        background: #1a1e28;
+        padding: 1px 6px;
+      }
+      .note {
+        color: var(--text-muted);
+        font-size: 16px;
+        line-height: 1.5;
+        margin: 12px 0 24px;
+      }
+
+      /* ========== Swatch grid ========== */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .swatch {
+        background: #1a1e28;
+        border: 1px solid var(--border-subtle);
+      }
+      .chip {
+        height: 90px;
+        width: 100%;
+      }
+      .chip-glow {
+        height: 90px;
+        width: 100%;
+        /* glow halo — simulace Phaser.FX.Glow dojmu */
+        position: relative;
+      }
+      .chip-glow::after {
+        content: "";
+        position: absolute;
+        inset: 12px;
+        border-radius: 6px;
+        box-shadow: 0 0 20px 4px currentColor;
+        opacity: 0.7;
+      }
+      .meta { padding: 10px 14px; }
+      .idx  { color: var(--text-muted); font-size: 14px; }
+      .hex  { color: var(--text-white); font-size: 20px; font-weight: 700; }
+      .role { color: var(--text-primary); font-size: 16px; }
+      .strip { margin-top: 16px; display: flex; height: 28px; border: 1px solid var(--border-subtle); }
+      .strip > div { flex: 1 1 auto; }
+
+      /* ========== Module kind ukázka — outline styl ========== */
+      .modules {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+      }
+      .mod {
+        background: #070a13;
+        border: 2px solid currentColor;
+        padding: 16px 14px;
+        text-align: center;
+        box-shadow: 0 0 14px 0 currentColor;
+      }
+      .mod .ico {
+        font-size: 34px;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+      .mod .kind { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+      .mod .hex { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+      /* ========== Status izomorfismus ========== */
+      .status-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 12px;
+      }
+      .status-cell {
+        background: #070a13;
+        padding: 16px;
+        text-align: center;
+        position: relative;
+      }
+      .status-cell .ico { font-size: 34px; line-height: 1; margin-bottom: 8px; }
+      .status-cell .label { font-size: 14px; color: var(--text-muted); margin-top: 6px; }
+
+      .s-online {
+        border: 2px solid var(--kind-habitat);
+        color: var(--kind-habitat);
+        box-shadow: 0 0 14px 0 var(--kind-habitat);
+      }
+      /* DAMAGED: dashed border + celobuňkový HP fill zleva (rate-2 orange
+         do 38 %) + decentní zig-zag overlay jako extra damage cue.
+         Izomorfní s BUILD — oba stavy používají stejný widget
+         (celobuňkový linear-gradient), liší se hue a směr čtení. */
+      .s-damaged {
+        border: 2px dashed var(--rate-2);
+        color: var(--rate-2);
+        background:
+          linear-gradient(to right,
+            rgba(255, 106, 31, 0.22) 0%,
+            rgba(255, 106, 31, 0.22) 38%,
+            transparent 38%),
+          repeating-linear-gradient(45deg,
+            transparent 0 10px,
+            rgba(255, 106, 31, 0.05) 10px 20px),
+          #070a13;
+      }
+      .s-offline {
+        border: 2px solid #4c5462;
+        color: #6a7080;
+        background-image:
+          linear-gradient(45deg, #1a1e28 25%, transparent 25%),
+          linear-gradient(-45deg, #1a1e28 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #1a1e28 75%),
+          linear-gradient(-45deg, transparent 75%, #1a1e28 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      }
+      .s-build {
+        border: 2px dotted var(--kind-assembler);
+        color: var(--kind-assembler);
+        background:
+          linear-gradient(to right,
+            rgba(255, 60, 192, 0.22) 0%,
+            rgba(255, 60, 192, 0.22) 62%,
+            transparent 62%);
+      }
+
+      /* ========== UI chrome sample ========== */
+      .chrome-sample {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-mid);
+        padding: 20px 24px;
+        margin-top: 12px;
+      }
+      .chrome-sample .hud { color: var(--text-primary); font-size: 20px; }
+      .chrome-sample .dim { color: var(--text-muted); }
+      .chrome-sample .head { color: var(--text-white); font-weight: 700; font-size: 22px; letter-spacing: 1px; }
+      .chrome-sample .r5 { color: var(--rate-5); }
+      .chrome-sample .r4 { color: var(--rate-4); }
+      .chrome-sample .r3 { color: var(--rate-3); }
+      .chrome-sample .r2 { color: var(--rate-2); }
+      .chrome-sample .r1 { color: var(--rate-1); }
+    </style>
+  </head>
+  <body>
+    <h1>VOIDSPAN — NEON PALETA (DRAFT)</h1>
+    <div class="subtitle">
+      Navazuje na arena_winners (gemini_1 paleta výbojek + gemini_2 outline styl).
+      Přepisuje Hull &amp; Amber · původní style-guide.html ponechán jako archivní referenci.
+    </div>
+    <div class="axiom">
+      AXIOM · kind = hue (identita), status = saturation/luminance (zdraví).
+      Rating semafor zachovává 5 kbelíků, jen posun do neon rodiny.
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>1. Rating semafor — 5 neon výbojek</h2>
+    <div class="note">
+      Izomorfní s <code>statusRating(pct)</code> z <code>model.ts</code>. Sdíleno
+      mezi Top Bar dashboard, ModulesPanel, Tooltip headery, Event Log (SIGN).
+      <strong>Změna S35:</strong> pozice 4 přemapována z <code>cyan</code> na
+      acid lime-yellow — rodina se teď táhne spojitě od green (5) přes amber (3)
+      do red (1) bez skoku do studené modré.
+    </div>
+    <div class="grid" id="grid-rating"></div>
+    <h3>Rating v pruhu — spojité hue přechod</h3>
+    <div class="strip" id="strip-rating"></div>
+
+    <!-- ============================================================ -->
+    <h2>2. Per-kind hue — 8 modulů</h2>
+    <div class="note">
+      Každý modul kind má vlastní identity color (vlákno identity). Status
+      (ONline/DAMAGED/OFFLINE/BUILD) se přidává jako modulace (glow / outline
+      style), viz §3. CommandPost posunut z green (konflikt s rate-5) na
+      <strong>neon violet</strong>, Engine z teal zachován ale desaturovaný aby
+      nekonkuroval Storage cyan. MedCore = chladná cryo modř (ne dock blue).
+    </div>
+    <div class="modules">
+      <div class="mod" style="color: var(--kind-habitat)">
+        <div class="ico">(H)</div>
+        <div class="kind">HABITAT</div>
+        <div class="hex">#ff9438 · warm orange · obývání</div>
+      </div>
+      <div class="mod" style="color: var(--kind-solar)">
+        <div class="ico">[=]</div>
+        <div class="kind">SOLAR ARRAY</div>
+        <div class="hex">#ffd400 · solar yellow · energie</div>
+      </div>
+      <div class="mod" style="color: var(--kind-storage)">
+        <div class="ico">[#]</div>
+        <div class="kind">STORAGE</div>
+        <div class="hex">#00e8ff · electric cyan · zásoby</div>
+      </div>
+      <div class="mod" style="color: var(--kind-assembler)">
+        <div class="ico">&lt;X&gt;</div>
+        <div class="kind">ASSEMBLER</div>
+        <div class="hex">#ff3cc0 · hot magenta · výroba</div>
+      </div>
+      <div class="mod" style="color: var(--kind-dock)">
+        <div class="ico">(=)</div>
+        <div class="kind">DOCK</div>
+        <div class="hex">#3090ff · electric azure · příjem</div>
+      </div>
+      <div class="mod" style="color: var(--kind-engine)">
+        <div class="ico">&gt;&gt;</div>
+        <div class="kind">ENGINE</div>
+        <div class="hex">#00ffb0 · mint teal · pohon</div>
+      </div>
+      <div class="mod" style="color: var(--kind-medcore)">
+        <div class="ico">[+]</div>
+        <div class="kind">MEDCORE</div>
+        <div class="hex">#60b8ff · cryo blue · zdraví</div>
+      </div>
+      <div class="mod" style="color: var(--kind-command)">
+        <div class="ico">/\</div>
+        <div class="kind">COMMAND POST</div>
+        <div class="hex">#9b6cff · neon violet · velení</div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>3. Status izomorfismus — ONline / DAMAGED / OFFLINE / BUILD</h2>
+    <div class="note">
+      Kind color (§2) zůstává napříč stavy jako hue. Status mění
+      <strong>modulaci</strong>: ONline solid outline + glow · DAMAGED dashed +
+      zig-zag overlay + barva se posune k rate-2 orange · OFFLINE desaturated na
+      grey + checker pattern · BUILD dotted + progress stripes v kind hue.
+      Ukázka níže je pro Habitat (orange hue).
+    </div>
+    <div class="status-row">
+      <div class="status-cell s-online">
+        <div class="ico">(H)</div>
+        <div class="kind">HABITAT · ONLINE</div>
+        <div class="label">solid + glow</div>
+      </div>
+      <div class="status-cell s-damaged">
+        <div class="ico">(H)</div>
+        <div class="kind">HABITAT · DAMAGED</div>
+        <div class="label">dashed + HP fill 38 %</div>
+      </div>
+      <div class="status-cell s-offline">
+        <div class="ico">(H)</div>
+        <div class="kind">HABITAT · OFFLINE</div>
+        <div class="label">desaturated + checker</div>
+      </div>
+      <div class="status-cell s-build">
+        <div class="ico">(H)</div>
+        <div class="kind">HABITAT · BUILD</div>
+        <div class="label">dotted + progress 62 %</div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>4. UI chrome — text, borders, backgrounds</h2>
+    <div class="note">
+      Amber zůstává brand pro chrome (TopBar, BottomBar, panel bodies, tooltip
+      text). Ship používá neon paletu (§2). Toto rozdělení chrání čitelnost
+      textu — amber je tlumenější než neon, drží kontrast na deep-space pozadí.
+    </div>
+    <div class="chrome-sample">
+      <div class="head">⊙ VOIDSPAN · [I]nfo [M]oduly [E]venty [T]asky [Q]uery [H]elp</div>
+      <div style="height: 10px"></div>
+      <div class="hud">Energie <span class="r4">1234.5 Wh</span> · Práce <span class="r3">980 Wh</span> · Pevné <span class="r2">1500 kg</span> · Tekutiny <span class="r1">650 L</span> · Zdraví <span class="r5">92 %</span></div>
+      <div style="height: 10px"></div>
+      <div class="dim">player · 8W · idle</div>
+      <div class="dim">colonist_01 · 12W · &gt; Hab-A repair</div>
+      <div class="dim">colonist_02 · 12W · &gt; Hab-A repair</div>
+      <div style="height: 10px"></div>
+      <div class="head">TASK QUEUE</div>
+      <div>Hab-A · repair · 62 %</div>
+      <div class="dim">  [======....] (2× actor)</div>
+      <div style="height: 10px"></div>
+      <div class="r1">&gt; SYST: MedCore-A hp 12 % · nestabilní</div>
+      <div class="r3">&gt; TASK: Assembler-A staví od 14:30</div>
+      <div class="r5">&gt; CMPL: SolarArray-B opravena za 12:04</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>5. Přemapování starý → nový</h2>
+    <div class="note">
+      Změny na úrovni <code>palette.ts</code>. Ostatní konstanty (UI_TEXT_*,
+      HEX_ALERT_RED atd.) se přejmenují nebo zachovají dle následujícího plánu.
+    </div>
+    <table style="border-collapse: collapse; width: 100%; color: var(--text-primary); font-size: 15px;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--border-mid); text-align: left;">
+          <th style="padding: 6px 10px;">staré</th>
+          <th style="padding: 6px 10px;">nové</th>
+          <th style="padding: 6px 10px;">poznámka</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 4px 10px;">HEX_OK_GREEN <code>#60c060</code></td><td><code>#39ff5e</code></td><td>rate-5 · electric mint-lime</td></tr>
+        <tr><td style="padding: 4px 10px;">HEX_COOLANT_CYAN <code>#40c0c0</code> (rating 4)</td><td><code>#b8ff2e</code></td><td>rate-4 · acid lime-yellow (PŘEMAPOVÁNO)</td></tr>
+        <tr><td style="padding: 4px 10px;">HEX_WARN_AMBER <code>#ffc030</code></td><td><code>#ffb020</code></td><td>rate-3 · solar amber (saturace nahoru)</td></tr>
+        <tr><td style="padding: 4px 10px;">HEX_WARN_ORANGE <code>#ff8020</code></td><td><code>#ff6a1f</code></td><td>rate-2 · hot plasma orange</td></tr>
+        <tr><td style="padding: 4px 10px;">HEX_ALERT_RED <code>#ff4848</code></td><td><code>#ff2850</code></td><td>rate-1 · sodium plasma red</td></tr>
+        <tr><td style="padding: 4px 10px;">UI_TEXT_PRIMARY <code>#ffd060</code></td><td><code>#ffd94a</code></td><td>amber bright — mírně saturovanější, brand zachován</td></tr>
+        <tr><td style="padding: 4px 10px;">UI_TEXT_ACCENT</td><td><code>#ffbf00</code></td><td>saturated amber · headery, akcenty</td></tr>
+        <tr><td style="padding: 4px 10px;">UI_TEXT_MUTED <code>#b08030</code></td><td><code>#8a6820</code></td><td>tlumené · sekundární text</td></tr>
+        <tr><td style="padding: 4px 10px;">BG_DEEP <code>#0a0a10</code></td><td><code>#000510</code></td><td>téměř černá s modrým nádechem</td></tr>
+        <tr><td style="padding: 4px 10px;">—</td><td colspan="2">nové: 8× <code>KIND_*</code> konstanty (Habitat/SolarArray/Storage/Assembler/Dock/Engine/MedCore/CommandPost)</td></tr>
+      </tbody>
+    </table>
+
+    <script>
+      const RATING = [
+        ["5", "#39ff5e", "Excellent · electric mint-lime"],
+        ["4", "#b8ff2e", "Good · acid lime-yellow (PŘEMAPOVÁNO)"],
+        ["3", "#ffb020", "Fair · solar amber"],
+        ["2", "#ff6a1f", "Poor · hot plasma orange"],
+        ["1", "#ff2850", "Failure · sodium plasma red"],
+      ];
+
+      function renderRating() {
+        const el = document.getElementById("grid-rating");
+        for (const [idx, hex, role] of RATING) {
+          const sw = document.createElement("div");
+          sw.className = "swatch";
+          sw.innerHTML = `
+            <div class="chip-glow" style="background:${hex}; color:${hex}"></div>
+            <div class="meta">
+              <div class="idx">rate-${idx}</div>
+              <div class="hex">${hex}</div>
+              <div class="role">${role}</div>
+            </div>`;
+          el.appendChild(sw);
+        }
+        const strip = document.getElementById("strip-rating");
+        for (const [, hex] of RATING) {
+          const d = document.createElement("div");
+          d.style.background = hex;
+          d.title = hex;
+          strip.appendChild(d);
+        }
+      }
+      renderRating();
+    </script>
+  </body>
+</html>

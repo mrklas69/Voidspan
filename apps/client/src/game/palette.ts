@@ -1,7 +1,7 @@
-// Voidspan 16 — Hull & Amber
+// Voidspan — Neon paleta (S35)
 // Závazný vzorník (axiom) — jediný zdroj pravdy pro barvy a typografii v UI/rendereru.
-// Vizuální reference: `apps/client/public/style-guide.html` (dev: /style-guide.html).
-// Zdroj pro hand-pixel: `art/_palette.png` + `art/_palette.txt` (Paint.NET).
+// Vizuální reference: `apps/client/public/palette-preview.html` (dev: /palette-preview.html).
+// Původní Hull & Amber preview: `apps/client/public/style-guide.html` (archiv).
 //
 // Barvy jsou k dispozici ve dvou formátech:
 //   - `HEX_*` string (`"#rrggbb"`) pro Phaser Text color, CSS, log.
@@ -10,16 +10,22 @@
 // NIKDY nepoužívej ad-hoc hex literály v kódu — vždy přes tento modul.
 
 // ============================================================================
-// 1. Paleta — 16 barev, 3 vrstvy
+// 1. Paleta — Neon výbojky na deep-space pozadí
 // ============================================================================
 // Historie:
 //   S16b: #080808 (bg-near-black) sloučeno s #0a0a10 (void-black) — byly
 //         k nerozeznání. UI_BG/UI_PANEL_BG nyní čtou z VOID_BLACK.
-//   S16c: přidán #40c0c0 (coolant-cyan) jako studený status akcent —
-//         voda, chladivo, led, štíty, Fluids subtyp (water / coolant — P2+).
+//   S16c: přidán coolant-cyan jako studený status akcent (voda/chladivo/led/štíty).
+//   S35:  Hull & Amber → Neon. Rating semafor posunut do výbojkové rodiny
+//         (zachována 5-kbelíková sémantika, pozice 4 přemapována z cyan na
+//         lime-yellow — spojité hue od zelené přes amber k červené, bez skoku
+//         do studené modré). Cyan zůstává v paletě jako Storage/Fluids kanon
+//         (UI_STATUS_COOLANT), ale není rating barva. Brand amber pro UI chrome
+//         zachován, jen saturovanější (#ffd060 → #ffd94a). Ship bude používat
+//         per-kind hue (§1b KIND_*, 8 modulů) — to je doména ship_render (S35+).
 
-// --- Svět: studený kov, void (01-07) ---
-export const HEX_VOID_BLACK    = "#0a0a10"; // 01
+// --- Svět: deep space, hull (01-07) ---
+export const HEX_VOID_BLACK    = "#000510"; // 01 — téměř černá s modrým nádechem
 export const HEX_HULL_DARK     = "#1a1e28"; // 02
 export const HEX_HULL_MID      = "#2e3440"; // 03
 export const HEX_HULL_LIGHT    = "#4c5462"; // 04
@@ -27,36 +33,67 @@ export const HEX_METAL_GRAY    = "#6a7080"; // 05
 export const HEX_METAL_LIGHT   = "#8a8e98"; // 06
 export const HEX_BRIGHT_METAL  = "#c0c4cc"; // 07
 
-// --- Status: teplé + studené akcenty (08-13) ---
-export const HEX_ALERT_RED     = "#ff4848"; // 08
-export const HEX_WARN_ORANGE   = "#ff8020"; // 09
-export const HEX_WARN_AMBER    = "#ffc030"; // 10
-export const HEX_OK_GREEN      = "#60c060"; // 11
-export const HEX_INFO_BLUE     = "#4088c8"; // 12
-export const HEX_COOLANT_CYAN  = "#40c0c0"; // 13 — voda, chladivo, led, štíty
+// --- Status: 5 neon výbojek + info-blue + coolant-cyan (08-14) ---
+// Rating mapping 1-5 níže (RATING_COLOR). Sodium/plasma/solar/lime/mint rodina.
+export const HEX_ALERT_RED     = "#ff2850"; // 08 — rate-1 · sodium plasma red
+export const HEX_WARN_ORANGE   = "#ff6a1f"; // 09 — rate-2 · hot plasma orange
+export const HEX_WARN_AMBER    = "#ffb020"; // 10 — rate-3 · solar amber
+export const HEX_RATE_LIME     = "#b8ff2e"; // 11 — rate-4 · acid lime-yellow (S35 přemapování)
+export const HEX_OK_GREEN      = "#39ff5e"; // 12 — rate-5 · electric mint-lime
+export const HEX_INFO_BLUE     = "#4088c8"; // 13 — info/NPC (non-rating)
+export const HEX_COOLANT_CYAN  = "#00e8ff"; // 14 — voda/chladivo/led/štíty + KIND_STORAGE
 
-// --- UI / terminál: amber na tmavém (14-16) ---
-export const HEX_AMBER_DIM     = "#b08030"; // 14
-export const HEX_AMBER_BRIGHT  = "#ffd060"; // 15
-export const HEX_TEXT_WHITE    = "#ffffff"; // 16
+// --- UI / terminál: amber na tmavém (15-17) ---
+export const HEX_AMBER_DIM     = "#8a6820"; // 15
+export const HEX_AMBER_BRIGHT  = "#ffd94a"; // 16
+export const HEX_TEXT_WHITE    = "#ffffff"; // 17
 
 // --- Number varianty (0xrrggbb) pro Phaser primitives ---
-export const COL_VOID_BLACK    = 0x0a0a10;
+export const COL_VOID_BLACK    = 0x000510;
 export const COL_HULL_DARK     = 0x1a1e28;
 export const COL_HULL_MID      = 0x2e3440;
 export const COL_HULL_LIGHT    = 0x4c5462;
 export const COL_METAL_GRAY    = 0x6a7080;
 export const COL_METAL_LIGHT   = 0x8a8e98;
 export const COL_BRIGHT_METAL  = 0xc0c4cc;
-export const COL_ALERT_RED     = 0xff4848;
-export const COL_WARN_ORANGE   = 0xff8020;
-export const COL_WARN_AMBER    = 0xffc030;
-export const COL_OK_GREEN      = 0x60c060;
+export const COL_ALERT_RED     = 0xff2850;
+export const COL_WARN_ORANGE   = 0xff6a1f;
+export const COL_WARN_AMBER    = 0xffb020;
+export const COL_RATE_LIME     = 0xb8ff2e;
+export const COL_OK_GREEN      = 0x39ff5e;
 export const COL_INFO_BLUE     = 0x4088c8;
-export const COL_COOLANT_CYAN  = 0x40c0c0;
-export const COL_AMBER_DIM     = 0xb08030;
-export const COL_AMBER_BRIGHT  = 0xffd060;
+export const COL_COOLANT_CYAN  = 0x00e8ff;
+export const COL_AMBER_DIM     = 0x8a6820;
+export const COL_AMBER_BRIGHT  = 0xffd94a;
 export const COL_TEXT_WHITE    = 0xffffff;
+
+// ============================================================================
+// 1b. Per-kind hue — 8 modulů (ship identity, S35)
+// ============================================================================
+// Každý modul kind má vlastní identity color (vlákno identity). Používá
+// ship_render (S35+) — outline border + Phaser.FX.Glow. Status modulace
+// (ONline/DAMAGED/OFFLINE/BUILD) vrstva nad kind hue, viz palette-preview §3.
+// Pozor na kolize: CommandPost violet (ne green — konflikt s rate-5),
+// Engine mint (ne green), MedCore cryo-blue (ne dock azure), Storage cyan
+// sdílí hodnotu s HEX_COOLANT_CYAN (KISS, jeden kanonický tón pro „chlad").
+
+export const HEX_KIND_HABITAT   = "#ff9438"; // warm orange · obývání
+export const HEX_KIND_SOLAR     = "#ffd400"; // solar yellow · energie
+export const HEX_KIND_STORAGE   = "#00e8ff"; // electric cyan · zásoby (= COOLANT_CYAN)
+export const HEX_KIND_ASSEMBLER = "#ff3cc0"; // hot magenta · výroba
+export const HEX_KIND_DOCK      = "#3090ff"; // electric azure · příjem kapslí
+export const HEX_KIND_ENGINE    = "#00ffb0"; // mint teal · pohon
+export const HEX_KIND_MEDCORE   = "#60b8ff"; // cryo blue · zdraví/cryo
+export const HEX_KIND_COMMAND   = "#9b6cff"; // neon violet · velení
+
+export const COL_KIND_HABITAT   = 0xff9438;
+export const COL_KIND_SOLAR     = 0xffd400;
+export const COL_KIND_STORAGE   = 0x00e8ff;
+export const COL_KIND_ASSEMBLER = 0xff3cc0;
+export const COL_KIND_DOCK      = 0x3090ff;
+export const COL_KIND_ENGINE    = 0x00ffb0;
+export const COL_KIND_MEDCORE   = 0x60b8ff;
+export const COL_KIND_COMMAND   = 0x9b6cff;
 
 // ============================================================================
 // 2. Sémantické aliasy — UI role (nikoli další barvy, jen pojmenované použití)
@@ -112,13 +149,18 @@ export const UI_STATUS_OK      = HEX_OK_GREEN;          // reserve (P2+)
 export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / štíty (Fluids subtyp — P2+)
 
 // ============================================================================
-// 2b. Dashboard semafor (S25) — 5-color rating pro UI metriky
+// 2b. Dashboard semafor (S25, S35 přemapování) — 5-color rating pro UI metriky
 // ============================================================================
 // Kánon: UI ukazatel s barvou odvozuje barvu ze stejné metriky, kterou zobrazuje
 // (feedback_indicator_color_same_metric). Pět kbelíků dle `statusRating(pct)`:
-// < 15 % red, < 40 % orange, < 60 % amber, < 80 % cyan, ≥ 80 % green.
+// < 15 % red, < 40 % orange, < 60 % amber, < 80 % lime, ≥ 80 % mint-green.
 // Tooltip headery (TooltipContent.headerColor) i Top Bar dashboard bary čerpají
 // stejnou mapu — barva v baru = barva v headeru.
+//
+// S35: pozice 4 přemapována z cyan na lime-yellow (HEX_RATE_LIME). Rating rodina
+// se teď táhne spojitě od green (5) přes amber (3) do red (1) bez skoku do
+// studené modré. Cyan zůstává jako Storage/Fluids kanon (UI_STATUS_COOLANT,
+// HEX_KIND_STORAGE), jen už není rating barva.
 //
 // Re-export prahů z tuning.ts pro world.ts toLevel() (3-state status node level).
 
@@ -126,19 +168,35 @@ import { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT } from "./tuning";
 import { statusRating, type StatusRating } from "./model";
 export { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT };
 
-// 5stavový semafor hodnocení (S23). Izomorfní s StatusRating z model.ts.
-// Sdíleno mezi Top Bar, InfoPanel, Tooltips, Event Log (SIGN).
+// 5stavový semafor hodnocení (S23, S35 posun do neon rodiny). Izomorfní
+// s StatusRating z model.ts. Sdíleno mezi Top Bar, InfoPanel, Tooltips,
+// Event Log (SIGN).
 export const RATING_COLOR: Record<StatusRating, string> = {
-  5: HEX_OK_GREEN,       // Excellent — zelená
-  4: HEX_COOLANT_CYAN,   // Good — cyan
-  3: HEX_WARN_AMBER,     // Fair — amber
-  2: HEX_WARN_ORANGE,    // Poor — oranžová
-  1: HEX_ALERT_RED,      // Failure — červená
+  5: HEX_OK_GREEN,       // Excellent — electric mint-lime
+  4: HEX_RATE_LIME,      // Good — acid lime-yellow (S35: přemapováno z cyan)
+  3: HEX_WARN_AMBER,     // Fair — solar amber
+  2: HEX_WARN_ORANGE,    // Poor — hot plasma orange
+  1: HEX_ALERT_RED,      // Failure — sodium plasma red
 };
 
 // Přímá pct→color projekce pro místa, kde nepotřebujeme zvlášť rating label.
 export function ratingColor(pct: number): string {
   return RATING_COLOR[statusRating(pct)];
+}
+
+// Number varianty rating mappingu (Phaser fillStyle/setTint potřebuje 0xrrggbb).
+// Izomorfní s RATING_COLOR (HEX) — držíme paralelní dvojici jako u ostatních
+// kanálů palette (HEX_* + COL_*).
+export const RATING_COL: Record<StatusRating, number> = {
+  5: COL_OK_GREEN,
+  4: COL_RATE_LIME,
+  3: COL_WARN_AMBER,
+  2: COL_WARN_ORANGE,
+  1: COL_ALERT_RED,
+};
+
+export function ratingColorNum(pct: number): number {
+  return RATING_COL[statusRating(pct)];
 }
 
 // ============================================================================

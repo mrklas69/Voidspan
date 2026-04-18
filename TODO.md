@@ -164,6 +164,7 @@ Sjednocení konstrukce / dekonstrukce / opravy / poškození do jedné osy HP. D
 - [ ] **Task engine — build/demolish nad HP:** repair hotov, build/demolish tasky pořád nemají HP sync. Aktivovat při implementaci §15 stavebního UX.
 - [ ] **Asteroid damage vzorec** — rozpracovat (viz IDEAS). Zatím placeholder: hit → `-5 hp`.
 - [x] **Multi-bay sprite rendering (S17b):** Engine 2×2 — `drawBaySprite` přes spanW/spanH, root kreslí celou texturu, ref skryjí sprite.
+- [ ] **Ship render — damage particles** (S35 follow-up) — Phaser.GameObjects.Particles burst při `flashUntilTick` (asteroid hit). Dnes: solid red rect overlay. Particles: orange sparks, 2 s burst, ~30 částic. Lepší dojem, +30-50 LOC, GPU cost OK pro single-burst (ne continuous). Odloženo z S35 — styl priorita, particles ledování.
 
 ## Player mode (P2+)
 

@@ -30,6 +30,8 @@ import { COL_TEXT_DIM, recomputeLayout, setSegmentX } from "./ui/layout";
 import { dockManager } from "./ui/dock_manager";
 import { HeaderPanel } from "./ui/header";
 import { SegmentPanel } from "./ui/segment";
+import { ShipRender } from "./ui/ship_render";
+import { USE_PROCEDURAL_RENDER } from "./tuning";
 // S19: ActorsPanel (ui/actors.ts) skrytý — detail bay/modulu jen v hover tooltipu.
 // SideRightPanel retirován v S28 (dead code s layered bay refs).
 // Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panel [K].
@@ -45,7 +47,10 @@ export class GameScene extends Phaser.Scene {
   private background!: BackgroundSystem;
 
   private header!: HeaderPanel;
-  private segment!: SegmentPanel;
+  // S35: flag-driven — ShipRender (procedural) nebo SegmentPanel (PNG fallback).
+  // Oba sdílí public API (render / relayout / attachTooltips / moveSelection
+  // / getSelectedBayIdx). Po validaci ShipRender smaže se SegmentPanel (S36).
+  private segment!: SegmentPanel | ShipRender;
   private eventLog!: EventLogPanel;
   private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
@@ -70,6 +75,24 @@ export class GameScene extends Phaser.Scene {
     ];
     for (const kind of AVAILABLE_MODULE_ASSETS) {
       this.load.image(kind, `assets/modules/${MODULE_DEFS[kind].asset}`);
+    }
+
+    // S35 Tabler icons — 8 kind glyphs + 1 fallback (cube). SVG rasterizace
+    // v Phaser 3.60+ je lossless, výstup tintable přes setTint (stroke="#ffffff"
+    // v SVG → tint × white = tint). Scale 2 = 48×48 raster, dost na 40 px bay.
+    const TABLER_ICONS: Array<[string, string]> = [
+      ["icon:Habitat", "home"],
+      ["icon:SolarArray", "solar-panel"],
+      ["icon:Storage", "package"],
+      ["icon:Assembler", "hammer"],
+      ["icon:Dock", "anchor"],
+      ["icon:Engine", "engine"],
+      ["icon:MedCore", "first-aid-kit"],
+      ["icon:CommandPost", "broadcast"],
+      ["icon:fallback", "cube"],
+    ];
+    for (const [key, name] of TABLER_ICONS) {
+      this.load.svg(key, `assets/icons/${name}.svg`, { scale: 2 });
     }
     // Bay assety (skeleton + cover1-5) retirovány s layered bay axiomem (S28).
     // PNG ponechány v public/assets/bays/ pro případný návrat. segment.ts má
@@ -108,7 +131,9 @@ export class GameScene extends Phaser.Scene {
     // --- Panely ---
     const getWorld = () => this.world;
     this.header = new HeaderPanel(this, getWorld);
-    this.segment = new SegmentPanel(this, getWorld);
+    this.segment = USE_PROCEDURAL_RENDER
+      ? new ShipRender(this, getWorld)
+      : new SegmentPanel(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);

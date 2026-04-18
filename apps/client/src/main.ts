@@ -7,8 +7,10 @@ import { GameScene } from "./game/GameScene";
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: "game",
-  // Canvas bg = HEX_VOID_BLACK (slot 01, #0a0a10) — "vnitřek" = hvězdné pole.
-  backgroundColor: "#0a0a10",
+  // Canvas bg = pure black (S35) — neon výbojky palety lépe vyniknou
+  // na absolutní černé než na tlumené void-black. Panely drží VOID_BLACK
+  // (#000510) jako své vlastní pozadí (jemný modrý nádech pro kontrast).
+  backgroundColor: "#000000",
   scale: {
     // S24 Responsive Layout axiom: canvas = viewport. GameScene reaguje na
     // scale.on("resize") a volá recomputeLayout() + relayout všech panelů.
