@@ -4,6 +4,16 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 > **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
 
+## 2026-04-19 (Sezení 41 — Osa 2 etapa 4: klient server-mode + protocol v2)
+
+- [x] **Event.id monotónní counter** — `Event.id: number` + `World.nextEventId` v shared/model. `appendEvent` increments, `Omit<Event, "id"|"tick"|"verb"|"severity">` signatura. Umožňuje klientovi deduplikovat eventy po reconnectu.
+- [x] **SCHEMA_VERSION 1 → 2** — v protocol.ts. Server Q5 nuke & restart ověřen s old `world.json` (v1).
+- [x] **`apps/client/src/net/ws_client.ts`** (~180 LOC) — WS wrapper. Exp backoff 1s → 30s + jitter ±20 %, PING heartbeat 10 s, typed dispatch (HELLO/SNAPSHOT/EVENT/PONG/onStatus), backoff reset po HELLO, `closedByUser` flag blokuje auto-reconnect.
+- [x] **Feature flag `?server=ws://host:port`** v GameScene. `serverMode` skip `stepWorld`, `serverUrl` + `wsStatus` expose přes `ServerInfo` closure. HELLO přepíše placeholder world referencí (panely drží lazy `getWorld = () => this.world`). Event dedup podle `id`.
+- [x] **Header polish — AppName infotip + hide speed v server mode** — `getServerInfo` closure 4. constructor param HeaderPanel. Infotip: `Runtime: server (ws://...) — connected` nebo `Runtime: local standalone`. speedSuffix gate + popover click no-op v server mode.
+- [x] **Protocol v2 ověřen** — smoke client (HELLO schema=v2, PONG, SNAPSHOT 2×), node jednorázový check Event.id=1 + nextEventId=2, browser E2E uživatelsky potvrzený (`?server=ws://localhost:3000` funguje, time speed neaktivní jak se čeká).
+- [x] **183/183 testů zelených**, TS strict clean napříč 3 balíčky.
+
 ## 2026-04-19 (Sezení 40 — Osa 2 etapa 1+2: shared extrakce + server POC + WS protocol)
 
 - [x] **Osa 2 Q1-Q6 rozhodnutí** — Q1 flat JSON (v1.1 POC), Q2 shared world (A) + C hybrid až s hráči (R2), Q3 full snapshot + event ring buffer 500, Q4 no auth (SPEED client-side / DECISION first-come), Q5 nuke & restart při schema change, Q6 VPS + Caddy + subdoména + GitHub Pages fallback.

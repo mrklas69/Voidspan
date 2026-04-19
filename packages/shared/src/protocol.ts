@@ -11,7 +11,8 @@ import type { World, Event } from "./model";
 
 // Schema verze — bump při breaking changes ve World struktuře.
 // Persistence (world.json) nese stejnou verzi; při mismatch server nuke & restart (Q5).
-export const SCHEMA_VERSION = 1 as const;
+// v2 (S41): Event.id monotónní counter + World.nextEventId pro reconnect dedup.
+export const SCHEMA_VERSION = 2 as const;
 
 // === Server → Client ===
 //

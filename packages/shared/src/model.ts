@@ -24,6 +24,10 @@ export type EventCsq = "OK" | "FAIL" | "PARTIAL" | "CRIT" | "START" | "PAUSE" | 
 export type EventSeverity = "crit" | "warn" | "pos" | "neutral";
 
 export type Event = {
+  // Monotónně rostoucí id (S41, Osa 2 etapa 4 prep). Umožňuje klientovi
+  // deduplikovat eventy po reconnectu (HELLO + EVENT stream se překryjí).
+  // Source of truth: World.nextEventId counter — inkrementuje appendEvent.
+  id: number;
   tick: number;
   verb: EventVerb;
   csq?: EventCsq;
@@ -343,6 +347,9 @@ export type World = {
   energyMax: number; // Σ capacity_wh online modulů — dynamická kapacita baterie
   drones: number;    // počet pracovních dronů — převodník E→WD, žádný HP
   next_task_id: number;
+  // Monotónní counter pro Event.id (S41). Inkrementuje appendEvent při každém
+  // emit. Nikdy neklesá — ring buffer shift nemění id již vydaných eventů.
+  nextEventId: number;
   // Instalované SW runtime (QuarterMaster v2.3 + budoucí kolegové). Každý má
   // příkon a běží-li, odčerpává E. Source of truth pro verze SW kolonie.
   software: Record<string, Software>;

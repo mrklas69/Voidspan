@@ -83,9 +83,10 @@ export function severity(verb: EventVerb, csq?: EventCsq): EventSeverity {
 export function appendEvent(
   w: World,
   verb: EventVerb,
-  fields?: Omit<Event, "tick" | "verb" | "severity">,
+  fields?: Omit<Event, "id" | "tick" | "verb" | "severity">,
 ): void {
   const ev: Event = {
+    id: w.nextEventId++,
     tick: w.tick,
     verb,
     severity: severity(verb, fields?.csq),

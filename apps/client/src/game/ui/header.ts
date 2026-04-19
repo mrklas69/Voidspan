@@ -39,6 +39,15 @@ export class HeaderPanel {
     scene: Phaser.Scene,
     private getWorld: () => World,
     setTimeSpeed: (s: TimeSpeed) => void,
+    // S41 Osa 2 etapa 4 — optional closure poskytující info o běhovém režimu
+    // (local standalone vs. server mode + connection status). Header ho čte
+    // do identity infotipu a v server mode potlačí speed multiplier/popover
+    // (server běží pevně ×1, multiplier by byl mrtvý chrome).
+    private getServerInfo?: () => {
+      mode: "local" | "server";
+      url: string | null;
+      status: string;
+    },
   ) {
     const baseStyle = {
       fontFamily: FONT_FAMILY,
@@ -67,6 +76,9 @@ export class HeaderPanel {
     this.metaText.setInteractive({ useHandCursor: true });
     this.metaText.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       pointer.event?.stopPropagation();
+      // V server mode klient neřídí tempo (server běží ×1 pevně) — popover
+      // by byl mrtvý. No-op bez error, infotip to objasní.
+      if (this.getServerInfo?.().mode === "server") return;
       const anchorX = this.metaText.x + this.metaText.width / 2;
       const anchorY = this.metaText.y + this.metaText.height + 4;
       this.speedPopover.toggle(anchorX, anchorY);
@@ -90,8 +102,21 @@ export class HeaderPanel {
       if (host.endsWith(".github.io")) return `GitHub Pages (${host})`;
       return host;
     })();
-    const identityProvider = () =>
-      `Server: ${env}\nVersion: v${pkg.version} (${__BUILD_ID__})\nWorld: Teegarden.Belt1.Seg042`;
+    // S41 — identity infotip rozšířen o info o běhovém režimu klienta.
+    // Local mode: klient stepuje lokálně (dnešní default). Server mode:
+    // read-only projekce autoritativního WS serveru, čas běží pevně ×1.
+    const identityProvider = () => {
+      const info = this.getServerInfo?.();
+      const runtimeLine = info?.mode === "server"
+        ? `Runtime: server (${info.url}) — ${info.status}`
+        : `Runtime: local standalone (klient stepuje sám)`;
+      return (
+        `Host: ${env}\n` +
+        `${runtimeLine}\n` +
+        `Version: v${pkg.version} (${__BUILD_ID__})\n` +
+        `World: Teegarden.Belt1.Seg042`
+      );
+    };
     tooltips.attach(this.iconBrand, identityProvider);
     tooltips.attach(this.appText, identityProvider);
     tooltips.attach(this.metaText, identityProvider);
@@ -365,8 +390,10 @@ export class HeaderPanel {
     // --- 1) Nejdřív nastavit texty, aby měřené šířky odpovídaly aktuálnímu obsahu ---
     // Brand ikona je Graphics, kreslí se jen jednou v constructoru — žádný setText.
     this.appText.setText("VOIDSPAN");
-    // Suffix ×N jen když > 1 — ×1 je default stav, chrome noise.
-    const speedSuffix = w.timeSpeed > 1 ? ` ×${w.timeSpeed}` : "";
+    // Suffix ×N jen když > 1 — ×1 je default stav, chrome noise. V server
+    // mode ho skryjeme vždy (server běží pevně ×1, klient speed nemá efekt).
+    const serverMode = this.getServerInfo?.().mode === "server";
+    const speedSuffix = !serverMode && w.timeSpeed > 1 ? ` ×${w.timeSpeed}` : "";
     this.metaText.setText(
       `v${pkg.version} Teegarden.Belt1.Seg042 ${time}${speedSuffix}`,
     );

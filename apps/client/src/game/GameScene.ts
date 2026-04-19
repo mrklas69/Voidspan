@@ -17,8 +17,18 @@ import {
   createInitialWorld,
   stepWorld,
   TICK_MS,
+  EVENT_LOG_CAPACITY,
   type World,
 } from "@voidspan/shared";
+import { WsClient, type WsStatus } from "../net/ws_client";
+
+// Info o běhovém režimu klienta. Předáváme HeaderPanelu přes closure pro
+// dynamické čtení (status se mění při (re)connect/disconnect).
+export type ServerInfo = {
+  mode: "local" | "server";
+  url: string | null;
+  status: WsStatus;
+};
 import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
 import { ModulesPanel } from "./modules_panel";
@@ -41,6 +51,15 @@ export class GameScene extends Phaser.Scene {
   private accumulator = 0;
   // S19 test: camera scroll po ose Y přes šipky — manuální test průhlednosti pozadí.
   private cameraY = 0;
+
+  // S41 Osa 2 etapa 4 — server mode feature flag `?server=ws://host:port`.
+  // Když je URL param set, klient přestane lokálně stepovat a subscribuje na
+  // WS stream z autoritativního serveru. Default (bez paramu) = offline local
+  // (dnešní chování, reload = fresh world).
+  private serverMode = false;
+  private serverUrl: string | null = null;
+  private wsStatus: WsStatus = "disconnected";
+  private wsClient: WsClient | null = null;
 
   private tooltips!: TooltipManager;
   private modal!: ModalManager;
@@ -100,6 +119,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // S41 Osa 2 etapa 4 — feature flag ?server=ws://host:port. Placeholder
+    // world vytvoříme vždy (panely ho čtou ihned), server mode ho pak přepíše
+    // při HELLO. Bez placeholder by panely spadly na null checks.
+    const serverUrl = new URLSearchParams(location.search).get("server");
+    this.serverMode = serverUrl !== null;
+    this.serverUrl = serverUrl;
     this.world = createInitialWorld();
 
     // S24: spočítej responsive layout podle aktuálního viewportu PŘED vytvořením panelů.
@@ -108,6 +133,11 @@ export class GameScene extends Phaser.Scene {
     // Dev-only: vystav world do window, ať jde debugovat v DevTools (Console: __world).
     if (import.meta.env.DEV) {
       (window as unknown as { __world: World }).__world = this.world;
+    }
+
+    // Server mode — připoj WS klienta, HELLO přepíše placeholder world.
+    if (this.serverMode && serverUrl) {
+      this.connectToServer(serverUrl);
     }
 
     this.tooltips = new TooltipManager(this);
@@ -119,9 +149,14 @@ export class GameScene extends Phaser.Scene {
 
     // --- Panely ---
     const getWorld = () => this.world;
+    const getServerInfo = (): ServerInfo => ({
+      mode: this.serverMode ? "server" : "local",
+      url: this.serverUrl,
+      status: this.wsStatus,
+    });
     this.header = new HeaderPanel(this, getWorld, (s) => {
       this.world.timeSpeed = s;
-    });
+    }, getServerInfo);
     this.segment = new ShipRender(this, getWorld);
     this.milestoneBar = new MilestoneBar(this, getWorld);
     this.decisionModal = new DecisionModal(this, getWorld);
@@ -160,6 +195,53 @@ export class GameScene extends Phaser.Scene {
     if (shouldShowTerminal()) {
       this.openTerminalModal();
     }
+  }
+
+  // === Server mode — WS client ==============================================
+  //
+  // Feature flag `?server=ws://host:port` přepne klienta z local stepWorld
+  // módu na autoritativní server (Osa 2 etapa 4). Klient se chová read-only:
+  // HELLO naplní world, SNAPSHOT periodicky (10 ticků = 2.5 s wall) synchronizuje
+  // stav, EVENT mid-tick přidává do event logu. Dedup podle Event.id chrání
+  // proti překryvu HELLO recentEvents × EVENT stream po reconnectu.
+  private connectToServer(url: string): void {
+    console.log(`[ws] server mode on: ${url}`);
+    this.wsClient = new WsClient(url, {
+      onHello: (world) => {
+        // HELLO přepíše placeholder world. Panely drží getWorld jako lazy
+        // closure, takže další render() tahají novou referenci automaticky.
+        // recentEvents ignorujeme — jsou duplicit k world.events.
+        this.world = world;
+        if (import.meta.env.DEV) {
+          (window as unknown as { __world: World }).__world = world;
+        }
+        console.log(`[ws] HELLO tick=${world.tick}, events=${world.events.length}`);
+      },
+      onSnapshot: (_tick, world) => {
+        // Full snapshot přepisuje world in-place (idempotent vůči mid-tick
+        // EVENT — server broadcastne nové eventy před SNAPSHOT, SNAPSHOT je
+        // pak obsahuje v world.events a overwrite je bez ztráty).
+        this.world = world;
+        if (import.meta.env.DEV) {
+          (window as unknown as { __world: World }).__world = world;
+        }
+      },
+      onEvent: (ev) => {
+        // Dedup — Event.id monotónně roste. Pokud je poslední uložený id ≥
+        // příchozí, jde o duplikát (reconnect HELLO × předchozí EVENT stream).
+        const events = this.world.events;
+        if (events.length > 0 && events[events.length - 1].id >= ev.id) return;
+        events.push(ev);
+        if (events.length > EVENT_LOG_CAPACITY) {
+          events.splice(0, events.length - EVENT_LOG_CAPACITY);
+        }
+      },
+      onStatus: (s) => {
+        this.wsStatus = s;
+        console.log(`[ws] status: ${s}`);
+      },
+    });
+    this.wsClient.connect();
   }
 
   // === Globální ESC handler (F5) ============================================
@@ -347,12 +429,18 @@ export class GameScene extends Phaser.Scene {
   // === Tick loop + render ==================================================
 
   override update(_time: number, delta: number): void {
-    // Time speed — násobí efektivní rychlost akumulátoru. 1× = wall time,
-    // 10× = 10 ticků/frame, 100× = 100 ticků/frame (autopilot zrychlený).
-    this.accumulator += delta * this.world.timeSpeed;
-    while (this.accumulator >= TICK_MS) {
-      stepWorld(this.world);
-      this.accumulator -= TICK_MS;
+    // S41 Osa 2 etapa 4 — v server mode klient nestepuje. Ticky přicházejí
+    // z autoritativního serveru přes SNAPSHOT/EVENT stream. Time speed
+    // (×1/×10/...) je v server mode bez efektu (server běží pevně ×1) —
+    // speed popover v UI zůstává, ale nemění tempo simulace.
+    if (!this.serverMode) {
+      // Time speed — násobí efektivní rychlost akumulátoru. 1× = wall time,
+      // 10× = 10 ticků/frame, 100× = 100 ticků/frame (autopilot zrychlený).
+      this.accumulator += delta * this.world.timeSpeed;
+      while (this.accumulator >= TICK_MS) {
+        stepWorld(this.world);
+        this.accumulator -= TICK_MS;
+      }
     }
 
     // Drift pozadí — globální vektor rotuje 1× za game day, magnitude 7 px (S16).

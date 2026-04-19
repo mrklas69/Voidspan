@@ -141,6 +141,7 @@ export function createInitialWorld(): World {
     energyMax: 0, // přepočte se v recomputeStatus níže
     drones: SEED_DRONES,   // počet pracovních dronů — převodník E→WD
     next_task_id: 1,
+    nextEventId: 1,
     software: {
       quartermaster: {
         id: "quartermaster",
