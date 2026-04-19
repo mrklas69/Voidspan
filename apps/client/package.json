@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@voidspan/shared": "workspace:*",
     "phaser": "^3.87.0"
   },
   "devDependencies": {

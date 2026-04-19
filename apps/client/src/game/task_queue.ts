@@ -4,8 +4,8 @@
 // Bez scrollu — MAX_VISIBLE pokryje plný pool service/active/pending tasků.
 
 import Phaser from "phaser";
-import type { World, Task, TaskStatus } from "./model";
-import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget, protocolPauseReason } from "./world";
+import type { World, Task, TaskStatus } from "@voidspan/shared";
+import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget, protocolPauseReason } from "@voidspan/shared";
 import { renderBar } from "./format";
 import type { TooltipManager } from "./tooltip";
 import {

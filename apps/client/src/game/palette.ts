@@ -164,8 +164,8 @@ export const UI_STATUS_COOLANT = HEX_COOLANT_CYAN;      // voda / chladivo / št
 //
 // Re-export prahů z tuning.ts pro world.ts toLevel() (3-state status node level).
 
-import { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT } from "./tuning";
-import { statusRating, type StatusRating } from "./model";
+import { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT } from "@voidspan/shared";
+import { statusRating, type StatusRating } from "@voidspan/shared";
 export { THRESHOLD_CRIT_PCT, THRESHOLD_WARN_PCT };
 
 // 5stavový semafor hodnocení (S23, S35 posun do neon rodiny). Izomorfní

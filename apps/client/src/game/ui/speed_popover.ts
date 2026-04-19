@@ -4,7 +4,7 @@
 // volbou. Persistence: žádná — reload vrací ×1 (úmyslné).
 
 import Phaser from "phaser";
-import type { TimeSpeed } from "../model";
+import type { TimeSpeed } from "@voidspan/shared";
 import {
   FONT_FAMILY,
   FONT_SIZE_CHROME,

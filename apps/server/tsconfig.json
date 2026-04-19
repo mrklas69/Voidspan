@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    // Node 20+ runtime. Žádný DOM — server běží v čistém Nodu.
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+
+    // Strict mode — stejná laťka jako klient + shared.
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
+    // tsx si obsluhuje emit sám, tsc jen typecheck.
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+
+    // Node types + WS types — tsx je resolvne přes workspace node_modules.
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

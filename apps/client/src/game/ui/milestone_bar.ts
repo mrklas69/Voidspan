@@ -10,7 +10,7 @@
 // Tooltip (hover) = label + datum + plný desc z Milestone.desc_cs.
 
 import Phaser from "phaser";
-import type { World, MilestoneStatus } from "../model";
+import type { World, MilestoneStatus } from "@voidspan/shared";
 import type { TooltipManager } from "../tooltip";
 import {
   FONT_FAMILY,

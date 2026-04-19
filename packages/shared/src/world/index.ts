@@ -29,19 +29,8 @@ export { advanceMilestones, firstPendingAck } from "./milestone";
 export { computeWork } from "./work";
 export { computeEnergyMax } from "./production";
 
-// Re-export tuning konstant — drží stabilní API pro stávající konzumenty
-// (GameScene, header, testy). Logiku vlastní `tuning.ts`, tady jen průchod.
-export {
-  TICK_MS,
-  TICKS_PER_SECOND,
-  TICKS_PER_GAME_DAY,
-  TICKS_PER_WALL_MINUTE,
-  WD_PER_HP,
-  ENERGY_SEED,
-  SOLIDS_MAX,
-  FLUIDS_MAX,
-  FLOW_WINDOW_GAME_DAYS,
-} from "../tuning";
+// Tuning konstanty se neexportují zde — barrel `@voidspan/shared` je re-exportuje
+// přímo z `./tuning`. Konzumenti z klienta/testů píší `from "@voidspan/shared"`.
 
 // === Simulation loop — Perpetual Observer Simulation axiom ===
 //

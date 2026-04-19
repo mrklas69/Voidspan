@@ -18,9 +18,9 @@
 // Icon fallback: pokud `icon:<Kind>` textura neexistuje, použít `icon:fallback` (cube).
 
 import Phaser from "phaser";
-import type { World, Module } from "../model";
-import { MODULE_DEFS } from "../model";
-import { findActiveTaskForModule, isConstructionTask } from "../world";
+import type { World, Module } from "@voidspan/shared";
+import { MODULE_DEFS } from "@voidspan/shared";
+import { findActiveTaskForModule, isConstructionTask } from "@voidspan/shared";
 import { TooltipManager } from "../tooltip";
 import {
   SEGMENT_X,

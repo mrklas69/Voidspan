@@ -3,9 +3,9 @@
 // Scroll: pixel-based (stejný pattern jako InfoPanel).
 
 import Phaser from "phaser";
-import type { World, Module, Task } from "./model";
-import { STATUS_LABELS, statusRating } from "./model";
-import { findActiveTaskForModule } from "./world";
+import type { World, Module, Task } from "@voidspan/shared";
+import { STATUS_LABELS, statusRating } from "@voidspan/shared";
+import { findActiveTaskForModule } from "@voidspan/shared";
 import type { TooltipManager } from "./tooltip";
 
 import {

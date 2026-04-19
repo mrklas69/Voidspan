@@ -6,8 +6,8 @@
 // Klik OK → flip `milestone.acked = true` → další tick může fire další milestone.
 
 import Phaser from "phaser";
-import type { World } from "../model";
-import { firstPendingAck } from "../world";
+import type { World } from "@voidspan/shared";
+import { firstPendingAck } from "@voidspan/shared";
 import {
   UI_BORDER_DIM,
   UI_OVERLAY_BLACK,
@@ -15,7 +15,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
-  COL_AMBER_BRIGHT,
+  HEX_AMBER_BRIGHT,
   HEX_OK_GREEN,
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
@@ -162,7 +162,7 @@ export class MilestoneAckModal {
 
     btn.on("pointerover", () => {
       btn.setStrokeStyle(2, UI_SELECT_STROKE, 1);
-      label.setColor(COL_AMBER_BRIGHT);
+      label.setColor(HEX_AMBER_BRIGHT);
     });
     btn.on("pointerout", () => {
       btn.setStrokeStyle(1, UI_BORDER_DIM, 1);

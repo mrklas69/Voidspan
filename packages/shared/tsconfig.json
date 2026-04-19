@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    // Cílový JS výstup + lib: sdílený balíček mezi browser klientem a Node serverem.
+    // Lib: jen ES2022 (žádný DOM — shared musí být headless-safe pro Node sim).
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+
+    // Strict mode — stejná laťka jako klient.
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
+    // Bundler-friendly: balíček se konzumuje přes TS source (main/exports ukazují na src/index.ts).
+    // Žádný emit, konzumenti (klient, server) si buildují vlastní výstup.
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

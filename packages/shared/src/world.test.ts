@@ -8,9 +8,8 @@ import {
   enqueueRepairTask,
   getOuterHP,
   averageFlow,
-  FLOW_WINDOW_GAME_DAYS,
-  TICKS_PER_GAME_DAY,
 } from "./world";
+import { FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "./tuning";
 import { MODULE_DEFS } from "./model";
 
 // === Factory ===

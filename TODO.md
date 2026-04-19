@@ -7,7 +7,7 @@ Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 Detail v `IDEAS.md` sekci „v1.1 Roadmap". Tři osy pro v1.1 release.
 
 - [x] **Osa 1: Milestone bar** — hotovo v S38 (milestone_bar.ts, World.milestones, QM Terminal refactor). 7 chips + separátor `»` + pulse. Viz DONE S38.
-- [ ] **Osa 2: Persistent server** — v1.1+, největší technický posun (pure client → client-server-DB). Plán: plain WS + JSON broadcasts (doporučení v IDEAS, Colyseus jako upgrade path pro P2+ multi-belt). Scope ~10-15 sezení. Blocked: architekturální rozhodnutí + deploy pipeline (VPS Basic už plánován).
+- [~] **Osa 2: Persistent server** — v1.1+, největší technický posun. **Etapa 1 (shared extrakce) + Etapa 2 (server POC lokálně) hotové v S40.** Zbývá: Etapa 3 (protocol v1 — delta + reconnect backoff), Etapa 4 (klient RemoteWorld refactor), Etapa 5 (migrations C, až bude potřeba), Etapa 6 (VPS deploy). Plain WS + JSON, flat JSON persistence, Q1-Q6 rozhodnuta v IDEAS.
 - [ ] **Osa 3: i18n AJ/ČJ** — v1.1+, ~500 strings napříč UI + event templates. Helper `t(key, params?)`, dict `strings.cs.ts` + `strings.en.ts`, language switcher. Challenge: CZ gender agreement + pluralization. Scope ~3-5 sezení. Závislost: stabilizace UI (po server + milestones).
 
 ## Event Log System (S20/S21)

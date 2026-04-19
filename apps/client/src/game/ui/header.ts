@@ -4,12 +4,12 @@
 
 import Phaser from "phaser";
 import pkg from "../../../package.json";
-import type { World, TimeSpeed } from "../model";
-import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "../model";
+import type { World, TimeSpeed } from "@voidspan/shared";
+import { MODULE_DEFS, STATUS_LABELS, statusRating, isProductiveTask } from "@voidspan/shared";
 import { SpeedPopover } from "./speed_popover";
 import { formatResource, formatScalar } from "../format";
-import { formatGameTime, computeWork, averageFlow, currentDayRate, formatEta } from "../world";
-import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "../tuning";
+import { formatGameTime, computeWork, averageFlow, currentDayRate, formatEta } from "@voidspan/shared";
+import { TOOLTIP_LIST_MAX_ITEMS, SOLIDS_MAX, FLUIDS_MAX, FLOW_WINDOW_GAME_DAYS, TICKS_PER_GAME_DAY } from "@voidspan/shared";
 import { TooltipManager, type TooltipContent } from "../tooltip";
 import {
   FONT_FAMILY,

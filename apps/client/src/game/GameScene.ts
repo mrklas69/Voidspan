@@ -17,8 +17,8 @@ import {
   createInitialWorld,
   stepWorld,
   TICK_MS,
-} from "./world";
-import type { World } from "./model";
+  type World,
+} from "@voidspan/shared";
 import { EventLogPanel } from "./event_log";
 import { InfoPanel } from "./info_panel";
 import { ModulesPanel } from "./modules_panel";

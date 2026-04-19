@@ -12,8 +12,8 @@
 // mohl obejít rozhodnutí → skip).
 
 import Phaser from "phaser";
-import type { World } from "../model";
-import { getSacrificeCandidates, chooseSacrifice, type SacrificeCandidate } from "../world";
+import type { World } from "@voidspan/shared";
+import { getSacrificeCandidates, chooseSacrifice, type SacrificeCandidate } from "@voidspan/shared";
 import {
   UI_BORDER_DIM,
   UI_OVERLAY_BLACK,
@@ -21,7 +21,7 @@ import {
   UI_TEXT_PRIMARY,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
-  COL_AMBER_BRIGHT,
+  HEX_AMBER_BRIGHT,
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
   FONT_SIZE_TIP,
@@ -166,7 +166,7 @@ export class DecisionModal {
 
     btn.on("pointerover", () => {
       btn.setStrokeStyle(2, UI_SELECT_STROKE, 1);
-      labelText.setColor(COL_AMBER_BRIGHT);
+      labelText.setColor(HEX_AMBER_BRIGHT);
     });
     btn.on("pointerout", () => {
       btn.setStrokeStyle(1, UI_BORDER_DIM, 1);

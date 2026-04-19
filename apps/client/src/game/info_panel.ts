@@ -3,8 +3,8 @@
 // Scroll: pixel-based, stejný pattern jako ModulesPanel.
 
 import Phaser from "phaser";
-import type { World } from "./model";
-import { STATUS_LABELS, statusRating, isProductiveTask } from "./model";
+import type { World } from "@voidspan/shared";
+import { STATUS_LABELS, statusRating, isProductiveTask } from "@voidspan/shared";
 import type { TooltipManager } from "./tooltip";
 
 import {

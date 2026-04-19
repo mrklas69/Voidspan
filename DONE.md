@@ -4,6 +4,20 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 > **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
 
+## 2026-04-19 (Sezení 40 — Osa 2 etapa 1+2: shared extrakce + server POC + WS protocol)
+
+- [x] **Osa 2 Q1-Q6 rozhodnutí** — Q1 flat JSON (v1.1 POC), Q2 shared world (A) + C hybrid až s hráči (R2), Q3 full snapshot + event ring buffer 500, Q4 no auth (SPEED client-side / DECISION first-come), Q5 nuke & restart při schema change, Q6 VPS + Caddy + subdoména + GitHub Pages fallback.
+- [x] **`packages/shared/` extrakce** — nový workspace balíček `@voidspan/shared` (ES2022, lib jen ES2022, headless-safe). Git mv: model/events/tuning/world + testy. Barrel `src/index.ts`. Kolize fix: `world/index.ts` odstranil tuning re-export (duplicate s barrel).
+- [x] **Klient 14 souborů import refaktor** — `./model|events|tuning|world` → `@voidspan/shared`. Sed bulk + git checkout revert EOL side-effects v 11 nezměněných souborech.
+- [x] **Workspace dependency** — `apps/client` + shared linked přes pnpm workspace (`workspace:*`). Bump shared `1.1` → `1.1.0` kvůli semver validation.
+- [x] **`apps/server/` POC skeleton** — `@voidspan/server` (Node ES2022, ws + tsx + @types/node + @types/ws). 3 moduly: server.ts + persistence.ts + smoke_client.ts.
+- [x] **WS protocol v shared** — `SCHEMA_VERSION = 1`, `ServerMsg` = HELLO/SNAPSHOT/EVENT/PONG, `ClientMsg` = PING. Žádný SPEED/DECISION v POC.
+- [x] **Persistence (flat JSON)** — `saveWorld` atomic temp+rename, `loadWorldOrNull` schema check → null trigger fresh init. Auto-mkdir `./data/`. 30 s interval + shutdown save.
+- [x] **Server main loop** — setInterval(stepWorld, 250ms). Per-tick: nové eventy broadcast individuálně, každých 10 ticků full SNAPSHOT. SIGINT/SIGTERM graceful shutdown s save.
+- [x] **Smoke test ověřen** — HELLO + PONG + 2× SNAPSHOT (interval 10 ticků = 2.5 s). Persistence: kill server → restart načte `tick=461` ne od 0.
+- [x] **Pre-existing S39 bugs fix** — `decision_modal.ts` + `milestone_ack_modal.ts` `Text.setColor(COL_AMBER_BRIGHT)` number→string (HEX_AMBER_BRIGHT). `sacrifice.test.ts` unused import smazán.
+- [x] **183/183 testů zelených**, TS strict clean napříč 3 balíčky, vite build 1.56 MB beze změny.
+
 ## 2026-04-19 (Sezení 39 — Smart QM + demolish/build/wake-up + DSL rules + Harvester + milestone advance)
 
 - [x] **Milestone bar current → HEX_WARN_ORANGE** — rate-2 semaforová oranžová místo HEX_AMBER_BRIGHT.

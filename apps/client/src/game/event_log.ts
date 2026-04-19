@@ -3,10 +3,10 @@
 // Kánon: GLOSSARY §Event Log System (S20). Spec: TODO.md §Event Log System.
 
 import Phaser from "phaser";
-import type { World, Event, EventVerb, EventSeverity } from "./model";
-import { statusRating } from "./model";
-import { eventIcon } from "./events";
-import { formatGameTimeShort } from "./world";
+import type { World, Event, EventVerb, EventSeverity } from "@voidspan/shared";
+import { statusRating } from "@voidspan/shared";
+import { eventIcon } from "@voidspan/shared";
+import { formatGameTimeShort } from "@voidspan/shared";
 import type { TooltipManager } from "./tooltip";
 import {
   COL_HULL_MID,

@@ -1,0 +1,3 @@
+# Runtime state — simulace drží world v data/world.json, což je per-instalace
+# data (fresh init při každém novém klonu). Do repa nepatří.
+data/

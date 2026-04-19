@@ -7,7 +7,7 @@
 // Auto-open při prvním spuštění (LS flag); manuálně přes [Q] kdykoli.
 // Využívá existující ModalManager — žádný vlastní scroll/layout.
 
-import type { World } from "./model";
+import type { World } from "@voidspan/shared";
 
 const DISMISS_KEY = "voidspan.terminal.dismissed";
 

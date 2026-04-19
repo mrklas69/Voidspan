@@ -33,7 +33,8 @@
       "Bash(python:*)",
       "Bash(curl:*)",
       "WebFetch(domain:support.forpsi.com)",
-      "WebFetch(domain:www.forpsi.com)"
+      "WebFetch(domain:www.forpsi.com)",
+      "Bash(awk:*)"
     ]
   }
 }

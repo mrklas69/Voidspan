@@ -94,12 +94,12 @@ Doporučení: flat JSON pro v1.1 POC; SQLite až když je potřeba query (např.
 Snapshot frequency: 1× per game day (= 4 min wall při ×1) nebo 1× per 10s wall — ladit.
 
 **Otevřené otázky:**
-- Q1: **Persistence** — flat JSON vs. SQLite. JSON je POC-friendly; SQLite už otvírá query možnosti (milestone history).
-- Q2: **Multi-client** — když jsou 2 users současně, sdílí world? (Předpoklad: ano — Observer Edition má jeden „official" arc; Q3 milestones jsou globální narrativ.) Nebo per-user arc?
-- Q3: **Reconnect / replay** — po disconnectu server posílá snapshot + events since last tick? Jak daleko zpět (event log ring buffer)?
-- Q4: **Auth** — FVP no-auth (anyone can view), P2+ session tokens? Pro playtest OK open read.
-- Q5: **Migrations** — pokud změníme World schema (typed field navíc), jak naložit s existujícím snapshotem? Plain JSON = migrate function; Colyseus = schema versioning.
-- Q6: **Deploy** — VPS Basic (Forpsi 160 Kč/m, už v TODO) + systemd + Caddy proxy + custom domain (bete1geuse.com).
+- Q1 (S40): **Persistence** — **flat JSON pro v1.1 POC** (rozhodnuto). Dump `world.json` každých 30 s wall, crash recovery = load při boot. SQLite upgrade až když bude potřeba query history.
+- Q2 (S40): **Multi-client** — **A shared world pro v1.1, C hybrid (shared observer + per-user marks) až přijdou hráči v Release 2** (rozhodnuto). Server drží jednu `World` instanci, všichni klienti subscribují na stejný stream. Rozhodnutí kapitána = first-come first-served. Per-user ack/bookmarky až s hráčskými rolemi.
+- Q3 (S40): **Reconnect / replay** — **B full snapshot + event ring buffer** (rozhodnuto). `HELLO { world, recentEvents: Event[500] }`. Nad 500 eventů historie ztracená, dostatečné pro FVP playtest rytmus. Heartbeat `PING` každých 10 s, timeout 30 s, exponential backoff reconnect.
+- Q4 (S40): **Auth** — **A no auth, public read** (rozhodnuto). Žádné přihlášení, URL veřejná. `SPEED` je client-side only (server běží pevně ×1, accelerace jen v render accumulatoru). `DECISION` first-come first-served. Real auth až P2+.
+- Q5 (S40): **Migrations** — **D nuke & restart při schema change** (rozhodnuto). Při breaking change smazat `world.json`, server startuje fresh. Pro v1.1 POC přijatelné (playtest je krátký, ztráta = 30 s setup). Version-based migrations (C) upgrade path až bude produkční běh delší než sezení.
+- Q6 (S40): **Deploy** — VPS Basic (Forpsi 160 Kč/m, už v TODO) + systemd + Caddy proxy + subdoména `voidspan.bete1geuse.com`. **GitHub Pages ponechán jako static fallback** (offline mode, local-only world bez WS). Deploy pipeline rozhodnuta při etapě 6 (manual git pull vs. GitHub Action).
 
 **Scope:** ~10-15 sezení (server POC → protocol → deploy → client migration → QA).
 

@@ -2,7 +2,7 @@
 // Mock localStorage přes globalThis (stejný pattern jako panel_helpers.test.ts).
 
 import { describe, it, expect, beforeEach } from "vitest";
-import type { EventVerb } from "./model";
+import type { EventVerb } from "@voidspan/shared";
 import { loadVerbFilters, saveVerbFilters, FILTER_LS_KEY } from "./event_log";
 
 type LSStub = {

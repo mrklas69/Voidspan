@@ -3,7 +3,6 @@
 import { describe, it, expect } from "vitest";
 import { createInitialWorld } from "./init";
 import { getSacrificeCandidates, chooseSacrifice, isDeadlocked } from "./sacrifice";
-import { enqueueBuildTask } from "./task";
 import { protocolTick } from "./protocol";
 
 describe("getSacrificeCandidates", () => {
