@@ -103,6 +103,8 @@ Snapshot frequency: 1× per game day (= 4 min wall při ×1) nebo 1× per 10s wa
 
 **Scope:** ~10-15 sezení (server POC → protocol → deploy → client migration → QA).
 
+**Time axes unification (S39):** FVP dnes má dvě osy — `T:day.hh:mm` (16h game day, pace mechaniky) + kalendář `YYYY-MM-DD.HH:MM` (24h, milestone date_cs). Nesoulad od prvního day-rolu je očekávatelný. V persistent verzi kalendář nahrazen **reálným serverovým časem** — zakládání kolonií/beltů v real-world time, milestone datum odpovídá wall-clock. T osa buď zmizí (client jen subscribuje na events) nebo zůstane jako „session elapsed" pro user's aktuální návštěvu.
+
 ---
 
 ### Osa 3 — i18n AJ/ČJ (v1.1+)

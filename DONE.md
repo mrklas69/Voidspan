@@ -4,6 +4,26 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 > **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
 
+## 2026-04-19 (Sezení 39 — Smart QM + demolish/build/wake-up + DSL rules + Harvester + milestone advance)
+
+- [x] **Milestone bar current → HEX_WARN_ORANGE** — rate-2 semaforová oranžová místo HEX_AMBER_BRIGHT.
+- [x] **Smart QuarterMaster priority engine** — `pickNextTarget(w, materialGated)` s 6 prioritami (CRIT repair > live repair > live build > live demo > nový Engine demo > normal repair). Pod material gate priority 1/2/3/6 skip, priority 5 rescue Engine demo trigger (materialGated + damaged exists → recovery přinese zdroje). Dvoufázový pause gate: `globalPauseReason` pauzne vše, `materialPauseReason` pauzne jen repair+build.
+- [x] **Demolish runtime** — `enqueueDemolishTask(w, moduleId)` + progressTasks/completeTask demolish větve. `Task.initialHp` field pro recovery vzorec `(initialHp / hp_max) × recipe × DEMOLISH_RECOVERY_RATIO (0.5)`. Při completion bays → void, modul smazán, recovery vrácen do skladu (`returnResources` clamp MAX). `World.engineDemoEnqueued` one-shot flag.
+- [x] **Build runtime** — `enqueueBuildTask(w, kind, rootIdx)` generický builder. Validace void bays + bounds, generuje moduleId přes `KIND_ID_PREFIX`, vytvoří building modul (hp=0), konzumuje recipe per-tick. Completion → status online + hp_max.
+- [x] **QM Rule engine (DSL v0)** — `world/rules.ts`. `QMRule = { id, dsl, when, then }`, 2 pravidla ve `FVP_RULES`. DSL text syntax jako dokumentační komentář (parser P2+). `evaluateRules(w)` v protocolTick.
+- [x] **Kapitán wake-up + DecisionModal** — první hráčská interakce. `isDeadlocked` detekce, `triggerCaptainDecision` wake flag + SYST event, `getSacrificeCandidates` (blacklist Habitat/MedCore/CommandPost). `ui/decision_modal.ts` auto-open s dynamickými tlačítky per kandidát, klik → `chooseSacrifice` → enqueue demo → rescue flow.
+- [x] **Milestone auto-advance + ack modal** — `advanceMilestones(w)` v protocolTick, per-milestone TRIGGERS (repairs → all ≥ 99 %, dock_build → dock_1 online, first_wake → captainAwake). `Milestone.acked` field, `MilestoneAckModal` auto-open s [OK]+Enter/Space/ESC. Shared handler reference fix opakovaného modal bugu.
+- [x] **Milestone restructure** — `+departure` first done („Zahájení cesty" 1987-09-12), `−arrival` (R2 scope), `first_wake` terminal P1 beat. 7 milníků: 4 done + 1 current + 2 planned.
+- [x] **Milestone bar render fix** — `chip.text` + color + alpha se nyní re-applyuje per status change přes `lastStatus` cache. Cluster centrování zrušeno (user volba) — cluster centered as whole, current drží highlight přes pulse + barvu.
+- [x] **AsteroidHarvester modul** — nový `ModuleKind.AsteroidHarvester` (1×1, −5 W, recipe 60 S + 10 F, max_hp 600). Label „Harvestor" (CZ), Tabler-style ikona `asteroid-harvester.svg`.
+- [x] **Poisson helper + Harvester production** — `world/random.ts::poisson(lam, maxYield)` port z PocketStory. `world/harvester.ts::harvesterTick` per game hour Poisson sample (λ=3 × hpRatio, clamp [0,5]), output Solids + flow.in + SYST event. Pipeline slot 7b.
+- [x] **Decay busy loop fix** — `QM_FULL_HP_TOLERANCE_PCT = 1 %`. `findMinHpTarget` + `anyDamagedModule` ignorují sub-procentní decay drift. Engine demo spustí okamžitě po opravách (dřív 4 day delay bug).
+- [x] **Offline guard generalizováno** — non-online moduly skipnuty z QM repair kandidatury (Engine seed + runtime offline z decay/asteroid).
+- [x] **ModulesPanel offline izomorfismus** — offline řádek = `HEX_METAL_GRAY` stejně jako ShipRender glyph tint. Opraveno neisomorphic rendering Engine modulu.
+- [x] **`Milestone.date_cs` dynamic** — při advance se přepíše na reálný game time (`formatGameDateCs(w.tick)`). Seed done milestones drží historical times. Chain current zahájení = dočasně, při advance přepíše na dokončení.
+- [x] **Time axes dokumentace** — code komentáře u `formatGameTimeShort` + `formatGameDateCs` + IDEAS Osa 2 sekce „Time axes unification". Dvě osy (16h T vs. 24h kalendář) rezolvovány v persistent serveru.
+- [x] **Unit testy +59** — demolish.test.ts (8), build.test.ts (11), sacrifice.test.ts (12), milestone.test.ts (10), harvester.test.ts (12), protocol priority + rescue (+6). **183/183 zelených.**
+
 ## 2026-04-19 (Sezení 38 — v1.1 + Milestone bar + DRY refactor + cleanup)
 
 - [x] **v1.0 → v1.1 bump** — `package.json` root + client, `PLAYTEST_GUIDE.md` header, `terminal.ts` QM Terminal první řádek „Voidspan v1.1 Observer Edition".

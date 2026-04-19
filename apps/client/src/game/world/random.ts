@@ -16,3 +16,22 @@ export function shuffleInPlace<T>(arr: T[]): T[] {
   }
   return arr;
 }
+
+// Poisson rozdělení (Knuthův algoritmus). Modeluje počet náhodných událostí
+// za jednotku času (např. průměrně 3 asteroid captures za hodinu, konkrétně
+// 0–5 ks). `lam` = lambda (střední hodnota za jednotku). `maxYield` = clamp
+// horní hranice (brání extreme outliers).
+//
+// Port z PocketStory (backend/sim/engine.py). Jednoduchý algoritmus přes
+// součin náhodných čísel — žádná tabulka, žádný externí PRNG.
+export function poisson(lam: number, maxYield: number): number {
+  if (lam <= 0) return 0;
+  const L = Math.exp(-lam); // práh = e^(-lambda)
+  let k = 0;
+  let p = 1.0;
+  while (p > L) {
+    k += 1;
+    p *= Math.random();
+  }
+  return Math.min(k - 1, maxYield);
+}

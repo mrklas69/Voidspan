@@ -151,6 +151,9 @@ export function createInitialWorld(): World {
       },
     },
     collapseEmitted: false,
+    engineDemoEnqueued: false,
+    captainAwake: false,
+    pendingDecision: null,
     milestones: createInitialMilestones(),
   };
 
@@ -183,11 +186,20 @@ export function createInitialWorld(): World {
 function createInitialMilestones(): Milestone[] {
   return [
     {
+      id: "departure",
+      label_cs: "Zahájení cesty",
+      desc_cs: "Loď se odpoutala od mateřského přístavu Země a vstoupila do hlubokého prostoru. Počátek 400leté cesty k Teegarden's Star.",
+      date_cs: "1987-09-12",
+      status: "done",
+      acked: true,
+    },
+    {
       id: "establish",
       label_cs: "Establish",
       desc_cs: "Kolonie usazena na orbitě. Hull segment aktivován, základní systémy online.",
       date_cs: "2387-04-16.12:14",
       status: "done",
+      acked: true,
     },
     {
       id: "checks",
@@ -195,6 +207,7 @@ function createInitialMilestones(): Milestone[] {
       desc_cs: "Diagnostika všech modulů dokončena. Zjištěny drobné nesrovnalosti k opravě.",
       date_cs: "2387-04-17.03:33",
       status: "done",
+      acked: true,
     },
     {
       id: "orbit",
@@ -202,6 +215,7 @@ function createInitialMilestones(): Milestone[] {
       desc_cs: "Orbita segmentu Teegarden.Belt1.Seg042 stabilizována. Perioda v toleranci.",
       date_cs: "2387-04-17.14:47",
       status: "done",
+      acked: true,
     },
     {
       id: "repairs",
@@ -209,24 +223,21 @@ function createInitialMilestones(): Milestone[] {
       desc_cs: "QuarterMaster spouští autonomní opravy poškozených modulů. Priorita: nejnižší HP ratio.",
       date_cs: "2387-04-25.09:24",
       status: "current",
+      acked: false,
     },
     {
-      id: "repairs_complete",
-      label_cs: "Dokončení oprav",
-      desc_cs: "Cíl: všechny moduly na 100 % HP. Po dosažení kolonie připravena na další fázi.",
+      id: "dock_build",
+      label_cs: "Výstavba doku",
+      desc_cs: "Po recyklaci startovního motoru QuarterMaster postaví Dokovací stanici 2×2 (zadní část lodi). Připraví kolonii na příjem doprovodných kapslí se zdroji.",
       status: "planned",
+      acked: false,
     },
     {
       id: "first_wake",
       label_cs: "Probuzení posádky",
-      desc_cs: "První kolonista opouští cryo. Trigger: stabilní E + připravený Habitat.",
+      desc_cs: "První kolonista opouští cryo — Protokol si neví rady a volá o pomoc. Konec FVP fáze.",
       status: "planned",
-    },
-    {
-      id: "arrival",
-      label_cs: "Příchod Teegarden",
-      desc_cs: "Konec tranzitu. 400 let cesty dokončeno, kolonie v cílové soustavě Teegarden's Star.",
-      status: "planned",
+      acked: false,
     },
   ];
 }

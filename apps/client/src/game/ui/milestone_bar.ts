@@ -4,7 +4,7 @@
 // Layout: 7 chips centered cluster, každý = ikona + label_cs.
 // Status → barva + ikona + chování:
 //   done     ✓ green, solid alpha
-//   current  ⧖ amber bright, pulse yoyo alpha 0.5..1 perioda 2 s
+//   current  ⧖ warn orange (rate-2 semafor), pulse yoyo alpha 0.5..1 perioda 2 s
 //   planned  ○ dim amber, solid alpha
 //
 // Tooltip (hover) = label + datum + plný desc z Milestone.desc_cs.
@@ -16,7 +16,7 @@ import {
   FONT_FAMILY,
   FONT_SIZE_TIP,
   HEX_OK_GREEN,
-  HEX_AMBER_BRIGHT,
+  HEX_WARN_ORANGE,
   HEX_AMBER_DIM,
   COL_HULL_MID,
 } from "../palette";
@@ -49,7 +49,7 @@ const ICON_CHAR: Record<MilestoneStatus, string> = {
 // Barva textu per status (hex string pro Phaser Text color).
 const STATUS_COLOR: Record<MilestoneStatus, string> = {
   done:    HEX_OK_GREEN,       // zelená — dokončeno
-  current: HEX_AMBER_BRIGHT,   // amber — probíhá (+ pulse)
+  current: HEX_WARN_ORANGE,    // semaforová oranžová (rate-2) — probíhá (+ pulse)
   planned: HEX_AMBER_DIM,      // dim amber — plánováno
 };
 
@@ -57,6 +57,7 @@ interface Chip {
   bg: Phaser.GameObjects.Rectangle;
   text: Phaser.GameObjects.Text;
   milestoneId: string; // stabilní identifikátor — status čteme z World každý render
+  lastStatus: MilestoneStatus | null; // cache pro re-apply styling jen při změně
 }
 
 export class MilestoneBar {
@@ -108,7 +109,7 @@ export class MilestoneBar {
         .setOrigin(0, 0.5)
         .setDepth(DEPTH_CHIP_TEXT);
 
-      this.chips.push({ bg, text, milestoneId: m.id });
+      this.chips.push({ bg, text, milestoneId: m.id, lastStatus: m.status });
 
       // Separator za tímto chipem (kromě posledního).
       if (i < milestones.length - 1) {
@@ -125,8 +126,10 @@ export class MilestoneBar {
     }
   }
 
-  // Rozmísti chipy — centrovaný cluster, chip width = text.width + 2× padding.
-  // Volá se při init i při resize (canvas width se mění → recenter).
+  // Rozmísti chipy — cluster jako celek centrovaný v canvasu. Žádný shift
+  // podle current (ten drží pulse + barevné označení jako highlight).
+  // Volá se při init / resize / render po status change (label délka se
+  // změnila → recompute positions).
   private layout(): void {
     const chipWidths = this.chips.map((c) => c.text.width + CHIP_PAD_X * 2);
     const totalW =
@@ -168,18 +171,38 @@ export class MilestoneBar {
     }
   }
 
-  // Per-frame render — pulse alpha pro current chip text. Strip-bg je konstantní,
-  // per-chip bg drží alpha 0 (invisible hit area). Status čteme z World aby se
-  // pulse přepnul na nový chip při R2 auto-advance (static cache = drift risk).
+  // Per-frame render — re-apply status styling při změně (done advance) + pulse
+  // alpha pro current. Status čteme z World aby se styling přepnul při advance
+  // (static cache = drift risk: „milník nezezelenal" bug). Relayout při změně
+  // (nová label délka → recompute positions).
   render(): void {
+    const milestones = this.getWorld().milestones;
+    let statusChanged = false;
+
+    // 1) Re-apply styling pokud status chipu se změnil oproti cache.
+    for (let i = 0; i < this.chips.length; i++) {
+      const chip = this.chips[i]!;
+      const m = milestones[i];
+      if (!m) continue;
+      if (chip.lastStatus === m.status) continue;
+      chip.lastStatus = m.status;
+      chip.text.setText(`${ICON_CHAR[m.status]} ${m.label_cs}`);
+      chip.text.setColor(STATUS_COLOR[m.status]);
+      chip.text.setAlpha(1); // reset alpha při přepnutí, pulse se nastaví níže
+      statusChanged = true;
+    }
+    // Po status změně re-centruj cluster (label šířky se změnily).
+    if (statusChanged) {
+      this.layout();
+      this.lastPulseAlpha = -1; // force pulse re-apply next frame
+    }
+
+    // 2) Pulse alpha pro current chip — pulse perioda sdílena s ship render activity.
     const phase = (Math.sin(this.scene.time.now * UI_PULSE_RAD_PER_MS) + 1) / 2;
     const pulseAlpha = UI_PULSE_ALPHA_MIN + (1 - UI_PULSE_ALPHA_MIN) * phase;
-    // Guard no-op: pulse je spojitá funkce, ale po rovnání float lze přeskočit
-    // malé delty. Ušetří 420 setAlpha/s × 7 chipů pokud frame nepohne.
     if (pulseAlpha === this.lastPulseAlpha) return;
     this.lastPulseAlpha = pulseAlpha;
 
-    const milestones = this.getWorld().milestones;
     for (let i = 0; i < this.chips.length; i++) {
       if (milestones[i]?.status === "current") {
         this.chips[i]!.text.setAlpha(pulseAlpha);

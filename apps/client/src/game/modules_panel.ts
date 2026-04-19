@@ -16,6 +16,7 @@ import {
   FONT_FAMILY,
   FONT_SIZE_SIDEPANEL,
   RATING_COLOR,
+  HEX_METAL_GRAY,
 } from "./palette";
 import {
   PANEL_PADDING as PADDING,
@@ -318,8 +319,11 @@ export class ModulesPanel extends FloatingPanel {
         ? this.contentW
         : this.contentW - row.statsText.width - GAP;
       ellipsizeText(row.kindIdText, kindIdFull, statsLeftX);
-      // 5-barevný semafor per řádek — barva sdílí metriku s hpPct.
-      const rowColor = RATING_COLOR[statusRating(hpPct)];
+      // Offline modul = grey (izomorfismus s ShipRender — „nelze použít, ne health").
+      // Online + building/demolishing = 5-barevný semafor per řádek dle hpPct.
+      const rowColor = mod.status === "offline"
+        ? HEX_METAL_GRAY
+        : RATING_COLOR[statusRating(hpPct)];
       row.kindIdText.setColor(rowColor);
       row.statsText.setColor(rowColor);
       row.kindIdText.setVisible(true);

@@ -29,6 +29,8 @@ import { COL_TEXT_DIM, recomputeLayout, setSegmentX } from "./ui/layout";
 import { dockManager } from "./ui/dock_manager";
 import { HeaderPanel } from "./ui/header";
 import { MilestoneBar } from "./ui/milestone_bar";
+import { DecisionModal } from "./ui/decision_modal";
+import { MilestoneAckModal } from "./ui/milestone_ack_modal";
 import { ShipRender } from "./ui/ship_render";
 // ActorsPanel retire: skrytý v S19, soubory smazány v S38 (dead code cleanup).
 // SideRightPanel retirován v S28 (dead code s layered bay refs).
@@ -47,6 +49,8 @@ export class GameScene extends Phaser.Scene {
   private header!: HeaderPanel;
   private segment!: ShipRender;
   private milestoneBar!: MilestoneBar;
+  private decisionModal!: DecisionModal;
+  private milestoneAckModal!: MilestoneAckModal;
   private eventLog!: EventLogPanel;
   private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
@@ -74,6 +78,7 @@ export class GameScene extends Phaser.Scene {
       ["icon:Engine", "engine"],
       ["icon:MedCore", "first-aid-kit"],
       ["icon:CommandPost", "broadcast"],
+      ["icon:AsteroidHarvester", "asteroid-harvester"],
       ["icon:fallback", "cube"],
     ];
     for (const [key, name] of TABLER_ICONS) {
@@ -119,6 +124,8 @@ export class GameScene extends Phaser.Scene {
     });
     this.segment = new ShipRender(this, getWorld);
     this.milestoneBar = new MilestoneBar(this, getWorld);
+    this.decisionModal = new DecisionModal(this, getWorld);
+    this.milestoneAckModal = new MilestoneAckModal(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);
@@ -358,5 +365,9 @@ export class GameScene extends Phaser.Scene {
     this.taskQueue.render();
     this.infoPanel.render();
     this.modulesPanel.render();
+    // Deadlock wake-up — reaktivní watcher pro pendingDecision.
+    this.decisionModal.sync();
+    // Milestone completion — reaktivní watcher pro unacked done milestone.
+    this.milestoneAckModal.sync();
   }
 }

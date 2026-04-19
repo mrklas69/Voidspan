@@ -66,7 +66,8 @@ export type ModuleKind =
   | "Storage"
   | "MedCore"
   | "Assembler"
-  | "CommandPost";
+  | "CommandPost"
+  | "AsteroidHarvester";
 
 // Statická definice modulu — jedna na typ, sdílí všechny instance.
 // DRY: size/power_w/hp_max se neduplikuje do každé instance.
@@ -186,6 +187,10 @@ export type Task = {
   createdAt: number;          // tick vzniku (pro řazení + ETA)
   completedAt?: number;       // tick dokončení (completed/failed)
   label?: string;             // override label (pro service tasky — „QuarterMaster v2.3 — Idle")
+  // S39 demolish: HP modulu v okamžiku enqueue. HP klesá lineárně od initialHp
+  // k 0 během demolice (asteroid mezi tím může snížit = materiál fly off, do
+  // recovery to nepočítá). Recovery = (initialHp / hp_max) × recipe × ratio.
+  initialHp?: number;
 };
 
 // Productive task = reálně čerpá pracovní kapacitu (W/E). Vylučuje service
@@ -303,6 +308,10 @@ export interface Milestone {
   desc_cs: string;         // detailnější popis pro tooltip/popup
   date_cs?: string;        // herní datum, pokud je relevantní (2387-04-16.12:14)
   status: MilestoneStatus;
+  // Hráčská potvrzení — done milestony čekají na [OK] modal, dokud acked=false.
+  // Seed done milestony mají acked=true (historický start, ne hráčův zážitek).
+  // Runtime advance nastavuje done + acked=false → modal → acked=true.
+  acked: boolean;
 }
 
 // === Root state ===
@@ -341,6 +350,19 @@ export type World = {
   // true, aby se událost neopakovala. Simulace jede dál (Observer axiom),
   // ale epitaph má smysl jen jednou — puncuje narrative arc.
   collapseEmitted: boolean;
+  // One-shot guard pro Engine demolish (S39). QM si zapíše, že už Engine
+  // demo zařadil do fronty (task existuje nebo byl dokončen). Brání cyklu
+  // enqueue → CRIT preempt → task smazán (autoclean) → re-enqueue. Jedno-shotový
+  // narativní beat: „motor dosloužil, uvolnit 2×2 plochu, recovery surovin".
+  engineDemoEnqueued: boolean;
+  // Kapitán probuzen z cryo (S39 wake-up). One-shot flag — jakmile Protocol
+  // uvízl (material missing + no auto rescue), budí hráče na rozhodnutí.
+  // Zatím bez HP drain (R2 Player mode rozšíří na per-actor mechaniku).
+  captainAwake: boolean;
+  // Čekající rozhodnutí hráče (S39). null = žádné. Set pending nastaví
+  // protocolTick při detekci deadlocku; UI decision modal čte a při volbě
+  // volá handler + flip null. Rozšiřitelné pro budoucí typy rozhodnutí.
+  pendingDecision: "sacrifice-for-build" | null;
   // Milestone strip (S38) — 7 prvků, pořadí = timeline. Sdíleno mezi UI
   // milestone bar a QM Terminal. Status je FVP static; R2+ bude auto-advance.
   milestones: Milestone[];
@@ -470,6 +492,19 @@ export const MODULE_DEFS: Record<ModuleKind, ModuleDef> = {
     max_hp: 900,
     recipe: { solids: 99 },
     description: "Velitelské stanoviště + integrovaná Observatory. UI root mateřské lodi.",
+  },
+  AsteroidHarvester: {
+    kind: "AsteroidHarvester",
+    label: "Harvestor",
+    w: 1,
+    h: 1,
+    power_w: -5, // drone operations = střední spotřeba
+
+    wd_to_build: 18,
+    wd_to_demolish: 9,
+    max_hp: 600,
+    recipe: { solids: 60, fluids: 10 },
+    description: "Harvestor asteroidů v1. Konstruuje drony, které loví okolní asteroidy a vracejí je k přeměně na Solids. Level 1: průměr 3 ks/hod (rozptyl Poisson 0–5).",
   },
 };
 

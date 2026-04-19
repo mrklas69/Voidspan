@@ -6,6 +6,14 @@ import { TICKS_PER_GAME_DAY, TICKS_PER_WALL_MINUTE } from "../tuning";
 
 // Bez prefixu — formát "0.00:00" (day.hh:mm). Pro Top Bar header existuje
 // `formatGameTime` s prefixem "T:" (drží sémantický rozdíl od běžných čísel).
+//
+// DVĚ ČASOVÉ OSY (FVP, S39):
+//   - T: session elapsed — 16h „game day" (pace mechaniky, decay rate, flow window).
+//   - date_cs kalendář (viz formatGameDateCs níže) — 24h, base 2387-04-25.09:24.
+//
+// Obě startují na tick=0, ale od prvního day rolu divergují (16h vs 24h). Nesoulad
+// je očekávatelný — v persistent serveru (Osa 2 roadmap) bude datum nahrazeno
+// reálným serverovým časem (zakládání kolonií v real-world time), T osa zmizí.
 export function formatGameTimeShort(tick: number): string {
   const gameMin = Math.floor(tick / TICKS_PER_WALL_MINUTE);
   const day = Math.floor(gameMin / (16 * 60));
@@ -18,6 +26,39 @@ export function formatGameTimeShort(tick: number): string {
 // Verze s prefixem "T:" — pro Top Bar header (kontextuální tag mezi version + adresa + čas).
 export function formatGameTime(tick: number): string {
   return `T:${formatGameTimeShort(tick)}`;
+}
+
+// Kalendářní datum formátu "YYYY-MM-DD.HH:MM" pro milestone date_cs.
+// Base = repairs seed (2387-04-25.09:24). Každý tick = 1 game minute
+// (TIME_COMPRESSION 1×). Date API handle měsíc/den roll-over correctly.
+//
+// Pozn.: T (viz formatGameTimeShort) a tato kalendářová osa jsou **dvě různé
+// časové osy** — 16h game day vs. 24h kalendář. V persistent serveru (Osa 2)
+// bude kalendář nahrazen reálným serverovým časem (real-world datum kolonie).
+const GAME_START_CALENDAR = {
+  year: 2387,
+  month: 4,   // April (1-indexed)
+  day: 25,
+  hour: 9,
+  minute: 24,
+};
+
+export function formatGameDateCs(tick: number): string {
+  const gameMin = Math.floor(tick / TICKS_PER_WALL_MINUTE);
+  const baseMs = Date.UTC(
+    GAME_START_CALENDAR.year,
+    GAME_START_CALENDAR.month - 1, // Date API: 0-indexed month
+    GAME_START_CALENDAR.day,
+    GAME_START_CALENDAR.hour,
+    GAME_START_CALENDAR.minute,
+  );
+  const d = new Date(baseMs + gameMin * 60_000);
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${dd}.${hh}:${mm}`;
 }
 
 // S24: ETA formát "12d14h12m" — herní dny/hodiny/minuty.

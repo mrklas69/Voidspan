@@ -10,6 +10,7 @@ import { decayTick } from "./decay";
 import { protocolTick } from "./protocol";
 import { assignIdleActors, progressTasks, cleanupOldTasks } from "./task";
 import { productionTick } from "./production";
+import { harvesterTick } from "./harvester";
 import { recomputeStatus } from "./status";
 import { advanceFlowDay } from "./flow";
 import { scheduledEvents } from "./scheduled";
@@ -21,8 +22,10 @@ export { createInitialWorld } from "./init";
 export { formatGameTime, formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./format";
 export { getOuterHP, getBayTrajectory, type OuterHP, type Trajectory } from "./bay";
 export { averageFlow, currentDayRate, type FlowCategory, type FlowDirection } from "./flow";
-export { enqueueRepairTask, findActiveTaskForModule, isConstructionTask } from "./task";
+export { enqueueRepairTask, enqueueDemolishTask, enqueueBuildTask, findActiveTaskForModule, isConstructionTask } from "./task";
 export { protocolPauseReason } from "./protocol";
+export { getSacrificeCandidates, chooseSacrifice, isDeadlocked, type SacrificeCandidate } from "./sacrifice";
+export { advanceMilestones, firstPendingAck } from "./milestone";
 export { computeWork } from "./work";
 export { computeEnergyMax } from "./production";
 
@@ -83,6 +86,7 @@ export function stepWorld(w: World): void {
   actorLifeTick(w);       // slot 6 — S30 cryo failure
   collapseTick(w);        // slot 6b — terminal epitaph (one-shot)
   productionTick(w);      // slot 7
+  harvesterTick(w);       // slot 7b — S39 AsteroidHarvester per-hour Poisson
   arrivalsTick(w);        // slot 8 — stub (R2 kapsle)
   scheduledEvents(w);     // slot 9 — S30 asteroid
   recomputeStatus(w);     // slot 10

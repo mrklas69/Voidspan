@@ -189,5 +189,23 @@ export const PROTOCOL_PAUSE_RATING = 2;
 // Autoclean completed/failed tasks — 1 h wall = 14400 ticků (při TICK_MS 250).
 export const TASK_AUTOCLEAN_TICKS = TICKS_PER_SECOND * 3600;
 
+// Demolish recovery — procento build recipe modulu, které se vrátí do skladu
+// při dokončené dekonstrukci. 0.5 = 50 % (rest = ztraceno jako waste / cutting losses
+// / energie na rozpojení). Playtest ladí; motivace: „získáš suroviny, oddálíš
+// destrukci lodi" (user, S39). Clamp: 0 = nic, 1 = 100 % recovery.
+export const DEMOLISH_RECOVERY_RATIO = 0.5;
+
+// QuarterMaster priority engine (S39) — smart autopilot s více typy targetů.
+// CRIT práh: pod tuhle hranici HP% modulu QM řeší jako prioritu 1 (repair preempt
+// všeho jiného, včetně běžící demolice). Hranice odpovídá rate-1 semaforu (< 15 %).
+export const QM_CRIT_REPAIR_PCT = THRESHOLD_CRIT_PCT;
+
+// Tolerance pro „modul je plně zdravý" (QM rozhodování). Decay klesá HP spojitě
+// (0.00003 HP/tick), striktní porovnání `hp < hp_max` způsobí busy loop: modul
+// repair → 100% → další tick decay na 99.9999% → znovu repair. QM by pak nikdy
+// neodešel z priority „normal repair" na vyšší prioritu (Engine demo, …).
+// Tolerance 1 % znamená: QM ignoruje sub-procentní drift a postoupí dál.
+export const QM_FULL_HP_TOLERANCE_PCT = 1;
+
 // §11 Ship render: SegmentPanel (PNG) retired v S36 — ShipRender (procedural)
 // je jediný renderer. Flag USE_PROCEDURAL_RENDER odstraněn s fallback kódem.

@@ -1,10 +1,15 @@
 // Task engine — enqueue, assign, progress, cleanup, complete.
 
-import type { World, Task, ActorKind } from "../model";
-import { TASK_DEFS } from "../model";
-import { TICKS_PER_GAME_DAY, WD_PER_HP, TASK_AUTOCLEAN_TICKS } from "../tuning";
+import type { World, Task, ActorKind, ModuleKind } from "../model";
+import { TASK_DEFS, MODULE_DEFS } from "../model";
+import {
+  TICKS_PER_GAME_DAY,
+  WD_PER_HP,
+  TASK_AUTOCLEAN_TICKS,
+  DEMOLISH_RECOVERY_RATIO,
+} from "../tuning";
 import { appendEvent } from "../events";
-import { getTaskRecipe, whichResourceMissing, consumeResources } from "./recipe";
+import { getTaskRecipe, whichResourceMissing, consumeResources, returnResources } from "./recipe";
 import { taskActionCs } from "./format";
 
 // Najde „živý" task pro daný modul — pending/active/paused. completed/failed/
@@ -53,6 +58,123 @@ export function enqueueRepairTask(w: World, bayIdx: number): boolean {
     kind: "repair",
     target: { moduleId: mod.id },
     wd_total,
+    wd_done: 0,
+    assigned: [],
+    priority: 1,
+    status: "pending",
+    createdAt: w.tick,
+  });
+  return true;
+}
+
+// Enqueue demolish task na modul. Cíl = modul (bay typu module_root).
+// Idempotent — existuje-li už task na ten modul, vrátí false.
+// wd_total bereme přímo z katalogu (wd_to_demolish) — KISS, lidsky čitelná
+// celková práce per-kind. HP modulu klesá spojitě v progressTasks dle wd_done
+// / wd_total (derivované, žádný state navíc).
+export function enqueueDemolishTask(w: World, moduleId: string): boolean {
+  const mod = w.modules[moduleId];
+  if (!mod) return false;
+  const exists = w.tasks.some(
+    (t) => t.kind === "demolish" && t.target.moduleId === moduleId,
+  );
+  if (exists) return false;
+  const def = MODULE_DEFS[mod.kind];
+  w.tasks.push({
+    id: `task_${w.next_task_id++}`,
+    kind: "demolish",
+    target: { moduleId: mod.id },
+    wd_total: def.wd_to_demolish,
+    wd_done: 0,
+    assigned: [],
+    priority: 1,
+    status: "pending",
+    createdAt: w.tick,
+    initialHp: mod.hp, // HP v okamžiku enqueue — určuje recovery scale
+  });
+  return true;
+}
+
+// ID prefix konvence per kind (odpovídá init.ts seed tuples — engine_1, solar_1, …).
+// SolarArray má zvláštní prefix „solar" (ne „solararray") — historický konsensus.
+const KIND_ID_PREFIX: Record<ModuleKind, string> = {
+  SolarArray: "solar",
+  Engine: "engine",
+  Dock: "dock",
+  Habitat: "habitat",
+  Storage: "storage",
+  MedCore: "medcore",
+  Assembler: "assembler",
+  CommandPost: "commandpost",
+  AsteroidHarvester: "harvester",
+};
+
+// Generuj unique moduleId per kind — iteruje "<prefix>_N" dokud nenajde volné.
+// Gap-fill: po demolish může být index volný, znovupoužije se.
+function generateModuleId(w: World, kind: ModuleKind): string {
+  const prefix = KIND_ID_PREFIX[kind];
+  let i = 1;
+  while (w.modules[`${prefix}_${i}`]) i++;
+  return `${prefix}_${i}`;
+}
+
+// Enqueue build task — vytvoří modul na zadaných bays (všechny musí být void),
+// task typ "build" který progresses HP z 0 na hp_max. Modul instance vzniká
+// HNED (status=building, hp=0), aby mohl být cílem dalších tasks a UI ho viděl.
+// Completion: status="online", hp=hp_max.
+//
+// Idempotent — jestli už build task existuje na tyto bays, vrátí false.
+// Validace: bays na rect [rootIdx, rootIdx+w×h] musí být všechny void + uvnitř segmentu.
+export function enqueueBuildTask(w: World, kind: ModuleKind, rootIdx: number): boolean {
+  const def = MODULE_DEFS[kind];
+  const rootRow = Math.floor(rootIdx / 8);
+  const rootCol = rootIdx % 8;
+  // Out of bounds — modul přesahuje segment (2×8).
+  if (rootRow + def.h > 2 || rootCol + def.w > 8) return false;
+  // Všechny bays v rect musí být void.
+  for (let dy = 0; dy < def.h; dy++) {
+    for (let dx = 0; dx < def.w; dx++) {
+      const idx = (rootRow + dy) * 8 + (rootCol + dx);
+      if (w.segment[idx]?.kind !== "void") return false;
+    }
+  }
+  // Idempotent — už existuje živý build task na tomto root?
+  const exists = w.tasks.some(
+    (t) => t.kind === "build" && t.target.bayIdx === rootIdx &&
+      (t.status === "pending" || t.status === "active" || t.status === "paused"),
+  );
+  if (exists) return false;
+
+  // Vytvoř modul instance s status=building, hp=0.
+  const moduleId = generateModuleId(w, kind);
+  w.modules[moduleId] = {
+    id: moduleId,
+    kind,
+    rootIdx,
+    status: "building",
+    hp: 0,
+    hp_max: def.max_hp,
+    progress_wd: 0,
+  };
+
+  // Obsaď bays — root + refs.
+  for (let dy = 0; dy < def.h; dy++) {
+    for (let dx = 0; dx < def.w; dx++) {
+      const idx = (rootRow + dy) * 8 + (rootCol + dx);
+      if (dx === 0 && dy === 0) {
+        w.segment[idx] = { kind: "module_root", moduleId };
+      } else {
+        w.segment[idx] = { kind: "module_ref", moduleId, rootOffset: { dx, dy } };
+      }
+    }
+  }
+
+  // Task wd_total = def.wd_to_build (celková práce z 0 na hp_max).
+  w.tasks.push({
+    id: `task_${w.next_task_id++}`,
+    kind: "build",
+    target: { moduleId, bayIdx: rootIdx, buildSpec: kind },
+    wd_total: def.wd_to_build,
     wd_done: 0,
     assigned: [],
     priority: 1,
@@ -112,6 +234,31 @@ export function progressTasks(w: World): void {
         const mod = w.modules[task.target.moduleId];
         if (mod) mod.hp = Math.min(mod.hp_max, mod.hp + hp_delta);
       }
+    } else if (task.kind === "build") {
+      // Build: HP roste z 0 k hp_max; konzumuje recipe jako repair (material gate).
+      const hp_delta = wd_delta / WD_PER_HP;
+      const recipe = getTaskRecipe(w, task);
+      if (recipe) {
+        if (whichResourceMissing(w, recipe, hp_delta) !== null) continue;
+        consumeResources(w, recipe, hp_delta);
+      }
+      if (task.target.moduleId !== undefined) {
+        const mod = w.modules[task.target.moduleId];
+        if (mod) mod.hp = Math.min(mod.hp_max, mod.hp + hp_delta);
+      }
+    } else if (task.kind === "demolish") {
+      // Demolish: HP klesá lineárně z initialHp (HP v okamžiku enqueue) k 0.
+      // Žádná material konzumace; recovery se poskytuje při completion.
+      // Žádný material gate (rozpojování nepotřebuje přísun).
+      if (task.target.moduleId !== undefined) {
+        const mod = w.modules[task.target.moduleId];
+        if (mod) {
+          const initialHp = task.initialHp ?? mod.hp_max;
+          const progressRatio = Math.min(1, (task.wd_done + wd_delta) / task.wd_total);
+          mod.hp = Math.max(0, initialHp * (1 - progressRatio));
+          mod.status = "demolishing";
+        }
+      }
     }
     task.wd_done += wd_delta;
 
@@ -147,6 +294,41 @@ function completeTask(w: World, task: Task): void {
   if (task.kind === "repair" && task.target.moduleId !== undefined) {
     const mod = w.modules[task.target.moduleId];
     if (mod) mod.hp = mod.hp_max;
+  }
+
+  // Build: HP se už spojitě synchronizovalo (0 → hp_max); flip status → online.
+  if (task.kind === "build" && task.target.moduleId !== undefined) {
+    const mod = w.modules[task.target.moduleId];
+    if (mod) {
+      mod.hp = mod.hp_max;
+      mod.status = "online";
+    }
+  }
+
+  // Demolish: bay → void (root + všechny refs), modul odstranit z w.modules,
+  // recovery zdrojů do skladu.
+  // Vzorec: recovery = (initialHp / hp_max) × recipe × DEMOLISH_RECOVERY_RATIO.
+  // Poškozený modul má míň materiálu k rozpojení (asteroid mezi tím = materiál
+  // fly off do vesmíru, do recovery se nepočítá).
+  if (task.kind === "demolish" && task.target.moduleId !== undefined) {
+    const mod = w.modules[task.target.moduleId];
+    if (mod) {
+      const def = MODULE_DEFS[mod.kind];
+      const initialHp = task.initialHp ?? mod.hp_max;
+      const recoveryScale = (initialHp / mod.hp_max) * DEMOLISH_RECOVERY_RATIO;
+      returnResources(w, def.recipe, recoveryScale);
+      // Clear bays — najdi všechny bays s odkazem na tento modul a sleep → void.
+      for (let i = 0; i < w.segment.length; i++) {
+        const bay = w.segment[i];
+        if (!bay) continue;
+        if (bay.kind === "module_root" && bay.moduleId === mod.id) {
+          w.segment[i] = { kind: "void" };
+        } else if (bay.kind === "module_ref" && bay.moduleId === mod.id) {
+          w.segment[i] = { kind: "void" };
+        }
+      }
+      delete w.modules[mod.id];
+    }
   }
 
   appendEvent(w, "CMPL", { csq: "OK", loc: taskLoc(task), item: task.kind, text: taskActionCs(task) });

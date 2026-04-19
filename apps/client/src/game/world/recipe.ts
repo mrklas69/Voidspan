@@ -6,7 +6,7 @@
 
 import type { World, Task, ResourceRecipe } from "../model";
 import { MODULE_DEFS } from "../model";
-import { RECIPE_MIN_HP_EPSILON, TICKS_PER_GAME_DAY, WD_PER_HP } from "../tuning";
+import { RECIPE_MIN_HP_EPSILON, TICKS_PER_GAME_DAY, WD_PER_HP, SOLIDS_MAX, FLUIDS_MAX } from "../tuning";
 import { recordFlow } from "./flow";
 
 // Vrátí per-HP recipe pro target tasku (modul). null = no recipe (eternal/service
@@ -44,6 +44,24 @@ export function consumeResources(w: World, recipe: ResourceRecipe, scale: number
     const taken = Math.min(w.resources.fluids, amount);
     w.resources.fluids = Math.max(0, w.resources.fluids - amount);
     recordFlow(w, "fluids", "out", taken);
+  }
+}
+
+// Vrať recipe × scale do skladu (clamp SOLIDS_MAX / FLUIDS_MAX) + zaznamenej
+// flow jako „in". Opak consumeResources — používá demolish completion pro
+// resource recovery. Overflow se ztratí (žádný sklad navíc nemáme).
+export function returnResources(w: World, recipe: ResourceRecipe, scale: number): void {
+  if (recipe.solids) {
+    const amount = recipe.solids * scale;
+    const added = Math.min(SOLIDS_MAX - w.resources.solids, amount);
+    w.resources.solids = Math.min(SOLIDS_MAX, w.resources.solids + amount);
+    recordFlow(w, "solids", "in", Math.max(0, added));
+  }
+  if (recipe.fluids) {
+    const amount = recipe.fluids * scale;
+    const added = Math.min(FLUIDS_MAX - w.resources.fluids, amount);
+    w.resources.fluids = Math.min(FLUIDS_MAX, w.resources.fluids + amount);
+    recordFlow(w, "fluids", "in", Math.max(0, added));
   }
 }
 

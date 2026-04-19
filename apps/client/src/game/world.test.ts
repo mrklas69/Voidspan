@@ -285,7 +285,7 @@ describe("Recipe-per-target repair (S25, S26 FVP)", () => {
     expect(w.resources.solids).toBeLessThan(solidsBefore);
   });
 
-  it("při Solids=0 protocolTick pauzne repair task + monitor label 'no Solids'", () => {
+  it("při Solids=0 protocolTick pauzne repair task (S39 smart: spustí rescue demo)", () => {
     const w = createInitialWorld();
     w.resources.energy = w.energyMax;
     let idx = -1;
@@ -300,9 +300,12 @@ describe("Recipe-per-target repair (S25, S26 FVP)", () => {
 
     w.resources.solids = 0;
     stepWorld(w);
+    // Repair zůstává paused (no materiálu).
     expect(repair!.status).toBe("paused");
+    // S39: QM chytře spustí rescue demo (zdroje přitečou z motoru).
+    // Monitor reflektuje rescue scénář nebo klasickou pauzu, pokud rescue nejde.
     const monitor = w.tasks.find((t) => t.status === "eternal");
-    expect(monitor?.label).toMatch(/Paused — no (Solids|Fluids)/);
+    expect(monitor?.label).toMatch(/no (Solids|Fluids)/);
   });
 
   it("progressTasks neprogresuje repair při Solids deficit (wd_done se nezvýší)", () => {
@@ -327,11 +330,14 @@ describe("Recipe-per-target repair (S25, S26 FVP)", () => {
   it("po Solids restocku protocolTick resume-uje task", () => {
     const w = createInitialWorld();
     w.resources.energy = w.energyMax;
-    let idx = -1;
-    for (let i = 0; i < 16; i++) {
-      const outer = getOuterHP(w, i);
-      if (outer && outer.hp < outer.hp_max) { idx = i; break; }
-    }
+    // Deterministický setup: všechno na full, pak jeden modul na 50 % (WARN, ne CRIT,
+    // aby QM priorita 1 nepředběhla manuální repair task).
+    for (const mod of Object.values(w.modules)) mod.hp = mod.hp_max;
+    const victim = Object.values(w.modules).find((m) => m.kind === "SolarArray")!;
+    victim.hp = victim.hp_max * 0.5;
+    const idx = w.segment.findIndex(
+      (b) => b.kind === "module_root" && b.moduleId === victim.id,
+    );
     enqueueRepairTask(w, idx);
     stepWorld(w);
     const repair = w.tasks.find((t) => t.kind === "repair")!;
@@ -450,7 +456,9 @@ describe("collapseTick — terminal epitaph", () => {
   });
 });
 
-// === Milestones (S38) — 7 prvků (3 done + 1 current + 3 planned) ===
+// === Milestones (S38+, updated S39) — 7 prvků: 4 done + 1 current + 2 planned ===
+// S39 restructure: přidán `departure` jako první done (historický seed), odebrán
+// `arrival` (R2 scope); `first_wake` je terminální P1 beat.
 
 describe("createInitialWorld milestones", () => {
   it("vrátí přesně 7 milestonů", () => {
@@ -458,24 +466,25 @@ describe("createInitialWorld milestones", () => {
     expect(w.milestones).toHaveLength(7);
   });
 
-  it("složení: 3 done + 1 current + 3 planned", () => {
+  it("složení: 4 done + 1 current + 2 planned", () => {
     const w = createInitialWorld();
     const done = w.milestones.filter((m) => m.status === "done");
     const current = w.milestones.filter((m) => m.status === "current");
     const planned = w.milestones.filter((m) => m.status === "planned");
-    expect(done).toHaveLength(3);
+    expect(done).toHaveLength(4);
     expect(current).toHaveLength(1);
-    expect(planned).toHaveLength(3);
+    expect(planned).toHaveLength(2);
   });
 
   it("timeline pořadí: done → current → planned", () => {
     const w = createInitialWorld();
-    // Indexy 0-2 done, 3 current, 4-6 planned (seed pořadí = timeline).
+    // Indexy 0-3 done (departure/establish/checks/orbit), 4 current (repairs),
+    // 5-6 planned (dock_build/first_wake).
     expect(w.milestones[0]!.status).toBe("done");
     expect(w.milestones[1]!.status).toBe("done");
     expect(w.milestones[2]!.status).toBe("done");
-    expect(w.milestones[3]!.status).toBe("current");
-    expect(w.milestones[4]!.status).toBe("planned");
+    expect(w.milestones[3]!.status).toBe("done");
+    expect(w.milestones[4]!.status).toBe("current");
     expect(w.milestones[5]!.status).toBe("planned");
     expect(w.milestones[6]!.status).toBe("planned");
   });
