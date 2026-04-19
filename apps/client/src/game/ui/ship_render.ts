@@ -27,6 +27,8 @@ import {
   SEGMENT_Y,
   BAY_PX,
   COL_BAY_SELECTED,
+  UI_PULSE_RAD_PER_MS,
+  UI_PULSE_ALPHA_MIN,
   setSegmentX,
 } from "./layout";
 import {
@@ -55,12 +57,10 @@ const DAMAGED_THRESHOLD = 0.99; // pod 99 % HP kreslit dashed místo solid outli
 const VOID_BORDER = COL_HULL_LIGHT;  // dashed border void slotu
 const VOID_GLYPH  = COL_METAL_GRAY;  // „+" glyph void slotu
 
-// Activity pulse (S35) — moduly s aktivním taskem (repair/build/demolish)
-// pulsují outline alpha. HP fill zůstává statický = skutečné HP%.
-// Yoyo sin wave perioda 2 s, alpha 0.5..1. Rozdíl repair vs. demolish se dnes
-// v ship_renderu vizuálně neřeší (UX detail v TaskQueue/ModulesPanelu).
-const PULSE_RAD_PER_MS = (2 * Math.PI) / 2000;
-const PULSE_OUTLINE_MIN = 0.5;
+// Activity pulse — moduly s aktivním taskem (repair/build/demolish) pulsují
+// outline alpha. HP fill zůstává statický = skutečné HP%. Rozdíl repair vs.
+// demolish se dnes v ship_renderu vizuálně neřeší (UX detail v TaskQueue/
+// ModulesPanelu). Sdílí perioda s MilestoneBar (izomorfismus UI heartbeat).
 
 const FALLBACK_ICON_KEY = "icon:fallback";
 
@@ -176,8 +176,8 @@ export class ShipRender {
       if (!isConstructionTask(t)) continue;
       if (t.target.moduleId) this.activeTaskModuleIds.add(t.target.moduleId);
     }
-    const phase = (Math.sin(this.scene.time.now * PULSE_RAD_PER_MS) + 1) / 2;
-    this.pulseAlpha = PULSE_OUTLINE_MIN + (1 - PULSE_OUTLINE_MIN) * phase;
+    const phase = (Math.sin(this.scene.time.now * UI_PULSE_RAD_PER_MS) + 1) / 2;
+    this.pulseAlpha = UI_PULSE_ALPHA_MIN + (1 - UI_PULSE_ALPHA_MIN) * phase;
 
     for (let i = 0; i < 16; i++) {
       const bay = w.segment[i];

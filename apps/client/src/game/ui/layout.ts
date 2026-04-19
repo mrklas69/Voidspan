@@ -8,7 +8,6 @@ import {
   UI_TEXT_DIM,
   UI_TEXT_ACCENT,
   UI_SELECT_STROKE,
-  UI_PANEL_BG,
 } from "../palette";
 
 // === Canvas — aktualizováno v recomputeLayout() při každém resize ============
@@ -28,17 +27,20 @@ export const BAY_PX = 80;
 export const SEGMENT_W = 8 * BAY_PX; // 640
 export const SEGMENT_H = 2 * BAY_PX; // 160
 
-// === Pozice — přepočítané při resize =========================================
+// === Animace — sdílené konstanty =============================================
+// Pulse perioda UI = sjednocený „srdeční tep" napříč komponentami (ship_render
+// outline pulse u active tasku + milestone_bar current chip). 2 s perioda,
+// alpha yoyo sin. Derivovaná hodnota pro Math.sin(time * RAD_PER_MS).
+export const UI_PULSE_RAD_PER_MS = (2 * Math.PI) / 2000;
+export const UI_PULSE_ALPHA_MIN = 0.5;
 
-export let MID_Y = HUD_H;
-export let MID_H = CANVAS_H - HUD_H - LOG_H;
+// === Pozice — přepočítané při resize =========================================
+// MID_Y/MID_H jsou interní pouze (derivace SEGMENT_Y); není veřejný konzument.
+
+let MID_Y = HUD_H;
+let MID_H = CANVAS_H - HUD_H - LOG_H;
 export let SEGMENT_X = (CANVAS_W - SEGMENT_W) / 2;
 export let SEGMENT_Y = MID_Y + (MID_H - SEGMENT_H) / 2;
-
-// === Legacy pro actors.ts (skrytý panel, ale import drží konstanty) ===
-
-export const ACTORS_W = 150;
-export const ACTORS_X = 0;
 
 // === Recompute ===============================================================
 
@@ -59,7 +61,6 @@ export function setSegmentX(x: number): void {
 
 // === Barvy (aliasy z palety — axiom Voidspan 16) =============================
 
-export const COL_PANEL_BG = UI_PANEL_BG;
 export const COL_BAY_SELECTED = UI_SELECT_STROKE;
 export const COL_TEXT = UI_TEXT_PRIMARY;
 export const COL_TEXT_DIM = UI_TEXT_DIM;

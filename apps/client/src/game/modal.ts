@@ -19,6 +19,7 @@ import {
   FONT_SIZE_SIDEPANEL,
   FONT_SIZE_TIP,
 } from "./palette";
+import { PANEL_BG_ALPHA } from "./ui/panel_helpers";
 
 const DEPTH = 2000; // nad tooltipy (1000)
 const PANEL_W_1COL = 520;
@@ -28,7 +29,6 @@ const PADDING = 24;
 // Overlay jen lehce zatmí svět — hvězdy pod panelem mají prosvítat
 // (axiom: pozadí UI boxů = transparentní, viz memory feedback_dialog_bg_transparent).
 const OVERLAY_ALPHA = 0.25;
-const PANEL_BG_ALPHA = 0.9;
 
 export interface ModalOptions {
   title: string;

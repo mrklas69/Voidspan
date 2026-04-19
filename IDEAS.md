@@ -2,6 +2,186 @@
 
 Raw nápady a inspirace. Nezralé myšlenky patří sem. Konkrétní úkoly → `TODO.md`. Ustavené pojmy → `GLOSSARY.md`. Narativní scénář → `SCENARIO.md`.
 
+---
+
+## v1.1 Roadmap (S38+)
+
+Tři velké osy pro v1.1 (Observer Edition 1.0 → rozšíření). Každá je vlastní projekt s odlišným scope. Zvolená posloupnost: **Milestone bar (nejmenší)** → **Persistent server (core axiom)** → **i18n (distribuce)**.
+
+### Osa 1 — Milestone bar nad Bottom Barem
+
+Vizuální progress strip: **3 dokončené milníky + 1 probíhající + 3 naplánované**. Content odpovídá tomu, co vypisuje QM Terminal (long-running klíčové úkoly kolonie). Milník = **metatask** — dlouhodobý cíl, který přesahuje single tick/session.
+
+**Status:** zvolená k řešení v S38+ (implementace probíhá). Viz aktuální session log pro detail.
+
+**Design reference:** `art/arena_winners/gemini_1.png` (S34 hologram dashboard) — event timeline strip nad bottom bar.
+
+**Otevřené otázky (do implementation session):**
+- Q1: **Content source** — hard-coded 7 milestonů v kódu (stabilní arc Mission Scenario S33), nebo dynamic z narrativních eventů (scripted events bank)? FVP doporučení: hard-code z Mission Scenario 7 aktů (Transit → Arrival → Refit → First Wake → First Society → Signal → Choices).
+- Q2: **Trigger pokroku** — game time threshold (akt 1 = 0-50 let, akt 2 = 50-100 let, …), nebo state-driven (cryo → wake-up trigger = akt 4 začne)? Kombinace?
+- Q3: **Interakce** — click milník = detail popover (popis, kritéria, expected year), nebo read-only display?
+- Q4: **Layout** — horizontální strip se 7 chips (ikona + 1-word label), vertical timeline, nebo jeden prominent „aktuální milník" + mini-bar pokroku? User reference `gemini_1.png`.
+- Q5: **Animace** — současný milník animovaný (pulse / progress fill), dokončené solid, naplánované dim? Nebo minimal?
+- Q6: **Návaznost na scenario.md Acts** — tato implementace je **zdroj pravdy** pro narativní arc? Mission Scenario v0.1 (IDEAS S33) je draft; po milestone baru se kodifikuje v SCENARIO.md.
+
+**Scope:** ~2-3 sezení (design + implementace + napojení QM Terminal).
+
+---
+
+### Osa 2 — Persistent server (v1.1+)
+
+**Axiom:** Perpetual Observer = svět žije i když nemáš otevřený tab. Dnes FVP pure client — reload = fresh world, zavření tabu = pauza. To rozbíjí Observer axiom.
+
+**Cíl v1.1:** headless Node.js sim běží na VPS, klienti read-only view. User se po týdnu vrátí, vidí event log událostí, které proběhly bez něj.
+
+**Architekturální rozhodnutí — Colyseus vs. plain WebSocket:**
+
+| | **Colyseus** | **Plain WS + JSON** |
+|---|---|---|
+| Stack | Node.js framework pro authoritative multiplayer | `ws` knihovna + custom protokol |
+| State sync | Built-in (delta compression, schema serialization) | DIY (server udržuje per-client cursor) |
+| Rooms | First-class (1 room = 1 belt, P2+ multi-belt network) | Custom session management |
+| Learning curve | Střední (state decorators, room lifecycle) | Nízká (RAW WS + JSON.stringify) |
+| Lock-in | Schema definice vázaná na Colyseus DSL | Zero |
+| Scaling | Horizontal (load balancer) | Single process, upgrade ruční |
+| Velikost | ~500 LOC naše logika + framework | ~1500 LOC DIY (sync + reconnect) |
+| Deploy preferred | Fly.io / vlastní VPS | Jakékoli Node hosting (už máme VPS plán) |
+| Bundle size (client) | +~80 KB (Colyseus.js) | +~5 KB (ws polyfill) |
+
+**Decision matrix pro Voidspan v1.1:**
+- FVP = **1 belt, 1-5 klientů současně** (user + P1-P4 playtesters). → Multi-room scaling nepotřebujeme teď.
+- **Observer = read-only** (žádné client inputy kromě speed toggle). → Authoritative validation není urgent.
+- **Schema evolution = long-lived state** (server drží world tygny/měsíce). Schema change bez migrations boles. → Plain WS snadnější evolve, Colyseus schema decorator zamkne decisions.
+- **Deploy simplicity** = VPS Basic 160 Kč/m + systemd (TODO). → Plain Node WS OK, Colyseus taky, ale plain menší povrch.
+
+**Moje doporučení:** **Plain WS + JSON** pro v1.1 POC. Server drží authoritative world, posílá snapshot + event stream. Client replaces local `World` s `RemoteWorld` proxy. Upgrade na Colyseus až když přijde multi-belt network (P2+ R1).
+
+**Architecture sketch:**
+```
+apps/
+  client/ (existing — read-only view, replace stepWorld() with server sub)
+  server/ (NEW)
+    src/
+      world/        (moved from client — shared simulation engine)
+      protocol.ts   (WS message types: HELLO, SNAPSHOT, EVENT, SPEED_SET)
+      persistence.ts (snapshot save/load — flat JSON dump periodic)
+      server.ts     (main: simulation loop + WS broadcast)
+packages/
+  shared/
+    model.ts (Module, Bay, World types — shared schemas)
+    events.ts (Event, EventVerb, EventCsq — shared)
+```
+
+**Persistence options:**
+- **Flat JSON file** — `world.json` dump každých 30 s (brutal simplicity). POC friendly, žádný DB setup.
+- **SQLite** — single file, hodí se pro query history (event log přes dlouhou dobu, milestones trace).
+- **PostgreSQL** — production, víc klientů, future horizontal scale.
+
+Doporučení: flat JSON pro v1.1 POC; SQLite až když je potřeba query (např. „ukaž events za poslední týden").
+
+**Protokol draft:**
+```
+// Server → Client
+{type: "HELLO", world: World, serverTime: number}           // initial full state
+{type: "SNAPSHOT", tick: number, delta: Partial<World>}     // incremental updates
+{type: "EVENT", event: Event}                               // new events log
+
+// Client → Server
+{type: "SPEED", value: 1|10|100|1000}                       // user speed toggle
+{type: "PING"}                                              // keepalive
+```
+
+Snapshot frequency: 1× per game day (= 4 min wall při ×1) nebo 1× per 10s wall — ladit.
+
+**Otevřené otázky:**
+- Q1: **Persistence** — flat JSON vs. SQLite. JSON je POC-friendly; SQLite už otvírá query možnosti (milestone history).
+- Q2: **Multi-client** — když jsou 2 users současně, sdílí world? (Předpoklad: ano — Observer Edition má jeden „official" arc; Q3 milestones jsou globální narrativ.) Nebo per-user arc?
+- Q3: **Reconnect / replay** — po disconnectu server posílá snapshot + events since last tick? Jak daleko zpět (event log ring buffer)?
+- Q4: **Auth** — FVP no-auth (anyone can view), P2+ session tokens? Pro playtest OK open read.
+- Q5: **Migrations** — pokud změníme World schema (typed field navíc), jak naložit s existujícím snapshotem? Plain JSON = migrate function; Colyseus = schema versioning.
+- Q6: **Deploy** — VPS Basic (Forpsi 160 Kč/m, už v TODO) + systemd + Caddy proxy + custom domain (bete1geuse.com).
+
+**Scope:** ~10-15 sezení (server POC → protocol → deploy → client migration → QA).
+
+---
+
+### Osa 3 — i18n AJ/ČJ (v1.1+)
+
+**Axiom:** display jazyk volitelný, code vždy EN (memory: `feedback_lang_convention`).
+
+**Cíl:** přepínač jazyka v UI, aby hra byla přístupná mezinárodním testerům. AJ/ČJ jako v1.1 target; další jazyky P2+.
+
+**Scope inventory:**
+- ~500 stringů napříč UI (tlačítka, labely, hlavičky, status texty, tooltipů content)
+- Event log templates (dynamic: `taskActionCs(task)`, `TASK_NOUN_CS`, ASSN text formats, DMG texts)
+- Modal content (Help, QM Terminal, welcome dialog)
+- Error / empty states
+
+**Challenges (CZ specifika):**
+- **Gender agreement** — CZ substantiva mají gender (fem. „oprava" → „pozastavena oprava", masc. „hit" → „pozastaven hit"). Musí se držet per-noun metadata, prefix adjektiva funkce genderu.
+- **Pluralization** — CZ má 3 plurál formy: „1 modul / 2-4 moduly / 5+ modulů". EN má 2: „1 module / 2+ modules". Helper `ntuple(n, one, few, many)` pro CZ, `n === 1 ? one : many` pro EN.
+- **Event log formát** — dnes `taskLoc + text` where text je CZ sentence. i18n refactor: `t("event.task.pause", { loc, taskName })` → per-lang template.
+
+**Architecture:**
+```ts
+// i18n.ts
+type Lang = "cs" | "en";
+let activeLang: Lang = (localStorage.getItem("voidspan.lang") as Lang) ?? "cs";
+
+export function t(key: string, params?: Record<string, string|number>): string {
+  const dict = activeLang === "cs" ? STRINGS_CS : STRINGS_EN;
+  let template = dict[key] ?? key;
+  if (params) for (const [k, v] of Object.entries(params)) {
+    template = template.replaceAll(`{${k}}`, String(v));
+  }
+  return template;
+}
+
+export function setLang(lang: Lang): void {
+  activeLang = lang;
+  localStorage.setItem("voidspan.lang", lang);
+  // trigger re-render všech UI komponent
+}
+
+export function currentLang(): Lang { return activeLang; }
+```
+
+**Dict structure:**
+```ts
+// strings.cs.ts
+export const STRINGS_CS = {
+  "panel.info.title": "Info",
+  "panel.modules.title": "Moduly",
+  "panel.events.title": "Události",
+  "panel.tasks.title": "Úkoly",
+  "module.status.ok": "OK",
+  "module.status.damaged": "poškozeno",
+  "module.status.destroyed": "zničeno",
+  "module.status.offline": "offline",
+  "task.action.repair": "oprava",
+  "task.action.build": "stavba",
+  // ...
+};
+
+// strings.en.ts — stejné klíče, EN překlad
+```
+
+**UI switcher:** dropdown v Help modalu („Jazyk / Language") + persist v LS. Alternativa: ikona v Top Bar (CZ/EN toggle).
+
+**Otevřené otázky:**
+- Q1: **Switcher lokace** — Help modal (skrytý, user musí najít) nebo Top Bar ikona (vždy viditelná, chrome noise)?
+- Q2: **Default jazyk** — browser locale detekce (`navigator.language`) nebo hard default CZ? FVP jsme CZ-first, EN ne úplně stabilní.
+- Q3: **Scope priorit** — začít UI chrome (panely, modály) a postupně doplňovat event templates? Nebo all-at-once big bang?
+- Q4: **Text expansion** — CZ texty jsou občas delší než EN (zejména substantiva). Testovat layout oflow po přepnutí do CZ po refactoru.
+- Q5: **Translator** — user sám překládá, nebo LLM-assisted draft + user review?
+- Q6: **Non-translatable items** — modul kindy (Habitat, Solar, Storage, ...) zůstávají EN i v CZ UI (protože jsou code identifiers + sci-fi konvence), nebo překládat („Obytný modul / Solární panel / Sklad")?
+
+**Scope:** ~3-5 sezení (helper + dict skeleton + UI refactor + event template rework + QA + překlady).
+
+**Závislost:** stabilizace UI (server + milestones mohou měnit UI texty — překlady by zaostávaly). Logicky poslední ze tří os.
+
+---
+
 ## Status tree + Colony Goal (S20 — kandidát na kánon)
 
 Raw zápis diskuse ze sezení 20. Uzavře se **jiným přístupem** (user TBD); Q2–Q10 zůstávají otevřené do té doby.
@@ -848,6 +1028,41 @@ ponechán v `public/assets/sprites/` — připravený pro návrat.
 - **Kontrast scale 2–4×** — vzdálenost narrative (velký = blízko, malý = daleko).
 
 Návrat odhad: ~150 LOC se 3 testy (collision, splash, spawn rate). Není urgent.
+
+---
+
+## Damage particles (S38 prototyp, přesunuto sem)
+
+Cíl: vizuální indikátor poškození lodi — (a) nápadný „gejzír" burst při asteroid hit, (b) průběžný debris/smoke u damaged modulů s intenzitou úměrnou `1 − HP/HP_max` (95 % HP = sotva drip, 10 % HP = hustý tok).
+
+### Co bylo prototypováno (S38)
+
+Tři iterace v `ship_render.ts`:
+
+1. **Hit burst** — Phaser.Particles one-shot při `module.flashUntilTick`. Sparks (ADD blend, amber/orange/red) + smoke (NORMAL, šedé tinty). Tracker `lastFlashSeen: Map<moduleId, tick>` zabránil re-emit v každém frame.
+2. **Continuous damage smoke** — per-modul persistent emitter, frekvence lerp `2800 ms` (95 % HP, řídký drip) → `150 ms` (0 % HP, hustý kouř). `Map<moduleId, ParticleEmitter>` create-on-demand, destroy při full repair.
+3. **Úlomky místo obláčků** — retire smoke blob, nahrazeno `shard` (6×2 thin metal rect, NORMAL blend) + `crystal` (3×7 tall cyan shard, ADD blend). Random rotace `rotate: { min: 0, max: 360 }`. Beztíže (`gravityY: 0`) + isotropic 360° emit.
+
+Celkem ~130 LOC. Textury všechny procedural (Phaser.Graphics + `generateTexture`), bez external assetů.
+
+### Lessons learned
+
+- **Efekt slabý vs. pozorná část UI.** Top Bar, ModulesPanel, TaskQueue jsou data-dense — particles jsou decor, kterou divák po 3 sekundách ignoruje. Hlavním hookem simulace je **agregace čísel**, ne eye candy.
+- **Tmavé tinty na tmavém pozadí** splývají. ADD blend pomohl sparkům (self-luminous), kov s NORMAL blend ztratil kontrast i po zesvětlení na `COL_BRIGHT_METAL`.
+- **Asteroid hit 1× / 10h wall při ×1** — user hit burst v typickém sezení vůbec neuvidí. Particles začínají mít smysl až při ×1000 testu, což je edge case, ne default.
+- **LOC / efekt ratio nevýhodné.** ~130 LOC za vizuální gag, který divák stejně ignoruje. KISS říká: smazat, vrátit se s motivovaným důvodem.
+
+### Kdy se vrátit
+
+Trigger by měl být **gameplay**, ne kosmetika:
+- **Scripted event vizualizace** — particles jako signál nepřátelské kolonie, solar flare, kapsle incoming. Pak je particle čtení informace, ne jen decor.
+- **Player mode (R2)** — hráč interaguje s moduly přímo (Commands palette). Debris u damaged modulů je pak actionable signál („tenhle modul potřebuje moji pozornost"), ne pouze Observer data.
+- **Audio vedle vizuálu** — subsonický „hiss" nebo crackle; solo particles bez audia jsou němé a snadno přehlédnutelné.
+- **Nápadnější base effect** — vyšší contrast, víc částic, directional burst (s incoming angle asteroidu), ne isotropic gejzír. Tj. další iterace s větší ambicí.
+
+### Artefakty z prototypu (S38)
+
+Texturové specs pro případný návrat: `particle:spark` (4×4 dot), `particle:shard` (6×2 thin rect), `particle:crystal` (3×7 tall rect). Burst counts: 32 sparks + 20 shards + 12 crystals. Speed: sparks 80-220, shards 70-200, crystals 60-170 px/s. Lifespan 800-1600 ms. Depth 11-12. Continuous damage freq lerp 2000 → 180 ms. Viz session log 2026-04-19 (S38) pro detail.
 
 ---
 

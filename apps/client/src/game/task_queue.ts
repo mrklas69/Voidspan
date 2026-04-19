@@ -5,7 +5,7 @@
 
 import Phaser from "phaser";
 import type { World, Task, TaskStatus } from "./model";
-import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget } from "./world";
+import { formatGameTimeShort, formatEta, taskEtaTicks, describeTaskTarget, protocolPauseReason } from "./world";
 import { renderBar } from "./format";
 import type { TooltipManager } from "./tooltip";
 import {
@@ -60,7 +60,10 @@ function formatTaskLead(w: World, task: Task): string {
   return `[${formatGameTimeShort(task.createdAt)}] ${name}`;
 }
 
-function formatTaskSuffix(w: World, task: Task): string {
+// `pauseReason` parametr je spočten 1× v renderBody (cache per-render);
+// předtím každý paused řádek sám volal protocolPauseReason → iterace tasks
+// + actors per řádek per frame.
+function formatTaskSuffix(w: World, task: Task, pauseReason: string | null): string {
   if (task.status === "eternal") return "";
   if (task.status === "completed") return "OK";
   if (task.status === "failed") return "X FAILED";
@@ -74,7 +77,9 @@ function formatTaskSuffix(w: World, task: Task): string {
     const etaT = taskEtaTicks(w, task);
     eta = `(${formatEta(etaT)})`;
   } else if (task.status === "paused") {
-    eta = "(paused)";
+    // Sdílí zdroj s eternal monitor labelem a TASK:PAUSE event textem (DRY).
+    // Fallback "(paused)" je teoretický (paused bez reason = race mezi ticks).
+    eta = pauseReason ? `(paused — ${pauseReason})` : "(paused)";
   } else {
     eta = "(pending)";
   }
@@ -85,12 +90,12 @@ export class TaskQueuePanel extends FloatingPanel {
   private getWorld: () => World;
 
   // S29 pair per row: leadText (ellipsize) + suffixText (right-aligned dynamic x).
-  private rowPairs: Array<{
+  private readonly rowPairs: Array<{
     leadText: Phaser.GameObjects.Text;
     suffixText: Phaser.GameObjects.Text;
   }> = [];
   // Full (pre-ellipsize) lead + suffix per row — tooltip zobrazí kompletní řádek.
-  private fullRows: Array<{ lead: string; suffix: string }> = [];
+  private readonly fullRows: Array<{ lead: string; suffix: string }> = [];
 
   private maxVisible = 0;
 
@@ -149,7 +154,13 @@ export class TaskQueuePanel extends FloatingPanel {
   }
 
   protected renderBody(): void {
-    const tasks = this.getWorld().tasks;
+    const w = this.getWorld();
+    const tasks = w.tasks;
+
+    // Pause reason spočti jen pokud existuje paused task — jinak undefined volání
+    // by iterovalo tasks + actors pro každý řádek zbytečně. Cache 1× per render.
+    const hasPaused = tasks.some((t) => t.status === "paused");
+    const pauseReason: string | null = hasPaused ? protocolPauseReason(w) : null;
 
     // Seřadit podle sekce, uvnitř sekce aktivní podle ETA asc,
     // completed/failed podle completedAt desc, ostatní createdAt asc.
@@ -171,11 +182,10 @@ export class TaskQueuePanel extends FloatingPanel {
       if (i < visibleCount) {
         const task = sorted[i]!;
         const color = STATUS_COLOR[task.status];
-        const w = this.getWorld();
 
         // 1) Suffix nejdřív — setText, Phaser přepočítá width; .x zůstává
         //    panelW - PADDING (origin 1,0 = right edge).
-        const suffixStr = formatTaskSuffix(w, task);
+        const suffixStr = formatTaskSuffix(w, task, pauseReason);
         pair.suffixText.setText(suffixStr);
         pair.suffixText.setColor(color);
         pair.suffixText.setVisible(true);

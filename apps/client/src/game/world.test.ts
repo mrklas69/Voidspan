@@ -450,3 +450,58 @@ describe("collapseTick — terminal epitaph", () => {
   });
 });
 
+// === Milestones (S38) — 7 prvků (3 done + 1 current + 3 planned) ===
+
+describe("createInitialWorld milestones", () => {
+  it("vrátí přesně 7 milestonů", () => {
+    const w = createInitialWorld();
+    expect(w.milestones).toHaveLength(7);
+  });
+
+  it("složení: 3 done + 1 current + 3 planned", () => {
+    const w = createInitialWorld();
+    const done = w.milestones.filter((m) => m.status === "done");
+    const current = w.milestones.filter((m) => m.status === "current");
+    const planned = w.milestones.filter((m) => m.status === "planned");
+    expect(done).toHaveLength(3);
+    expect(current).toHaveLength(1);
+    expect(planned).toHaveLength(3);
+  });
+
+  it("timeline pořadí: done → current → planned", () => {
+    const w = createInitialWorld();
+    // Indexy 0-2 done, 3 current, 4-6 planned (seed pořadí = timeline).
+    expect(w.milestones[0]!.status).toBe("done");
+    expect(w.milestones[1]!.status).toBe("done");
+    expect(w.milestones[2]!.status).toBe("done");
+    expect(w.milestones[3]!.status).toBe("current");
+    expect(w.milestones[4]!.status).toBe("planned");
+    expect(w.milestones[5]!.status).toBe("planned");
+    expect(w.milestones[6]!.status).toBe("planned");
+  });
+
+  it("done milestones mají date_cs, planned nemají", () => {
+    const w = createInitialWorld();
+    for (const m of w.milestones) {
+      if (m.status === "done") {
+        expect(m.date_cs).toBeDefined();
+        expect(m.date_cs).toMatch(/^\d{4}-\d{2}-\d{2}/); // YYYY-MM-DD prefix
+      }
+      if (m.status === "planned") {
+        expect(m.date_cs).toBeUndefined();
+      }
+    }
+  });
+
+  it("každý milestone má unikátní id + neprázdný label/desc", () => {
+    const w = createInitialWorld();
+    const ids = new Set<string>();
+    for (const m of w.milestones) {
+      expect(m.id.length).toBeGreaterThan(0);
+      expect(m.label_cs.length).toBeGreaterThan(0);
+      expect(m.desc_cs.length).toBeGreaterThan(0);
+      expect(ids.has(m.id)).toBe(false); // unique
+      ids.add(m.id);
+    }
+  });
+});

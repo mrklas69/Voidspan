@@ -31,11 +31,12 @@ import { FloatingPanel } from "./ui/floating_panel";
 // začíná pod rating řádkem.
 const SCROLL_TOP = HEADER_H + 28;
 
-// S29/S31 per-row layout: kindIdText (ellipsize na fix column) + statsText
-// (fix x = KIND_COL_W). Formát: "Habitat (habitat_1)" | "poškozeno 85% plán".
+// S38 per-row layout (izomorfismus s TaskQueue): kindIdText left-anchored,
+// ellipsize dynamicky podle zbývajícího místa; statsText right-anchored
+// (origin 1,0, x = contentW), dynamický prefix „OK / poškozeno 85% …" pojede
+// doprava. Formát: "Habitat (habitat_1)  ⋯  poškozeno 85% plán".
 const MOD_ROW_H = 24;       // font 18 + lineSpacing 6
-const KIND_COL_W = 220;     // fixní šířka kind + id sloupce
-const KIND_ELLIPSIS_W = KIND_COL_W - 8;  // ellipsize budget, 8 px gap
+const GAP = 8;              // mezera mezi kindId levou a stats pravou částí
 const MAX_MODULE_ROWS = 24; // pool (FVP max 16 bays × 1 modul, rezerva)
 
 // Status modulu slovně (3. sloupec tabulky).
@@ -65,16 +66,17 @@ export class ModulesPanel extends FloatingPanel {
 
   private ratingLabel!: Phaser.GameObjects.Text;
   private ratingValue!: Phaser.GameObjects.Text;
-  private moduleRows: Array<{
+  private readonly moduleRows: Array<{
     kindIdText: Phaser.GameObjects.Text;
     statsText: Phaser.GameObjects.Text;
   }> = [];
   // S29 full (pre-ellipsize) kindId + stats per row — tooltip spojí oba.
-  private fullRowData: Array<{ kindId: string; stats: string }> = [];
+  private readonly fullRowData: Array<{ kindId: string; stats: string }> = [];
 
   // Scroll state.
   private scrollContent!: Phaser.GameObjects.Container;
   private scrollH = 0;
+  private contentW = 0;  // vnitřní šířka scroll oblasti (bez scrollbaru, padding); cache pro renderBody
   private scrollOffset = 0;
   private maxScroll = 0;
   private scrollTrack!: Phaser.GameObjects.Rectangle;
@@ -116,12 +118,13 @@ export class ModulesPanel extends FloatingPanel {
       .setOrigin(0, 0);
     this.container.add(this.ratingValue);
 
-    const contentW = this.panelW - 2 * PADDING - SCROLLBAR_W - SCROLLBAR_GAP;
+    this.contentW = this.panelW - 2 * PADDING - SCROLLBAR_W - SCROLLBAR_GAP;
     this.scrollContent = this.scene.add.container(PADDING, SCROLL_TOP);
     this.container.add(this.scrollContent);
 
-    // Per-row module pool: kindIdText (ellipsize na KIND_ELLIPSIS_W) + statsText
-    // (fix x = KIND_COL_W).
+    // Per-row module pool: kindIdText left-anchored (origin 0,0, x=0) + statsText
+    // right-anchored (origin 1,0, x=contentW). renderBody() spočítá ellipsize
+    // budget pro kindId dynamicky (contentW - statsText.width - GAP).
     for (let i = 0; i < MAX_MODULE_ROWS; i++) {
       const rowY = i * MOD_ROW_H;
       const kindIdText = this.scene.add
@@ -132,12 +135,12 @@ export class ModulesPanel extends FloatingPanel {
         })
         .setOrigin(0, 0);
       const statsText = this.scene.add
-        .text(KIND_COL_W, rowY, "", {
+        .text(this.contentW, rowY, "", {
           fontFamily: FONT_FAMILY,
           fontSize: FONT_SIZE_SIDEPANEL,
           color: UI_TEXT_PRIMARY,
         })
-        .setOrigin(0, 0);
+        .setOrigin(1, 0); // right-anchored — x = pravá hrana textu
       this.moduleRows.push({ kindIdText, statsText });
       this.fullRowData.push({ kindId: "", stats: "" });
       this.scrollContent.add(kindIdText);
@@ -147,7 +150,7 @@ export class ModulesPanel extends FloatingPanel {
     const { x, y } = this.computePosition();
     const maskGraphics = this.scene.make.graphics({});
     maskGraphics.fillStyle(UI_MASK_WHITE);
-    maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, contentW, this.scrollH);
+    maskGraphics.fillRect(x + PADDING, y + SCROLL_TOP, this.contentW, this.scrollH);
     this.scrollContent.setMask(maskGraphics.createGeometryMask());
 
     const sbX = this.panelW - SCROLLBAR_W - 4;
@@ -303,8 +306,18 @@ export class ModulesPanel extends FloatingPanel {
         ? `${statusCs} ${hpPct}% ${taskState}`
         : `${statusCs} ${hpPct}%`;
       this.fullRowData[i] = { kindId: kindIdFull, stats: statsFull };
-      ellipsizeText(row.kindIdText, kindIdFull, KIND_ELLIPSIS_W);
+
+      // 1) Stats nejdřív — setText, Phaser přepočítá width; .x zůstává contentW
+      //    (origin 1,0 = right edge). Izomorfismus s TaskQueue layoutem.
       row.statsText.setText(statsFull);
+
+      // 2) Kind ellipsize budget = pravá hrana statsText − (jeho šířka + GAP).
+      //    Když je stats prázdný (teoreticky nelze, statusCs vždy vrátí něco),
+      //    celá šířka patří kindId.
+      const statsLeftX = statsFull.length === 0
+        ? this.contentW
+        : this.contentW - row.statsText.width - GAP;
+      ellipsizeText(row.kindIdText, kindIdFull, statsLeftX);
       // 5-barevný semafor per řádek — barva sdílí metriku s hpPct.
       const rowColor = RATING_COLOR[statusRating(hpPct)];
       row.kindIdText.setColor(rowColor);

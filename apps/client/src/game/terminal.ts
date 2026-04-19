@@ -8,12 +8,6 @@
 // Využívá existující ModalManager — žádný vlastní scroll/layout.
 
 import type { World } from "./model";
-import { computeWork } from "./world";
-import { SEED_CREW_CRYO } from "./tuning";
-
-// Adresa trupu v Teegarden síti (S33 single-segment FVP — Release 2+ bude
-// derivován z World.address po zavedení multi-segment beltu).
-const SEGMENT_ADDRESS = "Teegarden.Belt1.Seg042";
 
 const DISMISS_KEY = "voidspan.terminal.dismissed";
 
@@ -54,33 +48,31 @@ export function resetTerminal(): void {
 
 export const TERMINAL_TITLE = "QM Terminal";
 
-// Jednosloupcový formát — hráč projde briefing lineárně shora dolů.
-// Builder bere World za argument a nahrazuje runtime metriky (E/W/S/F).
-// {red! X} placeholder autorské kritičnosti — Phaser.Text v modalu nepodporuje
-// per-inline barvu, proto KISS ASCII tag `[!! X]` izomorfní s `[OK]` pattern.
+// Jednosloupcový formát — boot sekvence + milestones. Milestones čteny z
+// `world.milestones` (S38 — jediný zdroj pravdy sdílený s UI milestone barem).
+// Status mapování na ASCII tag: done = [OK], current = [Probíhá...],
+// planned = [—]. Runtime briefing blok (odsazené řádky s E/W/S/F snapshotem)
+// retirován v S38 — kvintet Top Baru a milestone bar nesou stejnou info
+// live, duplikace v modalu byla zbytečná.
+const STATUS_TAG_CS: Record<"done" | "current" | "planned", string> = {
+  done: "[OK]",
+  current: "[Probíhá...]",
+  planned: "[—]",
+};
+
 export function buildTerminalBody(w: World): string {
-  const work = computeWork(w);
-  const E = Math.round(w.resources.energy);
-  const W = work.capMax;
-  const S = Math.round(w.resources.solids);
-  const F = Math.round(w.resources.fluids);
+  // Milestone řádky — ty s datem prefixujeme datem, ostatní (planned) jen label.
+  const milestoneLines = w.milestones.map((m) => {
+    const tag = STATUS_TAG_CS[m.status];
+    const prefix = m.date_cs ? `${m.date_cs} ` : "";
+    return `${prefix}${m.label_cs} ${tag}`;
+  }).join("\n");
+
   return (
-    `Voidspan v1.0 Observer Edition\n` +
+    `Voidspan v1.1 Observer Edition\n` +
     `BOOT... QuarterMaster v2.3 online\n` +
     `pozorovatel read-only (${OBSERVER_ID})\n` +
-    `2387-04-16.12:14 Dokončení establish [OK]\n` +
-    `2387-04-17.03:33 Dokončení Kontroly [OK]\n` +
-    `   ${SEED_CREW_CRYO} kolonistů v kryo\n` +
-    `   MedCore online\n` +
-    `   Storage zásobena\n` +
-    `   Engine offline (startup legacy)\n` +
-    `   Orbita: ${SEGMENT_ADDRESS} [Nestabilní!!!]\n` +
-    `   Energie ${E} Wh\n` +
-    `   Práce ${W} Wh\n` +
-    `   Pevné ${S}\n` +
-    `   Tekuté ${F}\n` +
-    `2387-04-17.14:47 Stabilizace orbity [OK]\n` +
-    `2387-04-25.09:24 Zahájení oprav [Probíhá...]\n` +
+    `${milestoneLines}\n` +
     `>`
   );
 }

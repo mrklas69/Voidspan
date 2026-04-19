@@ -7,7 +7,18 @@ Cílem tohoto dokumentu je poskytnout **úplný a sebe-nosný zdroj** pro progra
 **Verze:** v0.2 (2026-04-13, snapshot po sezení 14) — **nekompletní, viz sekci 10 a 11**.
 **Status:** <span style="color:red">**PREPARATION PHASE — PARTIAL IMPLEMENTATION (FVP Observer Edition)**</span>
 
-**Poznámka k aktuálnosti (2026-04-19):** Dokument nebyl aktualizován od S14. Od té doby: pivot z P1 single-player puzzle na **Perpetual Observer Simulation** (S20), Slab/Flux/Kredo → Solids/Fluids/Coin (S25), food/air/water subtypů retire (S25 KISS), `POC_P1.md` retire (S32), Hull & Amber → **Neon paleta** (S35), SegmentPanel PNG pipeline → **ShipRender procedural + Tabler SVG** (S35–S36), **cestovní layout** (S36, 4 void na čele), **Time speed × Event system redesign × Collapse epitaph** (S37). **Aktuální stav kánonu:** `MINDMAP.md` (v4.4+), `GLOSSARY.md`, `IDEAS.md`. SPECIFICATION se dostane do v0.3 po P2+ konsolidaci (po Player Awakening Edition).
+**Poznámka k aktuálnosti (2026-04-19):** Dokument nebyl aktualizován od S14. Od té doby: pivot z P1 single-player puzzle na **Perpetual Observer Simulation** (S20), Slab/Flux/Kredo → Solids/Fluids/Coin (S25), food/air/water subtypů retire (S25 KISS), `POC_P1.md` retire (S32), Hull & Amber → **Neon paleta** (S35), SegmentPanel PNG pipeline → **ShipRender procedural + Tabler SVG** (S35–S36), **cestovní layout** (S36, 4 void na čele), **Time speed × Event system redesign × Collapse epitaph** (S37), **Milestone bar + v1.1 + DRY refactor** (S38). **Aktuální stav kánonu:** `MINDMAP.md` (v4.6+), `GLOSSARY.md`, `IDEAS.md`. SPECIFICATION se dostane do v0.3 po P2+ konsolidaci (po Player Awakening Edition).
+
+**Změny S38 (2026-04-19, v1.0 → v1.1):**
+- **Milestone bar** — nová UI komponenta (horizontální strip nad Bottom Barem, 7 chips = 3 done + 1 current + 3 planned, separátor `»`, pulse na current). Zdroj pravdy = `World.milestones: Milestone[]`, sdíleno s QM Terminal boot sekvencí (DRY). Viz `GLOSSARY §Milestones`.
+- **Paused task reason** — TaskQueue suffix + QM eternal monitor + TASK:PAUSE event text sjednocené přes `protocolPauseReason(w)` helper.
+- **Protocol vs. progressTasks unified scale** — nový `estimateRepairHpDeltaPerTick(w)` helper, pause reaguje úměrně aktuální hp_delta per tick (bug fix: 0.048 Solids stačilo na EPSILON, ale ne na realitu).
+- **QM Terminal retire briefing** — odsazené runtime řádky (E/W/S/F snapshot + module stavy) smazány; Kvintet Top Baru + milestone bar nesou stejnou info live. Terminal drží jen boot + milestones.
+- **Kvintet integer rounding** — `formatResource` + Math.round u W/Coin. Sub-integer hodnoty už neukazují `48m` milli prefix.
+- **ModulesPanel stats right-anchored** — izomorfismus s TaskQueue suffix layoutem.
+- **Dead code cleanup** — `ui/actors.ts` + `ui/panel_header.ts` smazány (ActorsPanel skrytý S19). `modal.ts::PANEL_BG_ALPHA` duplikát retirován.
+- **v1.1 Roadmap** v IDEAS: 3 osy (Milestone bar — done, Persistent server — plán s Colyseus vs. plain WS analýzou, i18n AJ/ČJ — plán).
+- **124 testů zelených** (+20 v S38): `world/recipe.test.ts`, `world/protocol.test.ts`, milestone shape tests.
 
 **Changelog v0.1 → v0.2:** Uzavřeno 12 otázek napříč S5–S13 (Q-World-1, Q-P1-*, Q11, Q12, Q13, Q-Player-Schema). E1 (SCENARIO paralelní struktura) vyřešeno v S14. W3 (Resource Model v GLOSSARY/SCENARIO) vyřešeno v S13 sweep. §4.5 Zdroje aktualizováno na Resource Model v0.1 (E/W/S/F/◎).
 

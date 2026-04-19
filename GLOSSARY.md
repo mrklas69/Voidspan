@@ -193,6 +193,49 @@ eternal                                    (service task, nedokončí se)
 
 ---
 
+## Milestones — Metatasky kolonie (S38)
+
+Dlouhodobé klíčové úkoly kolonie, které přesahují single tick/session. Každý milník = **metatask**. Sdílený zdroj pravdy mezi UI milestone barem (horizontální strip nad Bottom Barem) a QM Terminal boot sekvencí. FVP drží 7 prvků: **3 done + 1 current + 3 planned** (navazuje na Mission Scenario arc — IDEAS §S33).
+
+### Datový model
+
+```ts
+type MilestoneStatus = "done" | "current" | "planned";
+interface Milestone {
+  id: string;          // stabilní identifikátor (např. "establish")
+  label_cs: string;    // krátký label pro UI chip (1-3 slova)
+  desc_cs: string;     // detailnější popis pro tooltip
+  date_cs?: string;    // herní datum pokud relevantní (jen done/current)
+  status: MilestoneStatus;
+}
+```
+
+`World.milestones: Milestone[]` — pořadí = timeline (done → current → planned).
+
+### FVP seed (Transit arc)
+
+1. ✓ Establish (2387-04-16) — usazení na orbitě
+2. ✓ Kontroly (2387-04-17) — diagnostika modulů
+3. ✓ Stabilizace orbity (2387-04-17) — perioda v toleranci
+4. ⧖ Oprava systémů (2387-04-25) — QuarterMaster autonomous repair (probíhá)
+5. ○ Dokončení oprav — všechny moduly na 100 % HP
+6. ○ Probuzení posádky — první kolonista opouští cryo (R2 trigger)
+7. ○ Příchod Teegarden — konec 400 let tranzitu
+
+### Auto-advance (P2+)
+
+FVP POC má status **static hardcoded** — trigger logika přijde s R2:
+- #5: detekce `∀ m: m.hp == m.hp_max`
+- #6: wake-up mechanismus (energy stable + crew ready)
+- #7: game time reached arrival tick
+
+### Related helpers
+
+- **`protocolPauseReason(w): string | null`** (`world/protocol.ts`) — jediný zdroj pravdy pro pause důvod (QM eternal label, TASK:PAUSE text, task queue suffix). Priority chain: offline → low E → no workers → `no {Solids|Fluids}`.
+- **`estimateRepairHpDeltaPerTick(w): number`** (`world/recipe.ts`) — workforce predikce pro materiálový gate (sjednocený scale s `progressTasks`, S38 regression fix).
+
+---
+
 ## Status — Strom zdraví kolonie
 
 Fraktální strom ukazatelů zdraví kolonie. **Stav kolonie = posádka + základna.** Synonyma (Posádka/Kolonisté/Crew) se neřeší — alias.

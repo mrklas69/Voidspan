@@ -28,8 +28,9 @@ import * as L from "./ui/layout";
 import { COL_TEXT_DIM, recomputeLayout, setSegmentX } from "./ui/layout";
 import { dockManager } from "./ui/dock_manager";
 import { HeaderPanel } from "./ui/header";
+import { MilestoneBar } from "./ui/milestone_bar";
 import { ShipRender } from "./ui/ship_render";
-// S19: ActorsPanel (ui/actors.ts) skrytý — detail bay/modulu jen v hover tooltipu.
+// ActorsPanel retire: skrytý v S19, soubory smazány v S38 (dead code cleanup).
 // SideRightPanel retirován v S28 (dead code s layered bay refs).
 // Až budeme řešit layer 3.5 Floating workspace, vrátí se jako toggle panel [K].
 
@@ -45,6 +46,7 @@ export class GameScene extends Phaser.Scene {
 
   private header!: HeaderPanel;
   private segment!: ShipRender;
+  private milestoneBar!: MilestoneBar;
   private eventLog!: EventLogPanel;
   private taskQueue!: TaskQueuePanel;
   private infoPanel!: InfoPanel;
@@ -116,6 +118,7 @@ export class GameScene extends Phaser.Scene {
       this.world.timeSpeed = s;
     });
     this.segment = new ShipRender(this, getWorld);
+    this.milestoneBar = new MilestoneBar(this, getWorld);
     this.eventLog = new EventLogPanel(this, getWorld);
     this.taskQueue = new TaskQueuePanel(this, getWorld);
     this.infoPanel = new InfoPanel(this, getWorld);
@@ -135,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     // Tooltips — každý panel si attach sám po vytvoření všech elementů.
     this.header.attachTooltips(this.tooltips);
     this.segment.attachTooltips(this.tooltips);
+    this.milestoneBar.attachTooltips(this.tooltips);
     this.infoPanel.attachTooltips(this.tooltips);
     this.modulesPanel.attachTooltips(this.tooltips);
     this.eventLog.attachTooltips(this.tooltips);
@@ -177,6 +181,7 @@ export class GameScene extends Phaser.Scene {
     setSegmentX(dockManager.getSegmentX());
     this.background.setSize(L.CANVAS_W, L.CANVAS_H);
     this.segment.relayout();
+    this.milestoneBar.relayout();
     this.eventLog.relayout();
     this.taskQueue.relayout();
     this.layoutLogCommands();
@@ -348,6 +353,7 @@ export class GameScene extends Phaser.Scene {
 
     this.header.render();
     this.segment.render();
+    this.milestoneBar.render();
     this.eventLog.render();
     this.taskQueue.render();
     this.infoPanel.render();

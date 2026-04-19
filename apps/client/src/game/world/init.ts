@@ -13,7 +13,7 @@
 //
 // Wear 85–100 % hp_max + 1 critical damage pro Observer start.
 
-import type { World, Bay, Module, Actor, ModuleKind } from "../model";
+import type { World, Bay, Module, Actor, ModuleKind, Milestone } from "../model";
 import { MODULE_DEFS } from "../model";
 import {
   SEED_SOLIDS,
@@ -151,6 +151,7 @@ export function createInitialWorld(): World {
       },
     },
     collapseEmitted: false,
+    milestones: createInitialMilestones(),
   };
 
   world.energyMax = computeEnergyMax(world);
@@ -173,4 +174,59 @@ export function createInitialWorld(): World {
 
   appendEvent(world, "SYST", { text: "Simulace spuštěna" });
   return world;
+}
+
+// Seed 7 milestonů (3 done + 1 current + 3 planned). Pořadí = timeline.
+// FVP static — status je hardcoded. Triggery auto-advance přijdou s R2
+// (repair completion detection, wake-up mechanismus, arrival tick).
+// Narativně navazuje na Mission Scenario (IDEAS S33) — Transit arc.
+function createInitialMilestones(): Milestone[] {
+  return [
+    {
+      id: "establish",
+      label_cs: "Establish",
+      desc_cs: "Kolonie usazena na orbitě. Hull segment aktivován, základní systémy online.",
+      date_cs: "2387-04-16.12:14",
+      status: "done",
+    },
+    {
+      id: "checks",
+      label_cs: "Kontroly",
+      desc_cs: "Diagnostika všech modulů dokončena. Zjištěny drobné nesrovnalosti k opravě.",
+      date_cs: "2387-04-17.03:33",
+      status: "done",
+    },
+    {
+      id: "orbit",
+      label_cs: "Stabilizace orbity",
+      desc_cs: "Orbita segmentu Teegarden.Belt1.Seg042 stabilizována. Perioda v toleranci.",
+      date_cs: "2387-04-17.14:47",
+      status: "done",
+    },
+    {
+      id: "repairs",
+      label_cs: "Oprava systémů",
+      desc_cs: "QuarterMaster spouští autonomní opravy poškozených modulů. Priorita: nejnižší HP ratio.",
+      date_cs: "2387-04-25.09:24",
+      status: "current",
+    },
+    {
+      id: "repairs_complete",
+      label_cs: "Dokončení oprav",
+      desc_cs: "Cíl: všechny moduly na 100 % HP. Po dosažení kolonie připravena na další fázi.",
+      status: "planned",
+    },
+    {
+      id: "first_wake",
+      label_cs: "Probuzení posádky",
+      desc_cs: "První kolonista opouští cryo. Trigger: stabilní E + připravený Habitat.",
+      status: "planned",
+    },
+    {
+      id: "arrival",
+      label_cs: "Příchod Teegarden",
+      desc_cs: "Konec tranzitu. 400 let cesty dokončeno, kolonie v cílové soustavě Teegarden's Star.",
+      status: "planned",
+    },
+  ];
 }

@@ -2,6 +2,14 @@
 
 Konkrétní úkoly. Hotové položky přesouvej do `DONE.md`.
 
+## v1.1 Roadmap (S38+)
+
+Detail v `IDEAS.md` sekci „v1.1 Roadmap". Tři osy pro v1.1 release.
+
+- [x] **Osa 1: Milestone bar** — hotovo v S38 (milestone_bar.ts, World.milestones, QM Terminal refactor). 7 chips + separátor `»` + pulse. Viz DONE S38.
+- [ ] **Osa 2: Persistent server** — v1.1+, největší technický posun (pure client → client-server-DB). Plán: plain WS + JSON broadcasts (doporučení v IDEAS, Colyseus jako upgrade path pro P2+ multi-belt). Scope ~10-15 sezení. Blocked: architekturální rozhodnutí + deploy pipeline (VPS Basic už plánován).
+- [ ] **Osa 3: i18n AJ/ČJ** — v1.1+, ~500 strings napříč UI + event templates. Helper `t(key, params?)`, dict `strings.cs.ts` + `strings.en.ts`, language switcher. Challenge: CZ gender agreement + pluralization. Scope ~3-5 sezení. Závislost: stabilizace UI (po server + milestones).
+
 ## Event Log System (S20/S21)
 
 Většina implementována v S21. Zbývající úkoly:
@@ -35,8 +43,8 @@ Basic responsive layout axiom v KISS verzi (canvas = viewport, všechny UI velik
 Axiom zapsán v `IDEAS.md` → „UI Layer Stack axiom (S19)". Úkoly:
 
 - [x] **ESC = globální bezpečný odchod** — S28: `GameScene.handleEscape()` priority chain: modal → welcome → modules → info → task → event. Lokální ESC listenery v modal/welcome odstraněny.
-- [ ] **#hull-dark mid / light varianty** — rozšířit paletu o 2 alpha varianty `#hull-dark` pro gradient overlay 4.1 → 4.2 → 4.3. Přidat konstanty `UI_OVERLAY_DARK / MID / LIGHT` do `palette.ts`.
-- [ ] **Průhledný Top/Bottom panel** — ověřit, zda texty Top/Bottom Baru mají pozadí; pokud ano, odstranit. BELT protáhnout vertikálně pod okraji (když začne scrollovat).
+- [ ] **#hull-dark mid / light varianty** — rozšířit paletu o 2 alpha varianty `#hull-dark` pro gradient overlay 4.1 → 4.2 → 4.3. Přidat konstanty `UI_OVERLAY_DARK / MID / LIGHT` do `palette.ts`. **Blocked:** Layer 4 overlays (Infotip/Karta/Popover) ještě neexistují — až budou, přidat konstanty s reálným konzumentem (YAGNI).
+- [x] **Průhledný Top/Bottom panel** — S38 audit: `header.ts` (Top) i bottom bar command buttons nemají background rectangles. Texty přímo na canvas pozadí → BELT se kolem nich může přirozeně roztáhnout. Položka retirovaná jako hotová.
 - [ ] **Q-UI-Chrome-Separator** — rozhodnout vizuální oddělení Bottom Bar / Main bez pozadí (jemný okraj, orbit fade, nebo nic).
 - [ ] **Q-Modal-Stack** — rozhodnout, zda může být 5.x otevřen nad 5.y (např. Chat 5.4 z Politiky 5.2). Implikuje `ModalManager` se stackem.
 - [ ] **Q-WinLoss-Buttons** — P1 Win/Loss obrazovka: Close / Restart / Quit?
@@ -59,7 +67,7 @@ Rarity 5 tierů + Logistics matrix kanonizovány v GLOSSARY. FVP (S26 KISS) drž
 
 ## Konsolidace global tuning (S18)
 
-- [ ] **Vytvořit `apps/client/src/game/tuning.ts`** — sjednotit všechny laditelné parametry (CAL-*, prahy, ranges, seed values) na jednom místě. Přesunout z `world.ts`: `WEAR_MIN/MAX`, `CRITICAL_RANGE`, `MEDIUM_RANGE`, `MINOR_RANGE`, `START_DAMAGES_COUNT` (hardcoded `3` v `applyRandomDamages`), seed resources (food=40, air=100, coin=20 nyní hardcoded v `createInitialWorld`), `ENERGY_SEED/MAX`. Z `palette.ts` přesunout `THRESHOLD_CRIT_PCT/WARN_PCT`. Katalogy (`MODULE_DEFS`, `ACTOR_DEFS`) zůstávají v `model.ts`. Cíl: jeden zdroj pravdy pro playtest kalibraci.
+- [x] **`apps/client/src/game/tuning.ts`** — hotovo (postupně S18-S30). `WEAR_MIN/MAX`, `START_DAMAGE_HP_RATIO`, `SEED_*` (solids/fluids/coin/crew/drones), `ENERGY_SEED`, `THRESHOLD_CRIT_PCT/WARN_PCT`, `TICKS_*`, `ASTEROID_*`, `PROTOCOL_*` — vše v jednom souboru. `CRITICAL_RANGE/MEDIUM_RANGE/MINOR_RANGE` + food=40/air=100 retirované s KISS pass (S25). Katalogy (`MODULE_DEFS`) zůstávají v `model.ts`. S38 audit ✓.
 
 ## Revize S4 — k zapracování do dokumentů
 
@@ -164,7 +172,7 @@ Sjednocení konstrukce / dekonstrukce / opravy / poškození do jedné osy HP. D
 - [ ] **Task engine — build/demolish nad HP:** repair hotov, build/demolish tasky pořád nemají HP sync. Aktivovat při implementaci §15 stavebního UX.
 - [ ] **Asteroid damage vzorec** — rozpracovat (viz IDEAS). Zatím placeholder: hit → `-5 hp`.
 - [x] **Multi-bay sprite rendering (S17b):** Engine 2×2 — `drawBaySprite` přes spanW/spanH, root kreslí celou texturu, ref skryjí sprite.
-- [ ] **Ship render — damage particles** (S35 follow-up) — Phaser.GameObjects.Particles burst při `flashUntilTick` (asteroid hit). Dnes: solid red rect overlay. Particles: orange sparks, 2 s burst, ~30 částic. Lepší dojem, +30-50 LOC, GPU cost OK pro single-burst (ne continuous). Odloženo z S35 — styl priorita, particles ledování.
+- [x] **Ship render — damage particles** (S35 follow-up) — **přesunuto do IDEAS** sekce „Damage particles (S38 prototyp, přesunuto sem)" po S38 prototyp + revert. LOC/efekt ratio nevýhodné bez gameplay hooku. Vrátit až při scripted eventech / Player mode / audio vedle vizuálu.
 
 ## Player mode (P2+)
 

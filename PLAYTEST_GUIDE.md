@@ -1,7 +1,7 @@
 # Voidspan — FVP Observer Edition
 Playtest guide — co sledovat, co řešit, co říct autorovi.
 
-Verze: **v1.0** · 2026-04-19 — **Observer Edition release**
+Verze: **v1.1** · 2026-04-19 — **Milestone bar + QM Terminal refactor**
 
 ---
 
@@ -17,14 +17,15 @@ V tomto vydání jsi **pozorovatel**. Nezasahuješ. Aktivní režim (probuzení 
 
 ## Na co se koukat
 
-1. **Pět os zdrojů** v horním pruhu: Energie, Práce, Pevné, Tekutiny, Kredit. Každá má detailní infotip (hover nebo long-tap) — Kapacita, Příjmy, Výdaje, Bilance, Runway.
+1. **Pět os zdrojů** v horním pruhu: Energie, Práce, Pevné, Tekutiny, Coin (◎). Každá má detailní infotip (hover nebo long-tap) — Kapacita, Příjmy, Výdaje, Bilance, Runway.
 2. **16 políček trupu** uprostřed — základní moduly (Solar Array, Habitat, Engine…) a volná pole. Klik = detail.
 3. **Panel Stav** [I] (vlevo nahoře) — posádka, drony, základna, celkový rating.
 4. **Panel Moduly** [M] (vlevo dole) — per-modul HP, status, běžící task.
 5. **Panel Události** [E] (vpravo nahoře) — živá kronika. `SYST` = systémová hláška, `DECY` = rozpad, `DMG` = poškození, `DRN` = nedostatek zdroje, `SIGN` = změna stavu, `ASSN` = přiřazení, `TASK` = lifecycle úkolu, `CMPL` = dokončení, `DEAD` = úmrtí.
-6. **Panel Úkoly** [T] (vpravo dole) — fronta QuarterMastera, který tasky právě běží a proč.
-7. **Query terminál** [Q] — komunikační rozhraní QuarterMastera (otevře se při prvním startu, pak kdykoli stiskem Q).
-8. **Nápověda** [H] — přehled ovládání a tipů (klávesnice + myš/dotyk).
+6. **Panel Úkoly** [T] (vpravo dole) — fronta QuarterMastera, který tasky právě běží a proč. Paused úkol ukazuje konkrétní důvod: `(paused — no Solids)` / `(paused — low Energy)` / …
+7. **Milestone bar** (nad spodním pruhem) — horizontální strip 7 čipů: 3 dokončené (zelené ✓) » aktuální (amber ⧖ s pulzací) » 3 plánované (dim ○). Hover = datum + popis. Každý milník = dlouhodobý klíčový úkol kolonie (metatask).
+8. **Query terminál** [Q] — boot sekvence QuarterMastera + stejné milníky textově (jediný zdroj pravdy sdílený s milestone barem).
+9. **Nápověda** [H] — přehled ovládání a tipů (klávesnice + myš/dotyk).
 
 ## Rychlost času
 

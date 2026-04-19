@@ -46,10 +46,13 @@ describe("formatScalar", () => {
 });
 
 describe("formatResource", () => {
-  it("'current/max unit' format", () => {
-    expect(formatResource(0.15, 12, "E")).toBe("0.15/12 E");
+  it("integer current passthrough", () => {
     expect(formatResource(18, 32, "W")).toBe("18/32 W");
     expect(formatResource(45, 100, "S")).toBe("45/100 S");
+  });
+  it("sub-integer current → 0 (monitoring, ne telemetrie)", () => {
+    expect(formatResource(0.15, 12, "E")).toBe("0/12 E");
+    expect(formatResource(0.048, 100, "S")).toBe("0/100 S");
   });
 });
 

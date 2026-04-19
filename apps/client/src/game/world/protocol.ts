@@ -19,35 +19,39 @@ import { firstMissingRecipeCategory } from "./recipe";
 import { taskActionCs } from "./format";
 import { enqueueRepairTask, taskLoc } from "./task";
 
-export function protocolTick(w: World): void {
+// Vrátí první důvod, proč musí být repair tasky pauzované; null = vše OK.
+// Jediný zdroj pravdy pro pause reasoning (sdílí TASK:PAUSE emit text,
+// eternal monitor label a task queue suffix — izomorfismus, DRY).
+// Pořadí check: offline autopilot → low E → no workers → chybějící materiál.
+export function protocolPauseReason(w: World): string | null {
   const qm = w.software.quartermaster;
-  const qmOffline = !qm || qm.status === "offline";
+  if (!qm || qm.status === "offline") return "autopilot offline";
   const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
-  const eRating = statusRating(energyPct);
-
-  // Kapacitní check: je kdo pracovat?
+  if (statusRating(energyPct) <= PROTOCOL_PAUSE_RATING) return "low Energy";
   const droneCapable = w.drones > 0 && w.resources.energy > 0;
   const actorCapable = w.actors.some(
     (a) => a.state !== "dead" && a.state !== "cryo" && a.hp > 0,
   );
-  const hasWorkers = droneCapable || actorCapable;
+  if (!droneCapable && !actorCapable) return "no workers";
+  const missing = firstMissingRecipeCategory(w);
+  if (missing !== null) return `no ${missing}`;
+  return null;
+}
 
-  // Material gate (S25): kterákoli existující repair task vyžaduje recipe složky.
-  // Pokud Solids/Fluids chybí → pause s důvodem podle kategorie.
-  const missingMaterial = firstMissingRecipeCategory(w);
-  const noMaterial = missingMaterial !== null;
+export function protocolTick(w: World): void {
+  const qm = w.software.quartermaster;
+  const qmOffline = !qm || qm.status === "offline";
 
-  // QM offline → gate force pause a žádné resume/enqueue.
-  const gated = qmOffline || eRating <= PROTOCOL_PAUSE_RATING || !hasWorkers || noMaterial;
-  const ready = !qmOffline && eRating >= PROTOCOL_RESUME_RATING && hasWorkers && !noMaterial;
+  // Globální pause reason (null = vše OK, running)
+  const reason = protocolPauseReason(w);
+  const gated = reason !== null;
 
-  const reason = qmOffline
-    ? "autopilot offline"
-    : eRating <= PROTOCOL_PAUSE_RATING
-      ? "low Energy"
-      : !hasWorkers
-        ? "no workers"
-        : `no ${missingMaterial}`;
+  // Resume gate: E rating ≥ RESUME práh (hystereze nad pause).
+  // `!gated` už zahrnuje ne-offline + E > PAUSE + workers + materiál; zbývá jen
+  // hysterezní hranice RESUME aby mezi PAUSE a RESUME zóna byla "Standby".
+  const energyPct = w.energyMax > 0 ? (w.resources.energy / w.energyMax) * 100 : 0;
+  const eRating = statusRating(energyPct);
+  const ready = !gated && eRating >= PROTOCOL_RESUME_RATING;
 
   if (gated) {
     // Pause všechny active/pending repair tasks. Emit TASK:PAUSE.
@@ -123,11 +127,7 @@ export function protocolTick(w: World): void {
   if (monitor) {
     let state: string;
     if (qmOffline) state = "OFFLINE — no power";
-    else if (gated) {
-      if (eRating <= PROTOCOL_PAUSE_RATING) state = "Paused — low Energy";
-      else if (!hasWorkers) state = "Paused — no workers";
-      else state = `Paused — no ${missingMaterial}`;
-    }
+    else if (gated) state = `Paused — ${reason}`;
     else if (ready) {
       const hasActive = w.tasks.some((t) => t.kind === "repair" && t.status === "active");
       state = hasActive ? "Active" : "Idle — nothing to repair";

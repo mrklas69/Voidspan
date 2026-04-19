@@ -4,6 +4,27 @@ Hotové úkoly. Přesouvá se z `TODO.md`.
 
 > **Historická poznámka (2026-04-18):** Níže jsou zmínky `POC_P1.md` — tento soubor byl retirován v S32 (pivotem na Perpetual Observer Simulation v S20/S21 ztratil smysl). Pro aktuální stav viz `MINDMAP.md` + `GLOSSARY.md`. DONE zůstává archivem v nezměněné podobě.
 
+## 2026-04-19 (Sezení 38 — v1.1 + Milestone bar + DRY refactor + cleanup)
+
+- [x] **v1.0 → v1.1 bump** — `package.json` root + client, `PLAYTEST_GUIDE.md` header, `terminal.ts` QM Terminal první řádek „Voidspan v1.1 Observer Edition".
+- [x] **Paused task reason text** — `(paused — no Solids)` / `(paused — low Energy)` / ... místo holého `(paused)` v TaskQueue suffixu. Nový `protocolPauseReason(w)` helper v `world/protocol.ts` — jediný zdroj pravdy sdílený s QM eternal monitor labelem + `TASK:PAUSE` event textem (DRY).
+- [x] **Protocol vs. progressTasks unified scale** — nový `estimateRepairHpDeltaPerTick(w)` helper v `world/recipe.ts`. `firstMissingRecipeCategory` používá **aktuální hp_delta per tick** místo `RECIPE_MIN_HP_EPSILON` (0.01). Regression fix: při 0.048 Solids protokol správně pauzne (dřív false negative → task active, bar stál).
+- [x] **ModulesPanel stats right-anchored** — `statsText` origin (0, 0) → (1, 0), x = `contentW`. Izomorfismus s TaskQueue suffix layoutem (S29). Ellipsize budget dynamický per-row. Smazané `KIND_COL_W` / `KIND_ELLIPSIS_W` konstanty.
+- [x] **Kvintet integer rounding** — `formatResource` zaokrouhluje `current` i `max` na integer. W přes `Math.round(powerAvailable)`. Coin přes `Math.round(w.resources.coin)`. Sub-integer hodnoty (0.048) už neukazují `48m` milli prefix v monitoring kvintetu.
+- [x] **Milestone data model** — `Milestone` + `MilestoneStatus` typy v `model.ts`, `World.milestones: Milestone[]`, `createInitialMilestones` factory v `init.ts` (7 prvků: 3 done + 1 current + 3 planned).
+- [x] **Milestone bar UI** — nová `ui/milestone_bar.ts` (~170 LOC), horizontální strip nad Bottom Barem. Souvislý strip-bg, 7 chips (ikona + label, origin left) + 6 separátorů `»` (HEX_AMBER_DIM) mezi nimi. Pulse alpha 0.5..1 na current (perioda 2 s, izomorfismus s ship_render activity pulse). Hover tooltip = 2 řádky (`label date\ndesc`).
+- [x] **QM Terminal DRY refactor** — `buildTerminalBody(w)` čte `w.milestones`, status → ASCII tag (`[OK] / [Probíhá...] / [—]`). Retirované: odsazené runtime briefing řádky (`SEED_CREW_CRYO kolonistů v kryo`, `MedCore online`, ..., `Energie/Práce/Pevné/Tekuté`). Kvintet Top Baru + milestone bar nesou stejnou info live — duplikace v modalu byla zbytečná.
+- [x] **Particles prototyp → IDEAS** — damage particles (hit burst sparks + shards + crystals, continuous damage debris, beztíže `gravityY: 0` + 360° isotropic emit) prototypován a revertován (~130 LOC, LOC/efekt ratio nevýhodné). Zapsáno v `IDEAS.md` jako „Damage particles (S38 prototyp, přesunuto sem)" s lessons learned + návratové triggery.
+- [x] **Dead code cleanup** — `ui/actors.ts` (130 LOC) + `ui/panel_header.ts` (30 LOC) smazány (ActorsPanel skrytý S19, import nikde). `ui/layout.ts`: retire exportů `ACTORS_W`, `ACTORS_X`, `COL_PANEL_BG`; `MID_Y`/`MID_H` pouze interní.
+- [x] **DRY `PANEL_BG_ALPHA`** — `modal.ts` měl lokální duplikát `0.9`, nahrazen importem z `panel_helpers.ts`.
+- [x] **TODO konsolidace** — `tuning.ts` audit: všechny hodnoty (WEAR_MIN/MAX, START_DAMAGE_HP_RATIO, SEED_*, ENERGY_SEED, THRESHOLD_*, PROTOCOL_*, ASTEROID_*) už v tuning. Položka označena hotovou. `Průhledný Top/Bottom panel` = hotové (audit: žádné bg rectangles v header.ts ani bottom bar). `#hull-dark mid/light varianty` = blocked (YAGNI, Layer 4 overlays neexistují).
+- [x] **v1.1 Roadmap v IDEAS.md** — 3 nové sekce: Osa 1 Milestone bar (implementace S38), Osa 2 Persistent server (Colyseus vs. plain WS analýza, doporučení plain WS + JSON pro POC, protokol draft), Osa 3 i18n AJ/ČJ (scope, gender/plural challenges, helper design).
+- [x] **Readonly annotations** — `task_queue.ts::rowPairs`, `fullRows`; `modules_panel.ts::moduleRows`, `fullRowData`; `milestone_bar.ts::chips`, `separators` → `private readonly`. Static safety nits z @AUDIT:CODE.
+- [x] **Unit testy (+20)** — `world/recipe.test.ts` (8 testů, včetně regression test `unified scale @ 0.048 Solids`), `world/protocol.test.ts` (7 testů, všechny 4 priority větve + chain order), `world.test.ts` (+5 testů pro `createInitialMilestones` shape).
+- [x] **@AUDIT:CODE + @AUDIT:DOCS** — skóre 8.2/10 (code) / 5.4/10 (docs). Code: readonly + unit tests fixed. Docs: milestone bar přidán do PLAYTEST_GUIDE/SPECIFICATION/GLOSSARY, ActorsPanel retire dokumentován, S38 changelog, MINDMAP fokus update.
+
+**124/124 testů zelených, TS strict čistý. Dev server HMR jel celé sezení.**
+
 ## 2026-04-19 (Sezení 37 — v1.0 Observer Edition release)
 
 - [x] **v0.9 → v1.0 Observer Edition bump** — `package.json` root + client, `PLAYTEST_GUIDE.md` header, `terminal.ts` QM Terminal první řádek „Voidspan v1.0 Observer Edition".

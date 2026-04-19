@@ -377,10 +377,12 @@ export class HeaderPanel {
     const parts: string[] = [
       formatResource(w.resources.energy, w.energyMax, "E"),
       // S24: available/total W — 0/23 při práci dronů, 23/23 při idle.
-      `${work.powerAvailable}/${work.powerMax} W`,
+      // Math.round i tady — powerUsed může být float (actor.work součet), kvintet
+      // chceme celočíselný (sjednocení s E/S/F přes formatResource).
+      `${Math.round(work.powerAvailable)}/${work.powerMax} W`,
       formatResource(w.resources.solids, SOLIDS_MAX, "S"),
       formatResource(w.resources.fluids, FLUIDS_MAX, "F"),
-      `◎ ${formatScalar(w.resources.coin)}`,
+      `◎ ${formatScalar(Math.round(w.resources.coin))}`,
     ];
     // Dashboard semafor — barva v baru sdílí metriku s barvou v tooltip headeru.
     // Index pořadí drží pořadí parts[]: 0=E, 1=W, 2=S, 3=F, 4=Coin.

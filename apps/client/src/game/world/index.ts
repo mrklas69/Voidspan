@@ -22,6 +22,7 @@ export { formatGameTime, formatGameTimeShort, formatEta, taskEtaTicks, describeT
 export { getOuterHP, getBayTrajectory, type OuterHP, type Trajectory } from "./bay";
 export { averageFlow, currentDayRate, type FlowCategory, type FlowDirection } from "./flow";
 export { enqueueRepairTask, findActiveTaskForModule, isConstructionTask } from "./task";
+export { protocolPauseReason } from "./protocol";
 export { computeWork } from "./work";
 export { computeEnergyMax } from "./production";
 

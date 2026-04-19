@@ -58,8 +58,11 @@ export function formatScalar(value: number, digits: number = 2): string {
 }
 
 // Helper pro display „current/max X" — obě hodnoty přes formatScalar + jednotka.
+// Kvintet monitoring (E/W/S/F): zaokrouhlujeme na integer, aby sub-integer decimal
+// hodnoty nezobrazovaly milli/micro prefix (0.048 → „48m" byl vizuálně matoucí
+// vedle celočíselného max jako „100"). Čtenář chce hrubý stav, ne telemetrii.
 export function formatResource(current: number, max: number, unit: string): string {
-  return `${formatScalar(current)}/${formatScalar(max)} ${unit}`;
+  return `${formatScalar(Math.round(current))}/${formatScalar(Math.round(max))} ${unit}`;
 }
 
 // ASCII progress bar pro task queue. `width` = celkový počet znaků.

@@ -286,6 +286,25 @@ export type FlowHistory = {
   filled: number;   // počet zaplněných bucketů (0..WINDOW), rostoucí k WINDOW
 };
 
+// === Milestones — metataskové (dlouhodobé klíčové úkoly) ===
+//
+// FVP POC (S38): 7 prvků — 3 done + 1 current + 3 planned. Jediný zdroj pravdy
+// pro UI milestone bar + QM Terminal (oba čtou z `World.milestones`). Auto-advance
+// není implementován — status je hardcoded (static), trigger logika přijde s
+// R2 (wake-up, repair completion, arrival tick).
+//
+// Content narativně odpovídá Mission Scenario S33 (IDEAS) — Transit arc.
+
+export type MilestoneStatus = "done" | "current" | "planned";
+
+export interface Milestone {
+  id: string;
+  label_cs: string;        // krátký label pro chip v milestone baru (1-3 slova)
+  desc_cs: string;         // detailnější popis pro tooltip/popup
+  date_cs?: string;        // herní datum, pokud je relevantní (2387-04-16.12:14)
+  status: MilestoneStatus;
+}
+
 // === Root state ===
 
 // Uživatelsky nastavitelný násobek rychlosti herního času. 1× = wall time,
@@ -322,6 +341,9 @@ export type World = {
   // true, aby se událost neopakovala. Simulace jede dál (Observer axiom),
   // ale epitaph má smysl jen jednou — puncuje narrative arc.
   collapseEmitted: boolean;
+  // Milestone strip (S38) — 7 prvků, pořadí = timeline. Sdíleno mezi UI
+  // milestone bar a QM Terminal. Status je FVP static; R2+ bude auto-advance.
+  milestones: Milestone[];
 };
 
 // ============================================================================

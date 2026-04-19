@@ -6,7 +6,7 @@
 
 import type { World, Task, ResourceRecipe } from "../model";
 import { MODULE_DEFS } from "../model";
-import { RECIPE_MIN_HP_EPSILON } from "../tuning";
+import { RECIPE_MIN_HP_EPSILON, TICKS_PER_GAME_DAY, WD_PER_HP } from "../tuning";
 import { recordFlow } from "./flow";
 
 // Vrátí per-HP recipe pro target tasku (modul). null = no recipe (eternal/service
@@ -47,15 +47,38 @@ export function consumeResources(w: World, recipe: ResourceRecipe, scale: number
   }
 }
 
+// Odhad reálné HP delty per tick, kterou by repair task získal při aktuálním
+// workforce poolu (drony × E + alive actors × work). Sdílí logiku s
+// progressTasks — jediný zdroj pravdy pro "kolik materiálu tick sežere".
+// Floor = RECIPE_MIN_HP_EPSILON (safety při powerSum=0 — drží protokol
+// konzistentní i v degenerovaném stavu, kdy by gate jinak vracel 0 missing).
+export function estimateRepairHpDeltaPerTick(w: World): number {
+  const droneW = w.resources.energy > 0 ? w.drones : 0;
+  let actorW = 0;
+  for (const a of w.actors) {
+    if (a.state === "dead" || a.state === "cryo") continue;
+    if (a.hp <= 0) continue;
+    actorW += a.work;
+  }
+  const powerSum = droneW + actorW;
+  if (powerSum <= 0) return RECIPE_MIN_HP_EPSILON;
+  const wd_delta = powerSum / TICKS_PER_GAME_DAY;
+  return Math.max(wd_delta / WD_PER_HP, RECIPE_MIN_HP_EPSILON);
+}
+
 // Najde první chybějící kategorii napříč všemi non-finished repair tasky. null = vše OK.
 // Slouží protocolTicku pro globální material gate + monitor label důvod.
+// Scale = reálná hp_delta per tick, aby protokol a progressTasks používaly stejný
+// práh (dřív EPSILON=0.01 vs. skutečné ~0.48 → pauza neproběhla, ale progress
+// stál → "tichý zámek", bar vypadal aktivní).
 export function firstMissingRecipeCategory(w: World): string | null {
+  const scale = estimateRepairHpDeltaPerTick(w);
   for (const t of w.tasks) {
     if (t.kind !== "repair") continue;
     if (t.status === "completed" || t.status === "failed") continue;
     const recipe = getTaskRecipe(w, t);
     if (!recipe) continue;
-    const missing = whichResourceMissing(w, recipe, RECIPE_MIN_HP_EPSILON);
+    const missing = whichResourceMissing(w, recipe, scale);
     if (missing) return missing;
   }
   return null;
